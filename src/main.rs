@@ -16,7 +16,7 @@ fn index() -> status::Custom<content::RawJson<String>> {
     let time = start_time();
     status::Custom(
         Status::Ok,
-        content::RawJson(format!("{{ \"start_time\": \"{}\", \"website\": \"http://hatch.lol\", \"api\": \"http://api.hatch.lol\" }}", time)),
+        content::RawJson(format!("{{ \"start_time\": \"{}\", \"website\": \"http://hatch.lol\", \"api\": \"http://api.hatch.lol\", \"email\": \"contact@hatch.lol\" }}", time)),
     )
 }
 
