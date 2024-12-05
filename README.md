@@ -1,2 +1,2 @@
-# api
-api.hatch.lol
+# hatch API
+this is the repository for the API used by hatch.
