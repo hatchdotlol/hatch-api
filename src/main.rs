@@ -5,6 +5,7 @@ pub mod db;
 
 pub mod assets;
 
+use assets::assets_index;
 use rocket::http::Status;
 use rocket::response::{content, status};
 use std::sync::OnceLock;
@@ -45,6 +46,6 @@ fn not_found() -> status::Custom<content::RawJson<String>> {
 #[launch]
 fn rocket() -> _ {
     rocket::build()
-        .mount("/", routes![comic_sans, index])
+        .mount("/", routes![comic_sans, index, assets_index])
         .register("/", catchers![not_found])
 }

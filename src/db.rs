@@ -11,7 +11,7 @@ pub fn reports() -> &'static Mutex<Connection> {
         conn.execute(
             "CREATE TABLE IF NOT EXISTS reports (
                 id    INTEGER PRIMARY KEY,
-                user TEXT NOT NULL,
+                user INTEGER NOT NULL,
                 reason  TEXT NOT NULL,
                 project_id INTEGER NOT NULL
             )",
