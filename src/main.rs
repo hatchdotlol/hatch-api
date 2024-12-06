@@ -20,7 +20,17 @@ fn index() -> status::Custom<content::RawJson<String>> {
     )
 }
 
+#[catch(404)]
+fn not_found() -> status::Custom<content::RawJson<String>> {
+    status::Custom(
+        Status::NotFound,
+        content::RawJson(String::from("{\"error\": \"404\", \"message\": \"Not Found\" }"))
+    )
+}
+
 #[launch]
 fn rocket() -> _ {
-    rocket::build().mount("/", routes![index])
+    rocket::build()
+        .mount("/", routes![index])
+        .register("/", catchers![not_found])
 }
