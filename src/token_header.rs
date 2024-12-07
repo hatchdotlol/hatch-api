@@ -1,9 +1,11 @@
-use rocket::http::Status;
-use rocket::request::{self, FromRequest, Outcome};
-use rocket::response::{content, status};
-use rocket::Request;
+use rocket::{
+    http::Status,
+    outcome::Outcome,
+    request::{self, FromRequest},
+    Request,
+};
 
-pub struct Token<'r>(&'r str);
+use crate::db::db;
 
 #[derive(Debug)]
 pub enum AuthError {
@@ -12,8 +14,15 @@ pub enum AuthError {
 
 // proper token validation goes here
 fn is_valid(token: &str) -> bool {
-    token == "hi"
+    let cur = db().lock().unwrap();
+    let mut select = cur
+        .prepare("SELECT token FROM tokens WHERE token = ?1")
+        .unwrap();
+    let exists = select.query([token]).unwrap().next().unwrap().is_some();
+    exists
 }
+
+pub struct Token<'r>(pub &'r str);
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for Token<'r> {
@@ -26,11 +35,4 @@ impl<'r> FromRequest<'r> for Token<'r> {
             Some(_) | None => Outcome::Error((Status::Unauthorized, AuthError::Invalid)),
         }
     }
-}
-
-#[post("/")]
-pub fn index(key: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
-    key.0;
-    // insert minio logic here
-    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }

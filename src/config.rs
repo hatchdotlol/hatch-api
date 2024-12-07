@@ -1,4 +1,4 @@
-pub const TOKEN_EXPIRY: u64 = 10; // secs
+pub const TOKEN_EXPIRY: u64 = 1000; // secs
 
 // bytes
 pub const ASSET_LIMIT: u32 = 15_000_000;

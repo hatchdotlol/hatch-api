@@ -1,16 +1,21 @@
+use minio::s3::{
+    client::{Client, ClientBuilder},
+    creds::StaticProvider,
+    http::BaseUrl,
+};
 use rusqlite::Connection;
 use std::sync::{Mutex, OnceLock};
+use tokio::sync::Mutex as TokioMutex;
 
 pub fn db() -> &'static Mutex<Connection> {
     static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
-    dbg!("db requested");
 
     DB.get_or_init(|| {
         let conn = Connection::open("hatch.db").unwrap();
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS reports (
-                id    INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY,
                 user INTEGER NOT NULL,
                 reason  TEXT NOT NULL,
                 project_id INTEGER NOT NULL
@@ -47,5 +52,21 @@ pub fn db() -> &'static Mutex<Connection> {
         conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 
         Mutex::new(conn)
+    })
+}
+
+pub fn assets() -> &'static TokioMutex<Client> {
+    static ASSETS: OnceLock<TokioMutex<Client>> = OnceLock::new();
+
+    ASSETS.get_or_init(|| {
+        let base_url = "http://localhost:9000".parse::<BaseUrl>().unwrap();
+        let static_provider = StaticProvider::new("minioadmin", "minioadmin", None);
+
+        let client = ClientBuilder::new(base_url.clone())
+            .provider(Some(Box::new(static_provider)))
+            .build()
+            .unwrap();
+
+        TokioMutex::new(client)
     })
 }
