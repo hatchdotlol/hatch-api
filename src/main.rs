@@ -1,7 +1,10 @@
-use std::sync::OnceLock;
+#[macro_use]
+extern crate rocket;
 
-use actix_web::{get, post, App, HttpServer, Responder};
 use chrono;
+use rocket::http::Status;
+use rocket::response::{content, status};
+use std::sync::OnceLock;
 
 fn start_time() -> &'static str {
     static CONFIG: OnceLock<String> = OnceLock::new();
@@ -9,15 +12,15 @@ fn start_time() -> &'static str {
 }
 
 #[get("/")]
-async fn index() -> impl Responder {
+fn index() -> status::Custom<content::RawJson<String>> {
     let time = start_time();
-    format!("{{ \"start_time\": \"{}\" }}", time)
+    status::Custom(
+        Status::Ok,
+        content::RawJson(format!("{{ \"start_time\": \"{}\" }}", time)),
+    )
 }
 
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| App::new().service(index))
-        .bind(("127.0.0.1", 8000))?
-        .run()
-        .await
+#[launch]
+fn rocket() -> _ {
+    rocket::build().mount("/", routes![index])
 }
