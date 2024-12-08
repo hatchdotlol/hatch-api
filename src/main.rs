@@ -1,12 +1,22 @@
-#[macro_use]
-extern crate rocket;
+use std::sync::OnceLock;
 
-#[get("/")]
-fn index() -> &'static str {
-    "hey vsauce michael here do you want to see the most illegal thing i own?\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nits a penny"
+use actix_web::{get, post, web, App, HttpServer, Responder};
+
+fn start_time() -> &'static str {
+    static CONFIG: OnceLock<String> = OnceLock::new();
+    CONFIG.get_or_init(|| format!("{}", chrono::Utc::now()))
 }
 
-#[launch]
-fn rocket() -> _ {
-    rocket::build().mount("/", routes![index])
+#[get("/")]
+async fn index() -> impl Responder {
+    let time = start_time();
+    format!("{{ \"start_time\": \"{}\" }}", time)
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| App::new().service(index))
+        .bind(("127.0.0.1", 8000))?
+        .run()
+        .await
 }
