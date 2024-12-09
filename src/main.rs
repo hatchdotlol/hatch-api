@@ -32,7 +32,7 @@ fn bad_request() -> status::Custom<content::RawJson<String>> {
 fn rocket() -> _ {
     rocket::build()
         .mount("/", routes![root::comic_sans, root::index])
-        .mount("/uploads", routes![uploads::index, uploads::user])
+        .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount("/auth", routes![auth::login, auth::logout, auth::me])
         .register("/", catchers![not_found, bad_request])
 }

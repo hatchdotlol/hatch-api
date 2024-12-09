@@ -13,16 +13,24 @@ pub enum AuthError {
 }
 
 // proper token validation goes here
-fn is_valid(token: &str) -> bool {
+fn is_valid(token: &str) -> Option<u32> {
     let cur = db().lock().unwrap();
     let mut select = cur
-        .prepare("SELECT token FROM tokens WHERE token = ?1")
+        .prepare("SELECT user FROM tokens WHERE token = ?1")
         .unwrap();
-    let exists = select.query([token]).unwrap().next().unwrap().is_some();
-    exists
+    let mut query = select.query([token]).unwrap();
+    let user = query.next().unwrap();
+    if let Some(tok) = user {
+        Some(tok.get::<usize, u32>(0).unwrap())
+    } else {
+        None
+    }
 }
 
-pub struct Token<'r>(pub &'r str);
+pub struct Token<'r> {
+    pub token: &'r str,
+    pub user: u32,
+}
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for Token<'r> {
@@ -30,8 +38,16 @@ impl<'r> FromRequest<'r> for Token<'r> {
 
     async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         let token = request.headers().get_one("token");
+        let user = if token.is_some() {
+            is_valid(token.unwrap())
+        } else {
+            None
+        };
         match token {
-            Some(token) if is_valid(token) => Outcome::Success(Token(token)),
+            Some(token) if user.is_some() => Outcome::Success(Token {
+                user: user.unwrap(),
+                token,
+            }),
             Some(_) | None => Outcome::Error((Status::Unauthorized, AuthError::Invalid)),
         }
     }

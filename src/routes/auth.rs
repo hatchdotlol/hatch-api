@@ -110,7 +110,7 @@ pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
     let shared = SharedConnection::new(db());
     let cur = shared.0.lock().unwrap();
 
-    cur.execute("DELETE FROM tokens WHERE token = ?1", [token.0])
+    cur.execute("DELETE FROM tokens WHERE token = ?1", [token.token])
         .unwrap();
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
@@ -135,7 +135,7 @@ pub fn me(token: Token<'_>) -> Json<User> {
     let mut select = cur
         .prepare("SELECT user FROM tokens WHERE token = ?1")
         .unwrap();
-    let mut row = select.query([token.0]).unwrap();
+    let mut row = select.query([token.token]).unwrap();
     let token = row.next().unwrap().unwrap();
 
     let user = token.get::<usize, u32>(0).unwrap();

@@ -8,9 +8,10 @@ serde_json = "1.0.133"
 chrono = "0.4.38"
 rocket = { version = "0.5.1", features = ["json"] }
 rusqlite = { version = "0.32.0", features = ["bundled"] }
-minio = "0.1.0"
+minio = { git = "https://github.com/minio/minio-rs" }
 rand = "0.8.5"
 hex = "0.4.3"
 tokio = "1.42.0"
 bcrypt = "0.16.0"
 serde = "1.0.215"
+image = "0.25.5"
