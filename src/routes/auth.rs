@@ -4,13 +4,13 @@ use crate::config::TOKEN_EXPIRY;
 use crate::db::db;
 use crate::token_header::Token;
 
+use crate::structs::User;
 use rand::Rng;
 use rocket::http::Status;
 use rocket::response::{content, status};
 use rocket::serde::json::Json;
 use rocket::serde::Deserialize;
 use rusqlite::Connection;
-use serde::Serialize;
 use tokio::time::{sleep, Duration};
 
 #[derive(Debug)]
@@ -116,21 +116,9 @@ pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct User {
-    user: String,
-    country: String,
-    bio: String,
-    highlighted_projects: String,
-    profile_picture: String,
-    join_date: String,
-}
-
 #[get("/me")]
 pub fn me(token: Token<'_>) -> Json<User> {
-    let shared = SharedConnection::new(db());
-    let cur = shared.0.lock().unwrap();
+    let cur = db().lock().unwrap();
 
     let mut select = cur
         .prepare("SELECT user FROM tokens WHERE token = ?1")

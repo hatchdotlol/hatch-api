@@ -4,11 +4,12 @@ extern crate rocket;
 pub mod config;
 pub mod db;
 pub mod routes;
+pub mod structs;
 pub mod token_header;
 
 use rocket::http::Status;
 use rocket::response::{content, status};
-use routes::{auth, root, uploads};
+use routes::{auth, root, uploads, users};
 
 #[catch(404)]
 fn not_found() -> status::Custom<content::RawJson<String>> {
@@ -32,7 +33,8 @@ fn bad_request() -> status::Custom<content::RawJson<String>> {
 fn rocket() -> _ {
     rocket::build()
         .mount("/", routes![root::comic_sans, root::index])
+        .register("/", catchers![not_found, bad_request])
         .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount("/auth", routes![auth::login, auth::logout, auth::me])
-        .register("/", catchers![not_found, bad_request])
+        .mount("/users", routes![users::user])
 }
