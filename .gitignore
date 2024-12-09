@@ -26,3 +26,5 @@ Cargo.lock
 
 .idea
 *.db
+*.db-*
+assets

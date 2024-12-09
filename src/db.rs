@@ -1,12 +1,12 @@
+use rusqlite::Connection;
 use std::sync::{Mutex, OnceLock};
 
-use rusqlite::Connection;
+pub fn db() -> &'static Mutex<Connection> {
+    static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
+    dbg!("db requested");
 
-pub fn reports() -> &'static Mutex<Connection> {
-    static REPORTS: OnceLock<Mutex<Connection>> = OnceLock::new();
-
-    REPORTS.get_or_init(|| {
-        let conn = Connection::open("reports.db").unwrap();
+    DB.get_or_init(|| {
+        let conn = Connection::open("hatch.db").unwrap();
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS reports (
@@ -19,21 +19,11 @@ pub fn reports() -> &'static Mutex<Connection> {
         )
         .unwrap();
 
-        Mutex::new(conn)
-    })
-}
-
-pub fn users() -> &'static Mutex<Connection> {
-    static USERS: OnceLock<Mutex<Connection>> = OnceLock::new();
-
-    USERS.get_or_init(|| {
-        let conn = Connection::open("users.db").unwrap();
-
         conn.execute(
             "CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
-                pw TEXT NOT NULL
+                pw TEXT NOT NULL,
                 country TEXT NOT NULL,
                 bio TEXT,
                 highlighted_projects TEXT,
@@ -43,6 +33,18 @@ pub fn users() -> &'static Mutex<Connection> {
             (),
         )
         .unwrap();
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS tokens (
+                id INTEGER PRIMARY KEY,
+                user INTEGER NOT NULL,
+                token TEXT NOT NULL
+            )",
+            (),
+        )
+        .unwrap();
+
+        conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 
         Mutex::new(conn)
     })

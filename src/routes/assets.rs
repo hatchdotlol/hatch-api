@@ -20,7 +20,7 @@ impl<'r> FromRequest<'r> for Token<'r> {
     type Error = AuthError;
 
     async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let token = request.headers().get_one("Token");
+        let token = request.headers().get_one("token");
         match token {
             Some(token) if is_valid(token) => Outcome::Success(Token(token)),
             Some(_) | None => Outcome::Error((Status::Unauthorized, AuthError::Invalid)),
@@ -28,8 +28,8 @@ impl<'r> FromRequest<'r> for Token<'r> {
     }
 }
 
-#[post("/assets")]
-pub fn assets_index(key: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
+#[post("/")]
+pub fn index(key: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
     key.0;
     // insert minio logic here
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
