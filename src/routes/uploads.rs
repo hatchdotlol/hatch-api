@@ -118,8 +118,7 @@ pub async fn user(user: String) -> (ContentType, Vec<u8>) {
 
     (
         ContentType::JPEG,
-        obj.unwrap()
-            .content
+        obj.content
             .to_segmented_bytes()
             .await
             .unwrap()
