@@ -106,11 +106,15 @@ pub async fn update_pfp(
 pub async fn user(user: String) -> (ContentType, Vec<u8>) {
     let db = assets().lock().await;
 
-    let obj = db.get_object(&PFPS_BUCKET, &format!("{user}")).send().await;
+    let obj = db
+        .get_object(&PFPS_BUCKET, &format!("{user}"))
+        .send()
+        .await
+        .unwrap();
 
-    if obj.is_err() {
-        return (ContentType::JPEG, vec![0]);
-    };
+    // if obj.is_err() {
+    //     return (ContentType::JPEG, vec![0]);
+    // };
 
     (
         ContentType::JPEG,
