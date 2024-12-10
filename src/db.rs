@@ -7,6 +7,7 @@ use rusqlite::Connection;
 use std::sync::{Mutex, OnceLock};
 use tokio::sync::Mutex as TokioMutex;
 
+/// Fetches a database connection (only one connection is made in lifetime)
 pub fn db() -> &'static Mutex<Connection> {
     static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
 
@@ -29,6 +30,7 @@ pub fn db() -> &'static Mutex<Connection> {
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
                 pw TEXT NOT NULL,
+                display_name TEXT,
                 country TEXT NOT NULL,
                 bio TEXT,
                 highlighted_projects TEXT,

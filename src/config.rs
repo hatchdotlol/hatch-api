@@ -1,7 +1,7 @@
 pub const TOKEN_EXPIRY: u64 = 1000; // secs
 
-pub const USERNAME_LIMIT: u64 = 15;
-pub const BIO_LIMIT: u64 = 800;
+pub const USERNAME_LIMIT: usize = 15;
+pub const BIO_LIMIT: usize = 800;
 
 pub const MAX_PFP_WIDTH: u32 = 512;
 pub const MAX_PFP_HEIGHT: u32 = 512;

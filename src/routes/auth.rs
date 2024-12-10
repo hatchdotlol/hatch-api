@@ -2,9 +2,9 @@ use std::sync::{Arc, Mutex};
 
 use crate::config::TOKEN_EXPIRY;
 use crate::db::db;
+use crate::structs::User;
 use crate::token_header::Token;
 
-use crate::structs::User;
 use rand::Rng;
 use rocket::http::Status;
 use rocket::response::{content, status};
@@ -131,15 +131,17 @@ pub fn me(token: Token<'_>) -> Json<User> {
     let mut row = select.query([user]).unwrap();
     let row = row.next().unwrap().unwrap();
 
-    let bio: Option<String> = row.get(4).unwrap();
-    let highlighted_projects: Option<String> = row.get(5).unwrap();
+    let display_name: Option<String> = row.get(2).unwrap();
+    let bio: Option<String> = row.get(5).unwrap();
+    let highlighted_projects: Option<String> = row.get(6).unwrap();
 
     Json(User {
         user: row.get(1).unwrap(),
-        country: row.get(3).unwrap(),
+        display_name: display_name.unwrap_or("".into()),
+        country: row.get(4).unwrap(),
         bio: bio.unwrap_or("".into()),
         highlighted_projects: highlighted_projects.unwrap_or("".into()),
-        profile_picture: row.get(6).unwrap(),
-        join_date: row.get(7).unwrap(),
+        profile_picture: row.get(7).unwrap(),
+        join_date: row.get(8).unwrap(),
     })
 }

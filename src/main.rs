@@ -36,5 +36,5 @@ fn rocket() -> _ {
         .register("/", catchers![not_found, bad_request])
         .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount("/auth", routes![auth::login, auth::logout, auth::me])
-        .mount("/users", routes![users::user])
+        .mount("/user", routes![users::user, users::update_user_info])
 }

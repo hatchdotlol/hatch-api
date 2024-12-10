@@ -2,7 +2,7 @@ use std::io::Cursor;
 use std::path::Path;
 
 use crate::config::{MAX_PFP_HEIGHT, MAX_PFP_WIDTH, PFPS_BUCKET, PFP_LIMIT};
-use crate::db::assets;
+use crate::db::{assets, db};
 use crate::token_header::Token;
 use image::{GenericImageView, ImageFormat, ImageReader};
 use minio::s3::builders::ObjectContent;
@@ -18,7 +18,19 @@ pub struct Upload<'f> {
     file: TempFile<'f>,
 }
 
-#[post("/pfps", format = "multipart/form-data", data = "<form>")]
+fn get_user_pfp(user: u32) -> String {
+    let cur = db().lock().unwrap();
+
+    let mut select = cur
+        .prepare("SELECT profile_picture from users WHERE id = ?1")
+        .unwrap();
+
+    let mut query = select.query([user]).unwrap();
+    let row = query.next().unwrap().unwrap();
+    row.get::<usize, String>(0).unwrap()
+}
+
+#[post("/pfp", format = "multipart/form-data", data = "<form>")]
 pub async fn update_pfp(
     token: Token<'_>,
     form: Form<Upload<'_>>,
@@ -83,7 +95,7 @@ pub async fn update_pfp(
         );
     }
 
-    let db = assets().lock().await;
+    let client = assets().lock().await;
 
     let ext = if content_type.is_png() {
         "png"
@@ -94,15 +106,33 @@ pub async fn update_pfp(
     };
     let content = ObjectContent::from(Path::new(&form.file.path().unwrap().to_str().unwrap()));
 
-    db.put_object_content(&PFPS_BUCKET, &format!("{}.{}", token.user, ext), content)
+    let new_pfp = format!("{}.{}", token.user, ext);
+    let previous_pfp = get_user_pfp(token.user);
+
+    client
+        .put_object_content(&PFPS_BUCKET, &new_pfp, content)
         .send()
         .await
         .unwrap();
 
+    if new_pfp != previous_pfp {
+        client
+            .remove_object(&PFPS_BUCKET, &*previous_pfp)
+            .send()
+            .await
+            .unwrap();
+        let cur = db().lock().unwrap();
+        cur.execute(
+            "UPDATE users SET profile_picture = ?1 WHERE id = ?2",
+            [new_pfp, token.user.to_string()],
+        )
+        .unwrap();
+    }
+
     status::Custom(Status::Ok, content::RawJson(String::from("asfdsfd")))
 }
 
-#[get("/pfps/<user>")]
+#[get("/pfp/<user>")]
 pub async fn user(user: String) -> (ContentType, Vec<u8>) {
     let db = assets().lock().await;
 
