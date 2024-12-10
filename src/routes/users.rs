@@ -49,7 +49,7 @@ pub fn user(user: String) -> (Status, Json<Value>) {
         );
     };
 
-    let display_name: Option<String> = row.get(2).unwrap();
+    let display_name: Option<String> = row.get(3).unwrap();
     let bio: Option<String> = row.get(5).unwrap();
     let highlighted_projects: Option<String> = row.get(6).unwrap();
 

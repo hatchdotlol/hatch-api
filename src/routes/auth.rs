@@ -131,7 +131,7 @@ pub fn me(token: Token<'_>) -> Json<User> {
     let mut row = select.query([user]).unwrap();
     let row = row.next().unwrap().unwrap();
 
-    let display_name: Option<String> = row.get(2).unwrap();
+    let display_name: Option<String> = row.get(3).unwrap();
     let bio: Option<String> = row.get(5).unwrap();
     let highlighted_projects: Option<String> = row.get(6).unwrap();
 
