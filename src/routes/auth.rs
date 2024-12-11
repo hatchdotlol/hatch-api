@@ -62,12 +62,11 @@ pub fn register(
         );
     }
 
-    // && creds.username.len() < 2
-    if creds.username.len() > USERNAME_LIMIT {
+    if creds.username.len() > USERNAME_LIMIT || creds.username.len() == 0 {
         return status::Custom(
             Status::BadRequest,
             content::RawJson(format!(
-                "{{\"message\": \"Username must be between 2-{} characters\"}}",
+                "{{\"message\": \"Username must be between 1-{} characters\"}}",
                 USERNAME_LIMIT
             )),
         );
@@ -115,18 +114,19 @@ pub fn register(
         ) VALUES (
             ?1,
             ?2,
-            NULL,
+            ?3,
             \"US\",
             NULL,
             NULL,
             \"1.png\",
-            ?3,
+            ?4,
             NULL,
             NULL
         )",
         (
             creds.username,
             bcrypt::hash(creds.password, 10).unwrap(),
+            creds.username,
             format!("{}", chrono::Utc::now()),
         ),
     )
