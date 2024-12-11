@@ -1,4 +1,4 @@
-pub mod admin;
+// pub mod admin;
 pub mod auth;
 pub mod root;
 pub mod uploads;

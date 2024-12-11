@@ -1,9 +1,11 @@
 use std::sync::{Arc, Mutex};
 
-use crate::config::TOKEN_EXPIRY;
+use crate::admin_guard::AdminToken;
+use crate::config::{TOKEN_EXPIRY, USERNAME_LIMIT};
 use crate::db::db;
+use crate::entropy::calculate_entropy;
 use crate::structs::User;
-use crate::token_header::Token;
+use crate::token_guard::Token;
 
 use rand::Rng;
 use rocket::http::Status;
@@ -41,6 +43,92 @@ async fn remove_token(cur: SharedConnection, user: u32) {
 pub struct Credentials<'r> {
     pub username: &'r str,
     pub password: &'r str,
+}
+
+#[post("/register", format = "application/json", data = "<creds>")]
+pub fn register(
+    _key: AdminToken<'_>,
+    creds: Json<Credentials>,
+) -> status::Custom<content::RawJson<String>> {
+    if !creds.username.is_ascii()
+        || !creds
+            .username
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Username must use alphabet, numbers, underscores, and hyphens only\"}".into()),
+        );
+    }
+
+    if creds.username.len() > USERNAME_LIMIT && creds.username.len() < 2 {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson(format!(
+                "{{\"message\": \"Username must be between 2-{} characters\"}}",
+                USERNAME_LIMIT
+            )),
+        );
+    }
+
+    if !creds.password.is_ascii() {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Password must use ASCII\"}".into()),
+        );
+    }
+
+    if calculate_entropy(creds.password) < 28.0 {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Password is too weak\"}".into()),
+        );
+    };
+
+    let cur = db().lock().unwrap();
+
+    let mut select = cur.prepare("SELECT * from users WHERE name = ?1").unwrap();
+    let mut query = select.query((creds.username,)).unwrap();
+    let first = query.next().unwrap();
+
+    if first.is_some() {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"That username already exists\"}".into()),
+        );
+    }
+
+    cur.execute(
+        "INSERT INTO users (
+            name,
+            pw,
+            display_name,
+            country,
+            bio,
+            highlighted_projects,
+            profile_picture,
+            join_date,
+            banner_image
+        ) VALUES (
+            ?1,
+            ?2,
+            NULL,
+            \"US\",
+            NULL,
+            NULL,
+            \"1.png\",
+            ?3,
+            NULL
+        )",
+        (
+            creds.username,
+            bcrypt::hash(creds.password, 10).unwrap(),
+            format!("{}", chrono::Utc::now()),
+        ),
+    )
+    .unwrap();
+    status::Custom(Status::Ok, content::RawJson("{\"success\": true}".into()))
 }
 
 #[post("/login", format = "application/json", data = "<creds>")]

@@ -1,7 +1,6 @@
 use rocket::{
     http::Status,
-    outcome::Outcome,
-    request::{self, FromRequest},
+    request::{FromRequest, Outcome},
     Request,
 };
 
@@ -36,7 +35,7 @@ pub struct Token<'r> {
 impl<'r> FromRequest<'r> for Token<'r> {
     type Error = AuthError;
 
-    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         let token = request.headers().get_one("Token");
         let user = if token.is_some() {
             is_valid(token.unwrap())

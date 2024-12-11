@@ -1,6 +1,6 @@
 pub const TOKEN_EXPIRY: u64 = 1000; // secs
 
-pub const USERNAME_LIMIT: usize = 15;
+pub const USERNAME_LIMIT: usize = 20;
 pub const BIO_LIMIT: usize = 800;
 pub const DISPLAY_NAME_LIMIT: usize = 30;
 

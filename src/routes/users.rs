@@ -6,7 +6,7 @@ use url::Url;
 use crate::{
     config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, DISPLAY_NAME_LIMIT},
     db::db,
-    token_header::Token,
+    token_guard::Token,
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
