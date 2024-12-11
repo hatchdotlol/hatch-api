@@ -21,7 +21,6 @@ impl<'r> FromRequest<'r> for AdminToken<'r> {
 
     async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
         let token = request.headers().get_one("Admin-Key");
-        println!("{}", env::var("ADMIN_KEY").unwrap());
         match token {
             Some(token) if token == env::var("ADMIN_KEY").unwrap() => {
                 Outcome::Success(AdminToken(token))
