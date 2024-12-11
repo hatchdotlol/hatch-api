@@ -62,7 +62,8 @@ pub fn register(
         );
     }
 
-    if creds.username.len() > USERNAME_LIMIT && creds.username.len() < 2 {
+    // && creds.username.len() < 2
+    if creds.username.len() > USERNAME_LIMIT {
         return status::Custom(
             Status::BadRequest,
             content::RawJson(format!(
@@ -109,7 +110,8 @@ pub fn register(
             highlighted_projects,
             profile_picture,
             join_date,
-            banner_image
+            banner_image,
+            followers
         ) VALUES (
             ?1,
             ?2,
@@ -119,6 +121,7 @@ pub fn register(
             NULL,
             \"1.png\",
             ?3,
+            NULL,
             NULL
         )",
         (
