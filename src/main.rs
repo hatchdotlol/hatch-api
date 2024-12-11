@@ -9,9 +9,11 @@ pub mod routes;
 pub mod structs;
 pub mod token_guard;
 
+use admin_guard::admin_key;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
+use routes::root::{start_time, version};
 use routes::{auth, root, uploads, users};
 
 #[catch(404)]
@@ -34,6 +36,10 @@ fn bad_request() -> status::Custom<content::RawJson<String>> {
 
 #[launch]
 fn rocket() -> _ {
+    start_time();
+    version();
+    admin_key();
+
     let allowed_origins = AllowedOrigins::some_exact(&["https://hatch.lol"]);
 
     // You can also deserialize this

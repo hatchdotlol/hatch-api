@@ -2,19 +2,34 @@ use rocket::{
     http::Status,
     response::{content, status},
 };
-use std::sync::OnceLock;
+use std::{env, sync::OnceLock};
 
 pub fn start_time() -> &'static str {
-    static CONFIG: OnceLock<String> = OnceLock::new();
-    CONFIG.get_or_init(|| format!("{}", chrono::Utc::now()))
+    static START_TIME: OnceLock<String> = OnceLock::new();
+    START_TIME.get_or_init(|| format!("{}", chrono::Utc::now()))
+}
+
+pub fn version() -> &'static str {
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION.get_or_init(|| env::var("VERSION").expect("VERSION key not present"))
 }
 
 #[get("/")]
 pub fn index() -> status::Custom<content::RawJson<String>> {
     let time = start_time();
+    let version = version();
     status::Custom(
         Status::Ok,
-        content::RawJson(format!("{{\"start_time\": \"{}\", \"website\": \"https://hatch.lol\", \"api\": \"https://api.hatch.lol\", \"email\": \"contact@hatch.lol\"}}", time)),
+        content::RawJson(format!(
+            "{{
+            \"start_time\": \"{}\",
+            \"website\": \"https://hatch.lol\",
+            \"api\": \"https://api.hatch.lol\",
+            \"email\": \"contact@hatch.lol\",
+            \"version\": \"{}\"
+        }}",
+            time, version
+        )),
     )
 }
 
