@@ -118,7 +118,7 @@ pub fn register(
             \"US\",
             NULL,
             NULL,
-            \"1.png\",
+            \"/uploads/pfp/default.png\",
             ?4,
             NULL,
             NULL

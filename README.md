@@ -7,6 +7,7 @@ This is the repository for the API used by hatch.lol.
 - Install the Rust toolchain, [Minio](https://min.io/docs/minio/linux/operations/installation.html), and SQLite drivers (on Debian this is `libsqlite-dev` if you don't have it by default)
 - Start a Minio server in the background bound to `localhost:9000`
   - Make a bucket named "pfps" and one named "assets"
+  - Add a `default.png` to the pfps bucket for a default profile picture
 - Export `ADMIN_KEY` with a secure string to use for admin-only routes
 - `VERSION="$(git rev-parse --short --verify main)" cargo run`
 

@@ -106,7 +106,7 @@ pub async fn update_pfp(
     };
     let content = ObjectContent::from(Path::new(&form.file.path().unwrap().to_str().unwrap()));
 
-    let new_pfp = format!("{}.{}", token.user, ext);
+    let new_pfp = format!("/uploads/pfp/{}.{}", token.user, ext);
     let previous_pfp = get_user_pfp(token.user);
 
     client
