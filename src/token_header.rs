@@ -37,7 +37,7 @@ impl<'r> FromRequest<'r> for Token<'r> {
     type Error = AuthError;
 
     async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
-        let token = request.headers().get_one("token");
+        let token = request.headers().get_one("Token");
         let user = if token.is_some() {
             is_valid(token.unwrap())
         } else {

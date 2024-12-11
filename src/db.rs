@@ -35,7 +35,8 @@ pub fn db() -> &'static Mutex<Connection> {
                 bio TEXT,
                 highlighted_projects TEXT,
                 profile_picture TEXT NOT NULL,
-                join_date TEXT NOT NULL
+                join_date TEXT NOT NULL,
+                banner_image TEXT
             )",
             (),
         )

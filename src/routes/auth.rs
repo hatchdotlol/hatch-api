@@ -133,15 +133,27 @@ pub fn me(token: Token<'_>) -> Json<User> {
 
     let display_name: Option<String> = row.get(3).unwrap();
     let bio: Option<String> = row.get(5).unwrap();
-    let highlighted_projects: Option<String> = row.get(6).unwrap();
+
+    let _highlighted_projects = row
+        .get::<usize, Option<String>>(6)
+        .unwrap()
+        .unwrap_or("".into());
+    let highlighted_projects: Vec<String> = if _highlighted_projects == "" {
+        vec![]
+    } else {
+        _highlighted_projects.split(",").map(|s| s.into()).collect()
+    };
+
+    let banner_image: Option<String> = row.get(9).unwrap();
 
     Json(User {
         user: row.get(1).unwrap(),
-        display_name: display_name.unwrap_or("".into()),
+        display_name,
         country: row.get(4).unwrap(),
-        bio: bio.unwrap_or("".into()),
-        highlighted_projects: highlighted_projects.unwrap_or("".into()),
+        bio,
+        highlighted_projects,
         profile_picture: row.get(7).unwrap(),
         join_date: row.get(8).unwrap(),
+        banner_image,
     })
 }

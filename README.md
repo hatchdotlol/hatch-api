@@ -9,7 +9,7 @@ This is the repository for the API used by hatch.lol.
   - Make a bucket named "pfps" and one named "assets"
 - `cargo run`
 
-This API has only been tested on Linux.
+This API has only been tested on Linux. 2-4 GB of RAM is recommended
 
 ## Example use
 
@@ -25,16 +25,11 @@ login = requests.post(
 )
 token = login.json()["token"]
 
-# testing the token
-me = requests.get(f"{BASE}/auth/me", headers={"token": token})
+# getting your info from the token
+me = requests.get(f"{BASE}/auth/me", headers={"Token": token})
 print(me.json())
-# {
-#     'user': '...',
-#     'displayName': '...',
-#     'country': '...',
-#     'bio': '...',
-#     'highlightedProjects': '...',
-#     'profilePicture': '...',
-#     'joinDate': '...'
-# }
+
+# changing user details
+update_details = requests.get(f"{BASE}/user", headers={"Token": token}, body={...})
+print(update_details.json())
 ```
