@@ -39,8 +39,8 @@ async fn remove_token(cur: SharedConnection, user: u32) {
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct Credentials<'r> {
-    username: &'r str,
-    password: &'r str,
+    pub username: &'r str,
+    pub password: &'r str,
 }
 
 #[post("/login", format = "application/json", data = "<creds>")]

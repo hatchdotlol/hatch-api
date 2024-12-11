@@ -10,7 +10,7 @@ pub mod token_header;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
-use routes::{auth, root, uploads, users};
+use routes::{admin, auth, root, uploads, users};
 
 #[catch(404)]
 fn not_found() -> status::Custom<content::RawJson<String>> {
@@ -51,5 +51,6 @@ fn rocket() -> _ {
         .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount("/auth", routes![auth::login, auth::logout, auth::me])
         .mount("/user", routes![users::user, users::update_user_info])
+        .mount("/admin", routes![admin::make_testacc])
         .attach(cors)
 }
