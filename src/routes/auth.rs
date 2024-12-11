@@ -88,7 +88,9 @@ pub fn register(
 
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT * from users WHERE name = ?1").unwrap();
+    let mut select = cur
+        .prepare("SELECT * from users WHERE name = ?1 COLLATE nocase")
+        .unwrap();
     let mut query = select.query((creds.username,)).unwrap();
     let first = query.next().unwrap();
 
@@ -140,7 +142,7 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     let cur = shared.0.lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT id, pw FROM users WHERE name = ?1")
+        .prepare("SELECT id, pw FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut first_row = select.query([creds.username]).unwrap();
 

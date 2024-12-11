@@ -80,7 +80,7 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
 pub fn user(user: String) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM users WHERE name = ?1").unwrap();
+    let mut select = cur.prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase").unwrap();
     let mut row = select.query([user]).unwrap();
     let Some(row) = row.next().unwrap() else {
         return (
