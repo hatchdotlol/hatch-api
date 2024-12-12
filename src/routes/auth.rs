@@ -239,14 +239,28 @@ pub fn me(token: Token<'_>) -> Json<User> {
 
     let banner_image: Option<String> = row.get(9).unwrap();
 
-    Json(User {
-        user: row.get(1).unwrap(),
-        display_name,
-        country: row.get(4).unwrap(),
-        bio,
-        highlighted_projects,
-        profile_picture: row.get(7).unwrap(),
-        join_date: row.get(8).unwrap(),
-        banner_image,
-    })
+    let follower_count = match row.get::<usize, Option<String>>(10).unwrap() {
+        Some(followers) => followers.chars().filter(|c| *c == ',').count(),
+        None => 0,
+    };
+    let following_count = match row.get::<usize, Option<String>>(11).unwrap() {
+        Some(following) => following.chars().filter(|c| *c == ',').count(),
+        None => 0,
+    };
+
+    (
+        Status::Ok,
+        Json(User {
+            name: row.get(1).unwrap(),
+            display_name,
+            country: row.get(4).unwrap(),
+            bio,
+            highlighted_projects,
+            profile_picture: row.get(7).unwrap(),
+            join_date: row.get(8).unwrap(),
+            banner_image,
+            following_count,
+            follower_count,
+        }),
+    )
 }

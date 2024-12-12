@@ -5,9 +5,7 @@ use serde_json::{json, Value};
 use url::Url;
 
 use crate::{
-    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, DISPLAY_NAME_LIMIT},
-    db::db,
-    token_guard::Token,
+    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, DISPLAY_NAME_LIMIT}, db::db, structs::User, token_guard::Token
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -116,18 +114,18 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
 
     (
         Status::Ok,
-        Json(json!({
-            "user": row.get::<usize, String>(1).unwrap(),
-            "display_name": display_name,
-            "country": row.get::<usize, String>(4).unwrap(),
-            "bio": bio,
-            "highlighted_projects": highlighted_projects,
-            "profile_picture": row.get::<usize, String>(7).unwrap(),
-            "join_date": row.get::<usize, String>(8).unwrap(),
-            "banner_image": banner_image,
-            "following_count": following_count,
-            "follower_count": follower_count
-        })),
+        Json(User {
+            name: row.get(1).unwrap(),
+            display_name,
+            country: row.get(4).unwrap(),
+            bio,
+            highlighted_projects,
+            profile_picture: row.get(7).unwrap(),
+            join_date: row.get(8).unwrap(),
+            banner_image,
+            following_count,
+            follower_count,
+        }),
     )
 }
 
@@ -268,18 +266,6 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 
 // TODO: improve this spaghetti
 
-#[derive(Serialize)]
-struct User {
-    name: String,
-    display_name: Option<String>,
-    country: Option<String>,
-    bio: Option<String>,
-    highlighted_projects: Option<String>,
-    profile_picture: Option<String>,
-    join_date: String,
-    banner_image: Option<String>,
-}
-
 #[get("/<user>/followers")]
 pub fn followers(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -312,7 +298,9 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
             highlighted_projects: row.get(4).unwrap(),
             profile_picture: row.get(5).unwrap(),
             join_date: row.get(6).unwrap(),
-            banner_image: row.get(7).unwrap()
+            banner_image: row.get(7).unwrap(),
+            follower_count: None,
+            following_count: None
         })
     }).unwrap().map(|x| to_value(x.unwrap()).unwrap()).collect();
 
@@ -326,7 +314,6 @@ pub fn following(user: &str) -> (Status, Json<Value>) {
     let mut select = cur.prepare("SELECT following FROM users WHERE name = ?1 COLLATE nocase").unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
-        dbg!("hiii");
         return (
             Status::NotFound,
             Json(json!({"error": 404, "message": "Not found"})),
@@ -352,7 +339,9 @@ pub fn following(user: &str) -> (Status, Json<Value>) {
             highlighted_projects: row.get(4).unwrap(),
             profile_picture: row.get(5).unwrap(),
             join_date: row.get(6).unwrap(),
-            banner_image: row.get(7).unwrap()
+            banner_image: row.get(7).unwrap(),
+            follower_count: None,
+            following_count: None
         })
     }).unwrap().map(|x| to_value(x.unwrap()).unwrap()).collect();
 
