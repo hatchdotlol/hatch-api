@@ -61,7 +61,17 @@ fn rocket() -> _ {
             "/auth",
             routes![auth::register, auth::login, auth::logout, auth::me],
         )
-        .mount("/user", routes![users::user, users::update_user_info])
+        .mount(
+            "/user",
+            routes![
+                users::user,
+                users::update_user_info,
+                users::follow,
+                users::unfollow,
+                users::followers,
+                users::following
+            ],
+        )
         .mount("/admin", routes![])
         .attach(cors)
 }

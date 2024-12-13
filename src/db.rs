@@ -18,8 +18,9 @@ pub fn db() -> &'static Mutex<Connection> {
             "CREATE TABLE IF NOT EXISTS reports (
                 id INTEGER PRIMARY KEY,
                 user INTEGER NOT NULL,
-                reason  TEXT NOT NULL,
-                project_id INTEGER NOT NULL
+                reason TEXT NOT NULL,
+                resource_id INTEGER NOT NULL,
+                type TEXT NOT NULL
             )",
             (),
         )
@@ -37,7 +38,8 @@ pub fn db() -> &'static Mutex<Connection> {
                 profile_picture TEXT NOT NULL,
                 join_date TEXT NOT NULL,
                 banner_image TEXT,
-                followers TEXT
+                followers TEXT,
+                following TEXT
             )",
             (),
         )

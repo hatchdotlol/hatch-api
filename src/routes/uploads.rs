@@ -133,7 +133,7 @@ pub async fn update_pfp(
 }
 
 #[get("/pfp/<user>")]
-pub async fn user(user: String) -> (ContentType, Vec<u8>) {
+pub async fn user(user: &str) -> (ContentType, Vec<u8>) {
     let db = assets().lock().await;
 
     let obj = db.get_object(&PFPS_BUCKET, &format!("{user}")).send().await;
