@@ -210,7 +210,7 @@ pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
 }
 
 #[get("/me")]
-pub fn me(token: Token<'_>) -> Json<User> {
+pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -255,12 +255,12 @@ pub fn me(token: Token<'_>) -> Json<User> {
             display_name,
             country: row.get(4).unwrap(),
             bio,
-            highlighted_projects,
+            highlighted_projects: Some(highlighted_projects),
             profile_picture: row.get(7).unwrap(),
             join_date: row.get(8).unwrap(),
             banner_image,
-            following_count,
-            follower_count,
+            following_count: Some(following_count),
+            follower_count: Some(follower_count),
         }),
     )
 }

@@ -1,11 +1,11 @@
 use rocket::{http::Status, serde::json::{to_value, Json}};
 use rusqlite::types::Null;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 use url::Url;
 
 use crate::{
-    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, DISPLAY_NAME_LIMIT}, db::db, structs::User, token_guard::Token
+    config::{ALLOWED_COUNTRIES, ALLOWED_IMAGE_HOSTS, BIO_LIMIT, DISPLAY_NAME_LIMIT}, db::db, structs::User, token_guard::Token
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -56,6 +56,13 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
         }
     }
 
+    if !ALLOWED_COUNTRIES.contains(&user_info.country) {
+        return (
+            Status::BadRequest,
+            Json(json!({"error": "That country does not exist"})),
+        );
+    }
+
     let cur = db().lock().unwrap();
 
     let highlighted_projects = user_info.highlighted_projects.as_ref().map(|f| f.join(","));
@@ -95,10 +102,10 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
         .get::<usize, Option<String>>(6)
         .unwrap()
         .unwrap_or("".into());
-    let highlighted_projects: Vec<&str> = if _highlighted_projects == "" {
+    let highlighted_projects: Vec<String> = if _highlighted_projects == "" {
         vec![]
     } else {
-        _highlighted_projects.split(",").collect()
+        _highlighted_projects.split(",").map(|x| x.into()).collect()
     };
 
     let banner_image: Option<String> = row.get(9).unwrap();
@@ -114,18 +121,18 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
 
     (
         Status::Ok,
-        Json(User {
+        Json(to_value(User {
             name: row.get(1).unwrap(),
             display_name,
             country: row.get(4).unwrap(),
             bio,
-            highlighted_projects,
+            highlighted_projects: Some(highlighted_projects),
             profile_picture: row.get(7).unwrap(),
             join_date: row.get(8).unwrap(),
             banner_image,
-            following_count,
-            follower_count,
-        }),
+            following_count: Some(following_count),
+            follower_count: Some(follower_count)
+        }).unwrap()),
     )
 }
 
@@ -295,7 +302,7 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
             display_name: row.get(1).unwrap(),
             country: row.get(2).unwrap(),
             bio: row.get(3).unwrap(),
-            highlighted_projects: row.get(4).unwrap(),
+            highlighted_projects: None,
             profile_picture: row.get(5).unwrap(),
             join_date: row.get(6).unwrap(),
             banner_image: row.get(7).unwrap(),
@@ -336,7 +343,7 @@ pub fn following(user: &str) -> (Status, Json<Value>) {
             display_name: row.get(1).unwrap(),
             country: row.get(2).unwrap(),
             bio: row.get(3).unwrap(),
-            highlighted_projects: row.get(4).unwrap(),
+            highlighted_projects: None,
             profile_picture: row.get(5).unwrap(),
             join_date: row.get(6).unwrap(),
             banner_image: row.get(7).unwrap(),
