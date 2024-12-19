@@ -11,7 +11,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {
     bio: Option<&'r str>,
-    country: &'r str,
+    country: String,
     display_name: Option<&'r str>,
     highlighted_projects: Option<Vec<&'r str>>,
     banner_image: Option<&'r str>,
@@ -56,7 +56,7 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
         }
     }
 
-    if !ALLOWED_COUNTRIES.contains(&user_info.country) {
+    if !ALLOWED_COUNTRIES.contains(&user_info.country.as_str()) {
         return (
             Status::BadRequest,
             Json(json!({"error": "That country does not exist"})),
@@ -71,7 +71,7 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
         "UPDATE users SET bio = ?1, country = ?2, display_name = ?3, highlighted_projects = ?4, banner_image = ?5 WHERE id = ?6",
         (
             user_info.bio,
-            user_info.country,
+            user_info.country.clone(),
             user_info.display_name,
             highlighted_projects, 
             user_info.banner_image,
