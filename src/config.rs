@@ -1,4 +1,7 @@
-pub const TOKEN_EXPIRY: u64 = 1000; // secs
+use std::{env, sync::OnceLock};
+
+pub const TOKEN_EXPIRY: u64 = 604800; // secs
+pub const EMAIL_TOKEN_EXPIRY: u64 = 900; // secs
 
 pub const USERNAME_LIMIT: usize = 20;
 pub const BIO_LIMIT: usize = 800;
@@ -22,7 +25,7 @@ pub const ALLOWED_IMAGE_HOSTS: [&'static str; 5] = [
     "hatch.lol",
 ];
 
-pub const ALLOWED_COUNTRIES: [&'static str; 252] = [
+pub const COUNTRIES: [&'static str; 252] = [
     "United States",
     "Afghanistan",
     "Åland Islands",
@@ -276,3 +279,63 @@ pub const ALLOWED_COUNTRIES: [&'static str; 252] = [
     "Zambia",
     "Zimbabwe",
 ];
+
+pub const VERIFICATION_TEMPLATE: &'static str = r#"
+<body style="background-color:#f9f9f9;">
+<div style="margin:0px auto;max-width:600px;font-family:Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;font-size:16px;line-height:24px">
+<img src="https://ci3.googleusercontent.com/meips/ADKq_NYSN-XcBSJFc0x3Picm27dUi35wi71cd_pbKriQt64Jsx3pIN4Hp-ZwmlOPdwgKKqUg=s0-d-e1-ft#https://rdr.lol/u/cVuLWI.png" height="50">
+<hr>
+<div style="background-color:white;padding: 10px;color: black !important;">
+<h2>Welcome to hatch.lol!</h2>
+<p>Hello {{username}}, thanks for joining</p>
+<p>But before anything cool happens, please verify your email address:</p>
+<center>
+    <a href="{{link}}" target="_blank" style="background:linear-gradient(#FFBD59, #FDD18F);color:black;text-decoration:none;padding:10px 35px;font-weight:bold;">Verify</a>
+</center>
+<p style="color:grey"><small>Or use this link if that doesn't work: <a href="{{link}}" style="color:#D99E44">{{link}}</a></small></p>
+</div>
+</div>
+</body>
+"#;
+
+pub fn postal_url() -> &'static str {
+    static ADMIN_KEY: OnceLock<String> = OnceLock::new();
+    ADMIN_KEY.get_or_init(|| env::var("POSTAL_URL").expect("POSTAL_URL not present"))
+}
+
+pub fn postal_key() -> &'static str {
+    static ADMIN_KEY: OnceLock<String> = OnceLock::new();
+    ADMIN_KEY.get_or_init(|| env::var("POSTAL_KEY").expect("POSTAL_KEY not present"))
+}
+
+pub fn logging_webhook() -> Option<&'static str> {
+    static WEBHOOK: OnceLock<String> = OnceLock::new();
+    let webhook_url =
+        WEBHOOK.get_or_init(|| env::var("LOGGING_WEBHOOK").expect("LOGGING_WEBHOOK not present"));
+    if webhook_url == "" {
+        None
+    } else {
+        Some(&webhook_url)
+    }
+}
+
+pub fn report_webhook() -> Option<&'static str> {
+    static WEBHOOK: OnceLock<String> = OnceLock::new();
+    let webhook_url =
+        WEBHOOK.get_or_init(|| env::var("REPORT_WEBHOOK").expect("REPORT_WEBHOOK not present"));
+    if webhook_url == "" {
+        None
+    } else {
+        Some(&webhook_url)
+    }
+}
+
+pub fn admin_key() -> &'static str {
+    static ADMIN_KEY: OnceLock<String> = OnceLock::new();
+    ADMIN_KEY.get_or_init(|| env::var("ADMIN_KEY").expect("ADMIN_KEY not present"))
+}
+
+pub fn base_url() -> &'static str {
+    static BASE_URL: OnceLock<String> = OnceLock::new();
+    BASE_URL.get_or_init(|| env::var("BASE_URL").expect("BASE_URL not present"))
+}

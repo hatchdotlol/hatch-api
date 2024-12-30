@@ -9,6 +9,8 @@ This is the repository for the API used by hatch.lol.
   - Make a bucket named "pfps" and one named "assets"
   - Add a `default.png` to the pfps bucket for a default profile picture
 - Export `ADMIN_KEY` with a secure string to use for admin-only routes
+- Export `POSTAL_URL` and `POSTAL_KEY` with a token for working with a [Postal](https://docs.postalserver.io/getting-started) mail server. Postal is a little annoying to set up and also recommends a dedicated server, but sooner or later this dependency should become optional I promise 
+- Review `src/config.rs` and change values as desired
 - `VERSION="$(git rev-parse --short --verify main)" cargo run`
 
 This API has only been tested on Linux. 2-4 GB of RAM is recommended

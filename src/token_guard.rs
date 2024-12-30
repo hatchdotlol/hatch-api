@@ -5,22 +5,26 @@ use rocket::{
 };
 
 use crate::db::db;
+use crate::structs::AuthError;
 
-#[derive(Debug)]
-pub enum AuthError {
-    Invalid,
-}
-
-// proper token validation goes here
 fn is_valid(token: &str) -> Option<u32> {
     let cur = db().lock().unwrap();
     let mut select = cur
-        .prepare("SELECT user FROM tokens WHERE token = ?1")
+        .prepare("SELECT user, expiration_ts FROM auth_tokens WHERE token = ?1")
         .unwrap();
     let mut query = select.query([token]).unwrap();
     let user = query.next().unwrap();
     if let Some(tok) = user {
-        Some(tok.get::<usize, u32>(0).unwrap())
+        let user = tok.get::<usize, u32>(0).unwrap();
+        let expiration_date = tok.get::<usize, i64>(1).unwrap();
+
+        if expiration_date < chrono::Utc::now().timestamp() {
+            cur.execute("DELETE FROM auth_tokens WHERE user=?1", [user])
+                .unwrap();
+            None
+        } else {
+            Some(user)
+        }
     } else {
         None
     }

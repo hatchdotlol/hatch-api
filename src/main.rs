@@ -9,7 +9,7 @@ pub mod routes;
 pub mod structs;
 pub mod token_guard;
 
-use admin_guard::admin_key;
+use config::admin_key;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
@@ -36,9 +36,10 @@ fn bad_request() -> status::Custom<content::RawJson<String>> {
 
 #[launch]
 fn rocket() -> _ {
+    dotenv::dotenv().ok();
+
     start_time();
     version();
-    admin_key();
 
     let allowed_origins = AllowedOrigins::some_exact(&["https://hatch.lol"]);
 
@@ -59,7 +60,7 @@ fn rocket() -> _ {
         .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount(
             "/auth",
-            routes![auth::register, auth::login, auth::logout, auth::me],
+            routes![auth::register, auth::login, auth::logout, auth::me, auth::verify],
         )
         .mount(
             "/user",

@@ -5,12 +5,8 @@ use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
 
-use super::auth::AuthError;
-
-pub fn admin_key() -> &'static str {
-    static ADMIN_KEY: OnceLock<String> = OnceLock::new();
-    ADMIN_KEY.get_or_init(|| env::var("ADMIN_KEY").expect("ADMIN_KEY not present"))
-}
+use super::config::admin_key;
+use super::structs::AuthError;
 
 #[allow(dead_code)]
 pub struct AdminToken<'r>(&'r str);

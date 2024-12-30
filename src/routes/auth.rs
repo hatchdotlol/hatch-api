@@ -1,48 +1,38 @@
-use std::sync::{Arc, Mutex};
-
 use crate::admin_guard::AdminToken;
-use crate::config::{TOKEN_EXPIRY, USERNAME_LIMIT};
+use crate::config::{
+    base_url, logging_webhook, postal_key, postal_url, EMAIL_TOKEN_EXPIRY, TOKEN_EXPIRY, USERNAME_LIMIT, VERIFICATION_TEMPLATE
+};
 use crate::db::db;
 use crate::entropy::calculate_entropy;
 use crate::structs::User;
 use crate::token_guard::Token;
 
+use chrono::TimeDelta;
 use rand::Rng;
+use regex::Regex;
 use rocket::http::Status;
-use rocket::response::{content, status};
+use rocket::response::{content, status, Redirect};
 use rocket::serde::json::Json;
 use rocket::serde::Deserialize;
-use rusqlite::Connection;
-use tokio::time::{sleep, Duration};
-
-#[derive(Debug)]
-pub enum AuthError {
-    Invalid,
-}
-
-// thread safe db connection
-#[derive(Clone)]
-pub struct SharedConnection(Arc<&'static Mutex<Connection>>);
-impl SharedConnection {
-    pub fn new(initial: &'static Mutex<Connection>) -> Self {
-        Self(Arc::new(initial.into()))
-    }
-}
-
-/// Expire token after set time
-async fn remove_token(cur: SharedConnection, user: u32) {
-    sleep(Duration::from_secs(TOKEN_EXPIRY)).await;
-    let _ = cur
-        .0
-        .lock()
-        .unwrap()
-        .execute("DELETE FROM tokens WHERE user=?1", [user]);
-}
+use std::{env, sync::OnceLock};
+use tokio::time::Duration;
+use webhook::client::WebhookClient;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
-pub struct Credentials<'r> {
-    pub username: &'r str,
-    pub password: &'r str,
+pub struct Credentials {
+    pub username: String,
+    pub password: String,
+    pub email: Option<String>,
+}
+
+pub fn email_regex() -> &'static Regex {
+    static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
+    EMAIL_REGEX.get_or_init(|| {
+        Regex::new(
+            r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})",
+        )
+        .unwrap()
+    })
 }
 
 #[post("/register", format = "application/json", data = "<creds>")]
@@ -50,9 +40,9 @@ pub fn register(
     _key: AdminToken<'_>,
     creds: Json<Credentials>,
 ) -> status::Custom<content::RawJson<String>> {
-    if !creds.username.is_ascii()
-        || !creds
-            .username
+    if !(&creds.username).is_ascii()
+        || !(&creds
+            .username)
             .chars()
             .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
     {
@@ -62,7 +52,7 @@ pub fn register(
         );
     }
 
-    if creds.username.len() > USERNAME_LIMIT || creds.username.len() == 0 {
+    if (&creds.username).len() > USERNAME_LIMIT || (&creds.username).len() == 0 {
         return status::Custom(
             Status::BadRequest,
             content::RawJson(format!(
@@ -72,14 +62,28 @@ pub fn register(
         );
     }
 
-    if !creds.password.is_ascii() {
+    if !(&creds.password).is_ascii() {
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"Password must use ASCII\"}".into()),
         );
     }
 
-    if calculate_entropy(creds.password) < 28.0 {
+    if (&creds.email).is_none() {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"ADD AN EMAIL. NO IFS. NO BUTS.\"}".into()),
+        );
+    }
+
+    if !email_regex().is_match(&creds.email.clone().unwrap()) {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Invalid email address\"}".into()),
+        );
+    }
+
+    if calculate_entropy(&creds.password) < 28.0 {
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"Password is too weak\"}".into()),
@@ -91,7 +95,7 @@ pub fn register(
     let mut select = cur
         .prepare("SELECT * from users WHERE name = ?1 COLLATE nocase")
         .unwrap();
-    let mut query = select.query((creds.username,)).unwrap();
+    let mut query = select.query((&creds.username,)).unwrap();
     let first = query.next().unwrap();
 
     if first.is_some() {
@@ -112,7 +116,10 @@ pub fn register(
             profile_picture,
             join_date,
             banner_image,
-            followers
+            followers,
+            following,
+            verified,
+            email
         ) VALUES (
             ?1,
             ?2,
@@ -123,28 +130,91 @@ pub fn register(
             \"/uploads/pfp/default.png\",
             ?4,
             NULL,
-            NULL
+            NULL,
+            NULL,
+            FALSE,
+            ?5
         )",
         (
-            creds.username,
-            bcrypt::hash(creds.password, 10).unwrap(),
-            creds.username,
+            &creds.username,
+            bcrypt::hash(&creds.password, 10).unwrap(),
+            &creds.username,
             format!("{}", chrono::Utc::now()),
+            &creds.email,
         ),
     )
     .unwrap();
+
+    let token = hex::encode(&rand::thread_rng().gen::<[u8; 16]>());
+    cur.execute(
+        "INSERT INTO email_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
+        (
+            &creds.username,
+            &token,
+            format!(
+                "{}",
+                chrono::Utc::now()
+                    .checked_add_signed(
+                        TimeDelta::from_std(Duration::from_secs(EMAIL_TOKEN_EXPIRY),)
+                            .unwrap()
+                    )
+                    .unwrap()
+                    .timestamp()
+            ),
+        ),
+    )
+    .unwrap();
+
+    let link = &format!("{}/auth/verify?email_token={}", base_url(), &token);
+    let response = minreq::post(format!("{}/api/v1/send/message", postal_url()))
+        .with_body(serde_json::json!({
+            "to": &creds.email.clone().unwrap(),
+            "from": "support@hatch.lol",
+            "sender": "support@hatch.lol",
+            "subject": format!("Hatch.lol verification for {}", &creds.username),
+            "html_body": VERIFICATION_TEMPLATE
+                .replace("{{username}}", &creds.username)
+                .replace("{{link}}", link)
+        }).to_string())
+        .with_header("Content-Type", "application/json")
+        .with_header("X-Server-API-Key", postal_key())
+        .send()
+        .unwrap();
+
+    if let Some(webhook_url) = logging_webhook() {
+        let username = creds.username.clone();
+        let success = if String::from(response.as_str().unwrap()).contains("\"status\":\"success\"") {
+            "✅ We were able to send a verification email to them: ".to_owned() + link
+        } else {
+            "❌ We failed to send a verification email to them. Check your mail dashboard for more info.".into()
+        };
+        tokio::spawn(async move {
+            let url: &str = &webhook_url;
+            let client: WebhookClient = WebhookClient::new(url);
+            client
+                .send(move |message| {
+                    message.embed(|embed| 
+                        embed
+                            .title(&format!("{} has joined hatch", username))
+                            .description(&success)
+                    )
+                })
+                .await
+                .unwrap();
+        });
+    }
+
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}".into()))
 }
 
 #[post("/login", format = "application/json", data = "<creds>")]
 pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String>> {
-    let shared = SharedConnection::new(db());
-    let cur = shared.0.lock().unwrap();
+    let cur = db().lock().unwrap();
 
     let mut select = cur
         .prepare("SELECT id, pw FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
-    let mut first_row = select.query([creds.username]).unwrap();
+    let mut first_row = select.query([&creds.username]).unwrap();
 
     let Ok(first_user) = first_row.next() else {
         return status::Custom(
@@ -163,9 +233,9 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     let id = user.get::<usize, u32>(0).unwrap();
     let hash = user.get::<usize, String>(1).unwrap();
 
-    if bcrypt::verify(creds.password, &hash).is_ok_and(|f| f) {
+    if bcrypt::verify(&creds.password, &hash).is_ok_and(|f| f) {
         let mut select = cur
-            .prepare("SELECT token FROM tokens WHERE user = ?1")
+            .prepare("SELECT token FROM auth_tokens WHERE user = ?1")
             .unwrap();
         let mut first_row = select.query([id]).unwrap();
 
@@ -176,11 +246,23 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
                 token = _token.get::<usize, String>(0).unwrap()
             } else {
                 token = hex::encode(&rand::thread_rng().gen::<[u8; 16]>());
-                tokio::spawn(remove_token(shared, id));
                 cur.flush_prepared_statement_cache();
                 cur.execute(
-                    "INSERT INTO tokens (user, token) VALUES (?1, ?2)",
-                    (id, token.clone()),
+                    "INSERT INTO auth_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
+                    (
+                        id,
+                        token.clone(),
+                        format!(
+                            "{}",
+                            chrono::Utc::now()
+                                .checked_add_signed(
+                                    TimeDelta::from_std(Duration::from_secs(TOKEN_EXPIRY),)
+                                        .unwrap()
+                                )
+                                .unwrap()
+                                .timestamp()
+                        ),
+                    ),
                 )
                 .unwrap();
             }
@@ -198,10 +280,31 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     }
 }
 
+#[get("/verify?<email_token>")]
+pub fn verify(email_token: &str) -> Redirect {
+    let cur = db().lock().unwrap();
+
+    let mut select = cur.prepare("SELECT * from email_tokens WHERE token=?1").unwrap();
+    let mut rows = select.query((email_token,)).unwrap();
+
+    if let Some(row) = rows.next().unwrap() {
+        let user = row.get::<usize, String>(1).unwrap();
+        if row.get::<usize, i64>(3).unwrap() >= chrono::Utc::now().timestamp() {
+            cur.execute(
+                "UPDATE users SET verified=TRUE WHERE name=?1",
+                (&user,),
+            ).unwrap();
+        }
+        cur.execute("DELETE FROM email_tokens WHERE user=?1", [user])
+            .unwrap();
+    }
+
+    Redirect::to(uri!("https://hatchdotlol.github.io/hatch-www/"))
+}
+
 #[post("/logout")]
 pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
-    let shared = SharedConnection::new(db());
-    let cur = shared.0.lock().unwrap();
+    let cur = db().lock().unwrap();
 
     cur.execute("DELETE FROM tokens WHERE token = ?1", [token.token])
         .unwrap();
@@ -214,7 +317,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT user FROM tokens WHERE token = ?1")
+        .prepare("SELECT user FROM auth_tokens WHERE token = ?1")
         .unwrap();
     let mut row = select.query([token.token]).unwrap();
     let token = row.next().unwrap().unwrap();
@@ -248,6 +351,9 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
         None => 0,
     };
 
+    dbg!(row.get::<usize, String>(12));
+    let verified: Option<bool> = Some(row.get(12).unwrap());
+
     (
         Status::Ok,
         Json(User {
@@ -261,6 +367,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             banner_image,
             following_count: Some(following_count),
             follower_count: Some(follower_count),
+            verified,
         }),
     )
 }

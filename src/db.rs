@@ -39,17 +39,31 @@ pub fn db() -> &'static Mutex<Connection> {
                 join_date TEXT NOT NULL,
                 banner_image TEXT,
                 followers TEXT,
-                following TEXT
+                following TEXT,
+                verified INTEGER NOT NULL,
+                email TEXT NOT NULL
             )",
             (),
         )
         .unwrap();
 
         conn.execute(
-            "CREATE TABLE IF NOT EXISTS tokens (
+            "CREATE TABLE IF NOT EXISTS auth_tokens (
                 id INTEGER PRIMARY KEY,
                 user INTEGER NOT NULL,
-                token TEXT NOT NULL
+                token TEXT NOT NULL,
+                expiration_ts INTEGER NOT NULL
+            )",
+            (),
+        )
+        .unwrap();
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS email_tokens (
+                id INTEGER PRIMARY KEY,
+                user INTEGER NOT NULL,
+                token TEXT NOT NULL,
+                expiration_ts INTEGER NOT NULL
             )",
             (),
         )

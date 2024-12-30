@@ -1,11 +1,17 @@
-use rocket::{http::Status, serde::json::{to_value, Json}};
+use rocket::{
+    http::Status,
+    serde::json::{to_value, Json},
+};
 use rusqlite::types::Null;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use url::Url;
 
 use crate::{
-    config::{ALLOWED_COUNTRIES, ALLOWED_IMAGE_HOSTS, BIO_LIMIT, DISPLAY_NAME_LIMIT}, db::db, structs::User, token_guard::Token
+    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
+    db::db,
+    structs::User,
+    token_guard::Token,
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -48,7 +54,11 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
                 Json(json!({"error": "Invalid banner URL"})),
             );
         };
-        if banner.cannot_be_a_base() || banner.host_str().is_some_and(|h| !ALLOWED_IMAGE_HOSTS.contains(&h)) {
+        if banner.cannot_be_a_base()
+            || banner
+                .host_str()
+                .is_some_and(|h| !ALLOWED_IMAGE_HOSTS.contains(&h))
+        {
             return (
                 Status::BadRequest,
                 Json(json!({"error": "Banner URL not in whitelist"})),
@@ -56,10 +66,10 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
         }
     }
 
-    if !ALLOWED_COUNTRIES.contains(&user_info.country.as_str()) {
+    if !COUNTRIES.contains(&user_info.country.as_str()) {
         return (
             Status::BadRequest,
-            Json(json!({"error": "That country does not exist"})),
+            Json(json!({"error": "Invalid country"})),
         );
     }
 
@@ -73,7 +83,7 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
             user_info.bio,
             user_info.country.clone(),
             user_info.display_name,
-            highlighted_projects, 
+            highlighted_projects,
             user_info.banner_image,
             &format!("{}", token.user)
         ),
@@ -86,7 +96,9 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
 pub fn user(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase").unwrap();
+    let mut select = cur
+        .prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
+        .unwrap();
     let mut row = select.query([user]).unwrap();
     let Some(row) = row.next().unwrap() else {
         return (
@@ -121,18 +133,22 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
 
     (
         Status::Ok,
-        Json(to_value(User {
-            name: row.get(1).unwrap(),
-            display_name,
-            country: row.get(4).unwrap(),
-            bio,
-            highlighted_projects: Some(highlighted_projects),
-            profile_picture: row.get(7).unwrap(),
-            join_date: row.get(8).unwrap(),
-            banner_image,
-            following_count: Some(following_count),
-            follower_count: Some(follower_count)
-        }).unwrap()),
+        Json(
+            to_value(User {
+                name: row.get(1).unwrap(),
+                display_name,
+                country: row.get(4).unwrap(),
+                bio,
+                highlighted_projects: Some(highlighted_projects),
+                profile_picture: row.get(7).unwrap(),
+                join_date: row.get(8).unwrap(),
+                banner_image,
+                following_count: Some(following_count),
+                follower_count: Some(follower_count),
+                verified: None,
+            })
+            .unwrap(),
+        ),
     )
 }
 
@@ -140,7 +156,9 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
 pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase").unwrap();
+    let mut select = cur
+        .prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
+        .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
         return (
@@ -150,40 +168,43 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     };
     let followee = row.get::<usize, u32>(0).unwrap();
 
-    let mut followers = row.get::<usize, Option<String>>(10).unwrap().unwrap_or("".into());
-    
+    let mut followers = row
+        .get::<usize, Option<String>>(10)
+        .unwrap()
+        .unwrap_or("".into());
+
     if followers
         .split(",")
         .collect::<Vec<&str>>()
-        .contains(&format!("{}", token.user).as_str()) {
+        .contains(&format!("{}", token.user).as_str())
+    {
         return (
             Status::BadRequest,
             Json(json!({"message": "Already following this user"})),
         );
     }
-    
+
     followers += &format!("{},", token.user);
     cur.execute(
         "UPDATE users SET followers = ?1 WHERE id = ?2",
-        (
-            followers,
-            followee,
-        )
-    ).unwrap();
+        (followers, followee),
+    )
+    .unwrap();
 
     let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
     let mut query = select.query([token.user]).unwrap();
     let row = query.next().unwrap().unwrap();
-    
-    let mut following = row.get::<usize, Option<String>>(11).unwrap().unwrap_or("".into());
+
+    let mut following = row
+        .get::<usize, Option<String>>(11)
+        .unwrap()
+        .unwrap_or("".into());
     following += &format!("{},", followee);
     cur.execute(
         "UPDATE users SET following = ?1 WHERE id = ?2",
-        (
-            following,
-            &token.user,
-        )
-    ).unwrap();
+        (following, &token.user),
+    )
+    .unwrap();
 
     (Status::Ok, Json(json!({"success": true})))
 }
@@ -192,7 +213,9 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase").unwrap();
+    let mut select = cur
+        .prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
+        .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
         return (
@@ -202,7 +225,10 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     };
     let unfollowee = row.get::<usize, u32>(0).unwrap();
 
-    let followers = row.get::<usize, Option<String>>(10).unwrap().unwrap_or("".into());
+    let followers = row
+        .get::<usize, Option<String>>(10)
+        .unwrap()
+        .unwrap_or("".into());
     let followers: Vec<String> = followers.split(",").map(|s| s.to_string()).collect();
 
     if !followers.contains(&token.user.to_string()) {
@@ -214,7 +240,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 
     let followers = followers
         .iter()
-        .filter(|e| { **e != token.user.to_string() })
+        .filter(|e| **e != token.user.to_string())
         .map(|s| s.to_string())
         .collect::<Vec<String>>()
         .join(",");
@@ -222,30 +248,26 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     if followers == "" {
         cur.execute(
             "UPDATE users SET followers = ?1 WHERE id = ?2",
-            (
-                Null,
-                unfollowee,
-            )
+            (Null, unfollowee),
         )
     } else {
         cur.execute(
             "UPDATE users SET followers = ?1 WHERE id = ?2",
-            (
-                followers,
-                unfollowee,
-            )
+            (followers, unfollowee),
         )
-    }.unwrap();
-    
+    }
+    .unwrap();
+
     let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
     let mut query = select.query([token.user]).unwrap();
     let row = query.next().unwrap().unwrap();
-    
-    let following = row.get::<usize, Option<String>>(11)
+
+    let following = row
+        .get::<usize, Option<String>>(11)
         .unwrap()
         .unwrap_or("".into())
         .split(",")
-        .filter(|e| { *e != unfollowee.to_string() })
+        .filter(|e| *e != unfollowee.to_string())
         .map(|s| s.to_string())
         .collect::<Vec<String>>()
         .join(",");
@@ -253,20 +275,15 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     if following == "" {
         cur.execute(
             "UPDATE users SET following = ?1 WHERE id = ?2",
-            (
-                Null,
-                token.user,
-            )
+            (Null, token.user),
         )
     } else {
         cur.execute(
             "UPDATE users SET following = ?1 WHERE id = ?2",
-            (
-                following,
-                token.user,
-            )
+            (following, token.user),
         )
-    }.unwrap();
+    }
+    .unwrap();
 
     (Status::Ok, Json(json!({"success": true})))
 }
@@ -277,7 +294,9 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 pub fn followers(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT followers FROM users WHERE name = ?1 COLLATE nocase").unwrap();
+    let mut select = cur
+        .prepare("SELECT followers FROM users WHERE name = ?1 COLLATE nocase")
+        .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
         return (
@@ -290,26 +309,31 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
         return (Status::Ok, Json(json!([])));
     };
 
-    let followers = &followers[..followers.len()-1].replace(",", ", ");
+    let followers = &followers[..followers.len() - 1].replace(",", ", ");
 
     let mut select = cur.prepare(&format!(
         "SELECT name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", followers
     )).unwrap();
 
-    let followers: Vec<_> = select.query_map((), |row| {
-        Ok(User {
-            name: row.get(0).unwrap(),
-            display_name: row.get(1).unwrap(),
-            country: row.get(2).unwrap(),
-            bio: row.get(3).unwrap(),
-            highlighted_projects: None,
-            profile_picture: row.get(5).unwrap(),
-            join_date: row.get(6).unwrap(),
-            banner_image: row.get(7).unwrap(),
-            follower_count: None,
-            following_count: None
+    let followers: Vec<_> = select
+        .query_map((), |row| {
+            Ok(User {
+                name: row.get(0).unwrap(),
+                display_name: row.get(1).unwrap(),
+                country: row.get(2).unwrap(),
+                bio: row.get(3).unwrap(),
+                highlighted_projects: None,
+                profile_picture: row.get(5).unwrap(),
+                join_date: row.get(6).unwrap(),
+                banner_image: row.get(7).unwrap(),
+                follower_count: None,
+                following_count: None,
+                verified: None,
+            })
         })
-    }).unwrap().map(|x| to_value(x.unwrap()).unwrap()).collect();
+        .unwrap()
+        .map(|x| to_value(x.unwrap()).unwrap())
+        .collect();
 
     (Status::Ok, Json(Value::Array(followers)))
 }
@@ -318,7 +342,9 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
 pub fn following(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT following FROM users WHERE name = ?1 COLLATE nocase").unwrap();
+    let mut select = cur
+        .prepare("SELECT following FROM users WHERE name = ?1 COLLATE nocase")
+        .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
         return (
@@ -331,26 +357,31 @@ pub fn following(user: &str) -> (Status, Json<Value>) {
         return (Status::Ok, Json(json!([])));
     };
 
-    let following = &following[..following.len()-1].replace(",", ", ");
+    let following = &following[..following.len() - 1].replace(",", ", ");
 
     let mut select = cur.prepare(&format!(
         "SELECT name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", following
     )).unwrap();
 
-    let following: Vec<_> = select.query_map((), |row| {
-        Ok(User {
-            name: row.get(0).unwrap(),
-            display_name: row.get(1).unwrap(),
-            country: row.get(2).unwrap(),
-            bio: row.get(3).unwrap(),
-            highlighted_projects: None,
-            profile_picture: row.get(5).unwrap(),
-            join_date: row.get(6).unwrap(),
-            banner_image: row.get(7).unwrap(),
-            follower_count: None,
-            following_count: None
+    let following: Vec<_> = select
+        .query_map((), |row| {
+            Ok(User {
+                name: row.get(0).unwrap(),
+                display_name: row.get(1).unwrap(),
+                country: row.get(2).unwrap(),
+                bio: row.get(3).unwrap(),
+                highlighted_projects: None,
+                profile_picture: row.get(5).unwrap(),
+                join_date: row.get(6).unwrap(),
+                banner_image: row.get(7).unwrap(),
+                follower_count: None,
+                following_count: None,
+                verified: None,
+            })
         })
-    }).unwrap().map(|x| to_value(x.unwrap()).unwrap()).collect();
+        .unwrap()
+        .map(|x| to_value(x.unwrap()).unwrap())
+        .collect();
 
     (Status::Ok, Json(Value::Array(following)))
 }
