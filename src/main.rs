@@ -9,7 +9,6 @@ pub mod routes;
 pub mod structs;
 pub mod token_guard;
 
-use config::admin_key;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};

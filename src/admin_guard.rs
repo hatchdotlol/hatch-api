@@ -1,6 +1,3 @@
-use std::env;
-use std::sync::OnceLock;
-
 use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;

@@ -14,7 +14,7 @@ use rocket::http::Status;
 use rocket::response::{content, status, Redirect};
 use rocket::serde::json::Json;
 use rocket::serde::Deserialize;
-use std::{env, sync::OnceLock};
+use std::sync::OnceLock;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
 
@@ -351,7 +351,6 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
         None => 0,
     };
 
-    dbg!(row.get::<usize, String>(12));
     let verified: Option<bool> = Some(row.get(12).unwrap());
 
     (
