@@ -13,7 +13,7 @@ This is the repository for the API used by hatch.lol.
 - Review `src/config.rs` and change values as desired
 - `VERSION="$(git rev-parse --short --verify main)" cargo run`
 
-This API has only been tested on Linux. 2-4 GB of RAM is recommended.
+This API has only been tested on Linux. 2-4 GB of RAM is recommended
 
 ## Example use
 
