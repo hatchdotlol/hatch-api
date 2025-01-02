@@ -13,7 +13,8 @@ use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
 use routes::root::{start_time, version};
-use routes::{auth, root, uploads, users};
+use config::*;
+use routes::{auth, projects, root, uploads, users};
 
 #[catch(404)]
 fn not_found() -> status::Custom<content::RawJson<String>> {
@@ -37,8 +38,15 @@ fn bad_request() -> status::Custom<content::RawJson<String>> {
 fn rocket() -> _ {
     dotenv::dotenv().ok();
 
+    // pre initialize to save headache
     start_time();
     version();
+    postal_key();
+    postal_url();
+    base_url();
+    logging_webhook();
+    report_webhook();
+    admin_key();
 
     let allowed_origins = AllowedOrigins::some_exact(&["https://hatch.lol"]);
 
@@ -59,7 +67,13 @@ fn rocket() -> _ {
         .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount(
             "/auth",
-            routes![auth::register, auth::login, auth::logout, auth::me, auth::verify],
+            routes![
+                auth::register,
+                auth::login,
+                auth::logout,
+                auth::me,
+                auth::verify
+            ],
         )
         .mount(
             "/user",
@@ -72,6 +86,7 @@ fn rocket() -> _ {
                 users::following
             ],
         )
+        .mount("/projects", routes![projects::index, projects::project, projects::project_content])
         .mount("/admin", routes![])
         .attach(cors)
 }

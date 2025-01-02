@@ -1,6 +1,7 @@
 use crate::admin_guard::AdminToken;
 use crate::config::{
-    base_url, logging_webhook, postal_key, postal_url, EMAIL_TOKEN_EXPIRY, TOKEN_EXPIRY, USERNAME_LIMIT, VERIFICATION_TEMPLATE
+    base_url, logging_webhook, postal_key, postal_url, EMAIL_TOKEN_EXPIRY, TOKEN_EXPIRY,
+    USERNAME_LIMIT, VERIFICATION_TEMPLATE,
 };
 use crate::db::db;
 use crate::entropy::calculate_entropy;
@@ -41,8 +42,7 @@ pub fn register(
     creds: Json<Credentials>,
 ) -> status::Custom<content::RawJson<String>> {
     if !(&creds.username).is_ascii()
-        || !(&creds
-            .username)
+        || !(&creds.username)
             .chars()
             .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
     {
@@ -155,8 +155,7 @@ pub fn register(
                 "{}",
                 chrono::Utc::now()
                     .checked_add_signed(
-                        TimeDelta::from_std(Duration::from_secs(EMAIL_TOKEN_EXPIRY),)
-                            .unwrap()
+                        TimeDelta::from_std(Duration::from_secs(EMAIL_TOKEN_EXPIRY),).unwrap()
                     )
                     .unwrap()
                     .timestamp()
@@ -167,15 +166,18 @@ pub fn register(
 
     let link = &format!("{}/auth/verify?email_token={}", base_url(), &token);
     let response = minreq::post(format!("{}/api/v1/send/message", postal_url()))
-        .with_body(serde_json::json!({
-            "to": &creds.email.clone().unwrap(),
-            "from": "support@hatch.lol",
-            "sender": "support@hatch.lol",
-            "subject": format!("Hatch.lol verification for {}", &creds.username),
-            "html_body": VERIFICATION_TEMPLATE
-                .replace("{{username}}", &creds.username)
-                .replace("{{link}}", link)
-        }).to_string())
+        .with_body(
+            serde_json::json!({
+                "to": &creds.email.clone().unwrap(),
+                "from": "support@hatch.lol",
+                "sender": "support@hatch.lol",
+                "subject": format!("Hatch.lol verification for {}", &creds.username),
+                "html_body": VERIFICATION_TEMPLATE
+                    .replace("{{username}}", &creds.username)
+                    .replace("{{link}}", link)
+            })
+            .to_string(),
+        )
         .with_header("Content-Type", "application/json")
         .with_header("X-Server-API-Key", postal_key())
         .send()
@@ -183,7 +185,8 @@ pub fn register(
 
     if let Some(webhook_url) = logging_webhook() {
         let username = creds.username.clone();
-        let success = if String::from(response.as_str().unwrap()).contains("\"status\":\"success\"") {
+        let success = if String::from(response.as_str().unwrap()).contains("\"status\":\"success\"")
+        {
             "✅ We were able to send a verification email to them: ".to_owned() + link
         } else {
             "❌ We failed to send a verification email to them. Check your mail dashboard for more info.".into()
@@ -193,11 +196,11 @@ pub fn register(
             let client: WebhookClient = WebhookClient::new(url);
             client
                 .send(move |message| {
-                    message.embed(|embed| 
+                    message.embed(|embed| {
                         embed
                             .title(&format!("{} has joined hatch", username))
                             .description(&success)
-                    )
+                    })
                 })
                 .await
                 .unwrap();
@@ -284,16 +287,16 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
 pub fn verify(email_token: &str) -> Redirect {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT * from email_tokens WHERE token=?1").unwrap();
+    let mut select = cur
+        .prepare("SELECT * from email_tokens WHERE token=?1")
+        .unwrap();
     let mut rows = select.query((email_token,)).unwrap();
 
     if let Some(row) = rows.next().unwrap() {
         let user = row.get::<usize, String>(1).unwrap();
         if row.get::<usize, i64>(3).unwrap() >= chrono::Utc::now().timestamp() {
-            cur.execute(
-                "UPDATE users SET verified=TRUE WHERE name=?1",
-                (&user,),
-            ).unwrap();
+            cur.execute("UPDATE users SET verified=TRUE WHERE name=?1", (&user,))
+                .unwrap();
         }
         cur.execute("DELETE FROM email_tokens WHERE user=?1", [user])
             .unwrap();

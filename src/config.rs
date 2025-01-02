@@ -10,12 +10,14 @@ pub const DISPLAY_NAME_LIMIT: usize = 30;
 pub const MAX_PFP_WIDTH: u32 = 512;
 pub const MAX_PFP_HEIGHT: u32 = 512;
 
-pub const ASSETS_BUCKET: &'static str = "assets";
+pub const PROJECTS_BUCKET: &'static str = "projects";
 pub const PFPS_BUCKET: &'static str = "pfps";
 
 // bytes
 pub const ASSET_LIMIT: u64 = 15_000_000;
 pub const PFP_LIMIT: u64 = 5_000_000;
+pub const TITLE_LIMIT: u64 = 64;
+pub const DESCRIPTION_LIMIT: u64 = 5000;
 
 pub const ALLOWED_IMAGE_HOSTS: [&'static str; 5] = [
     "u.cubeupload.com",

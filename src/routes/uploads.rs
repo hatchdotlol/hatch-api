@@ -2,7 +2,7 @@ use std::io::Cursor;
 use std::path::Path;
 
 use crate::config::{MAX_PFP_HEIGHT, MAX_PFP_WIDTH, PFPS_BUCKET, PFP_LIMIT};
-use crate::db::{assets, db};
+use crate::db::{db, projects};
 use crate::token_guard::Token;
 use image::{GenericImageView, ImageFormat, ImageReader};
 use minio::s3::builders::ObjectContent;
@@ -95,7 +95,7 @@ pub async fn update_pfp(
         );
     }
 
-    let client = assets().lock().await;
+    let client = projects().lock().await;
 
     let ext = if content_type.is_png() {
         "png"
@@ -134,7 +134,7 @@ pub async fn update_pfp(
 
 #[get("/pfp/<user>")]
 pub async fn user(user: &str) -> (ContentType, Vec<u8>) {
-    let db = assets().lock().await;
+    let db = projects().lock().await;
 
     let obj = db.get_object(&PFPS_BUCKET, &format!("{user}")).send().await;
 

@@ -30,6 +30,7 @@ fn is_valid(token: &str) -> Option<u32> {
     }
 }
 
+#[derive(Debug)]
 pub struct Token<'r> {
     pub token: &'r str,
     pub user: u32,

@@ -69,16 +69,29 @@ pub fn db() -> &'static Mutex<Connection> {
         )
         .unwrap();
 
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY,
+                author INTEGER NOT NULL,
+                upload_ts INTEGER NOT NULL,
+                title TEXT,
+                description TEXT,
+                shared INTEGER NOT NULL
+            )",
+            (),
+        )
+        .unwrap();
+
         conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 
         Mutex::new(conn)
     })
 }
 
-pub fn assets() -> &'static TokioMutex<Client> {
-    static ASSETS: OnceLock<TokioMutex<Client>> = OnceLock::new();
+pub fn projects() -> &'static TokioMutex<Client> {
+    static PROJECTS: OnceLock<TokioMutex<Client>> = OnceLock::new();
 
-    ASSETS.get_or_init(|| {
+    PROJECTS.get_or_init(|| {
         let base_url = "http://localhost:9000".parse::<BaseUrl>().unwrap();
         let static_provider = StaticProvider::new("minioadmin", "minioadmin", None);
 
