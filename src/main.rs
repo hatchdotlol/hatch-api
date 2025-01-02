@@ -49,7 +49,7 @@ fn rocket() -> _ {
     // report_webhook();
     admin_key();
 
-    let allowed_origins = AllowedOrigins::some_exact(&["https://hatch.lol"]);
+    let allowed_origins = AllowedOrigins::all();
 
     // You can also deserialize this
     let cors = CorsOptions {
