@@ -45,7 +45,7 @@ fn rocket() -> _ {
     postal_url();
     base_url();
     logging_webhook();
-    report_webhook();
+    // report_webhook();
     admin_key();
 
     let allowed_origins = AllowedOrigins::some_exact(&["https://hatch.lol"]);
