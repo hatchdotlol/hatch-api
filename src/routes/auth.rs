@@ -45,7 +45,7 @@ pub fn email_regex() -> &'static Regex {
     })
 }
 
-#[openapi]
+#[openapi(tag = "Auth")]
 #[post("/register", format = "application/json", data = "<creds>")]
 pub fn register(
     _key: AdminToken<'_>,
@@ -220,7 +220,7 @@ pub fn register(
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}".into()))
 }
 
-#[openapi]
+#[openapi(tag = "Auth")]
 #[post("/login", format = "application/json", data = "<creds>")]
 pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
@@ -294,7 +294,7 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     }
 }
 
-#[openapi]
+#[openapi(tag = "Auth")]
 #[get("/verify?<email_token>")]
 pub fn verify(email_token: &str) -> Redirect {
     let cur = db().lock().unwrap();
@@ -317,7 +317,7 @@ pub fn verify(email_token: &str) -> Redirect {
     Redirect::to(uri!("https://hatchdotlol.github.io/hatch-www/"))
 }
 
-#[openapi]
+#[openapi(tag = "Auth")]
 #[post("/logout")]
 pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
@@ -328,7 +328,7 @@ pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
-#[openapi]
+#[openapi(tag = "Auth")]
 #[get("/me")]
 pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let cur = db().lock().unwrap();

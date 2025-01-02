@@ -29,7 +29,7 @@ pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, O
     openapi_get_routes_spec![settings: update_user_info, user, unfollow, follow, followers, following]
 }
 
-#[openapi]
+#[openapi(tag = "Users")]
 #[post("/", format = "application/json", data = "<user_info>")]
 pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status, Json<Value>) {
     if user_info
@@ -99,7 +99,7 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
     (Status::Ok, Json(json!({"success": true})))
 }
 
-#[openapi]
+#[openapi(tag = "Users")]
 #[get("/<user>")]
 pub fn user(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -160,7 +160,7 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
     )
 }
 
-#[openapi]
+#[openapi(tag = "Users")]
 #[post("/<user>/follow")]
 pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -218,7 +218,7 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(json!({"success": true})))
 }
 
-#[openapi]
+#[openapi(tag = "Users")]
 #[post("/<user>/unfollow")]
 pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -300,7 +300,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 
 // TODO: improve this spaghetti
 
-#[openapi]
+#[openapi(tag = "Users")]
 #[get("/<user>/followers")]
 pub fn followers(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -349,7 +349,7 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(Value::Array(followers)))
 }
 
-#[openapi]
+#[openapi(tag = "Users")]
 #[get("/<user>/following")]
 pub fn following(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();

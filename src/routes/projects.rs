@@ -144,7 +144,7 @@ struct ProjectInfo {
     description: String,
 }
 
-#[openapi]
+#[openapi(tag = "Projects")]
 #[get("/<id>")]
 pub fn project(token: Option<Token<'_>>, id: u32) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -237,7 +237,7 @@ impl OpenApiResponderInner for ContentResponder<Vec<u8>> {
     }
 }
 
-#[openapi]
+#[openapi(tag = "Projects")]
 #[get("/<id>/content")]
 pub async fn project_content(
     token: Option<Token<'_>>,

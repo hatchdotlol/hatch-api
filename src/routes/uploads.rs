@@ -140,7 +140,7 @@ pub async fn update_pfp(
     status::Custom(Status::Ok, content::RawJson(String::from("asfdsfd")))
 }
 
-#[openapi]
+#[openapi(tag = "Uploads")]
 #[get("/pfp/<user>")]
 pub async fn user(user: &str) -> (ContentType, Vec<u8>) {
     let db = projects().lock().await;
