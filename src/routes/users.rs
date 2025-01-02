@@ -3,9 +3,11 @@ use rocket::{
     serde::json::{to_value, Json},
 };
 use rusqlite::types::Null;
+use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use url::Url;
+use rocket_okapi::{okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings};
 
 use crate::{
     config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
@@ -14,7 +16,7 @@ use crate::{
     token_guard::Token,
 };
 
-#[derive(Debug, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
 pub struct UserInfo<'r> {
     bio: Option<&'r str>,
     country: String,
@@ -23,6 +25,11 @@ pub struct UserInfo<'r> {
     banner_image: Option<&'r str>,
 }
 
+pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
+    openapi_get_routes_spec![settings: update_user_info, user, unfollow, follow, followers, following]
+}
+
+#[openapi]
 #[post("/", format = "application/json", data = "<user_info>")]
 pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status, Json<Value>) {
     if user_info
@@ -92,6 +99,7 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
     (Status::Ok, Json(json!({"success": true})))
 }
 
+#[openapi]
 #[get("/<user>")]
 pub fn user(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -152,6 +160,7 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
     )
 }
 
+#[openapi]
 #[post("/<user>/follow")]
 pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -209,6 +218,7 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(json!({"success": true})))
 }
 
+#[openapi]
 #[post("/<user>/unfollow")]
 pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -290,6 +300,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 
 // TODO: improve this spaghetti
 
+#[openapi]
 #[get("/<user>/followers")]
 pub fn followers(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -338,6 +349,7 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(Value::Array(followers)))
 }
 
+#[openapi]
 #[get("/<user>/following")]
 pub fn following(user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();

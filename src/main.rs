@@ -9,12 +9,13 @@ pub mod routes;
 pub mod structs;
 pub mod token_guard;
 
+use config::*;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
 use routes::root::{start_time, version};
-use config::*;
 use routes::{auth, projects, root, uploads, users};
+use rocket_okapi::{mount_endpoints_and_merged_docs, swagger_ui::*};
 
 #[catch(404)]
 fn not_found() -> status::Custom<content::RawJson<String>> {
@@ -61,32 +62,26 @@ fn rocket() -> _ {
     .to_cors()
     .unwrap();
 
-    rocket::build()
-        .mount("/", routes![root::comic_sans, root::index])
+    let mut app = rocket::build()
         .register("/", catchers![not_found, bad_request])
-        .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount(
-            "/auth",
-            routes![
-                auth::register,
-                auth::login,
-                auth::logout,
-                auth::me,
-                auth::verify
-            ],
+            "/swagger-ui/",
+            make_swagger_ui(&SwaggerUIConfig {
+                url: "../openapi.json".to_owned(),
+                ..Default::default()
+            }),
         )
-        .mount(
-            "/user",
-            routes![
-                users::user,
-                users::update_user_info,
-                users::follow,
-                users::unfollow,
-                users::followers,
-                users::following
-            ],
-        )
-        .mount("/projects", routes![projects::index, projects::project, projects::project_content])
-        .mount("/admin", routes![])
-        .attach(cors)
+        .attach(cors);
+
+    let openapi_settings = rocket_okapi::settings::OpenApiSettings::default();
+    mount_endpoints_and_merged_docs! {
+        app, "/".to_owned(), openapi_settings,
+        "/" => root::get_routes_and_docs(&openapi_settings),
+        "/auth" => auth::get_routes_and_docs(&openapi_settings),
+        "/projects" => projects::get_routes_and_docs(&openapi_settings),
+        "/uploads" => uploads::get_routes_and_docs(&openapi_settings),
+        "users" => users::get_routes_and_docs(&openapi_settings)
+    };
+
+    app
 }

@@ -11,11 +11,18 @@ use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::http::{ContentType, Status};
 use rocket::response::{content, status};
+use rocket_okapi::okapi::openapi3::OpenApi;
+use rocket_okapi::settings::OpenApiSettings;
 use tokio::io::AsyncReadExt;
+use rocket_okapi::{openapi, openapi_get_routes_spec};
 
 #[derive(FromForm)]
 pub struct Upload<'f> {
     file: TempFile<'f>,
+}
+
+pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
+    openapi_get_routes_spec![settings: update_pfp, user]
 }
 
 fn get_user_pfp(user: u32) -> String {
@@ -30,6 +37,7 @@ fn get_user_pfp(user: u32) -> String {
     row.get::<usize, String>(0).unwrap()
 }
 
+#[openapi(skip)]
 #[post("/pfp", format = "multipart/form-data", data = "<form>")]
 pub async fn update_pfp(
     token: Token<'_>,
@@ -132,6 +140,7 @@ pub async fn update_pfp(
     status::Custom(Status::Ok, content::RawJson(String::from("asfdsfd")))
 }
 
+#[openapi]
 #[get("/pfp/<user>")]
 pub async fn user(user: &str) -> (ContentType, Vec<u8>) {
     let db = projects().lock().await;

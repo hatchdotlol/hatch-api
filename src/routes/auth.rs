@@ -15,15 +15,24 @@ use rocket::http::Status;
 use rocket::response::{content, status, Redirect};
 use rocket::serde::json::Json;
 use rocket::serde::Deserialize;
+use rocket_okapi::okapi::openapi3::OpenApi;
+use rocket_okapi::{openapi, openapi_get_routes_spec};
+use rocket_okapi::settings::OpenApiSettings;
+
 use std::sync::OnceLock;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
+use schemars::JsonSchema;
 
-#[derive(Debug, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
 pub struct Credentials {
     pub username: String,
     pub password: String,
     pub email: Option<String>,
+}
+
+pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
+    openapi_get_routes_spec![settings: register, login, logout, verify, me]
 }
 
 pub fn email_regex() -> &'static Regex {
@@ -36,6 +45,7 @@ pub fn email_regex() -> &'static Regex {
     })
 }
 
+#[openapi]
 #[post("/register", format = "application/json", data = "<creds>")]
 pub fn register(
     _key: AdminToken<'_>,
@@ -210,6 +220,7 @@ pub fn register(
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}".into()))
 }
 
+#[openapi]
 #[post("/login", format = "application/json", data = "<creds>")]
 pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
@@ -283,6 +294,7 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     }
 }
 
+#[openapi]
 #[get("/verify?<email_token>")]
 pub fn verify(email_token: &str) -> Redirect {
     let cur = db().lock().unwrap();
@@ -305,6 +317,7 @@ pub fn verify(email_token: &str) -> Redirect {
     Redirect::to(uri!("https://hatchdotlol.github.io/hatch-www/"))
 }
 
+#[openapi]
 #[post("/logout")]
 pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
@@ -315,6 +328,7 @@ pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
+#[openapi]
 #[get("/me")]
 pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let cur = db().lock().unwrap();
