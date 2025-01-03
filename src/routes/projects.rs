@@ -115,7 +115,6 @@ pub async fn index(
         title: form.title.clone(),
         description: form.description.clone(),
     }) - 1;
-    dbg!(pid);
 
     let project = format!("{}.sb3", pid);
 
@@ -126,7 +125,7 @@ pub async fn index(
         .await
         .unwrap();
 
-    status::Custom(Status::Ok, content::RawJson(r#"{"success": true}"#.into()))
+    status::Custom(Status::Ok, content::RawJson(format!("{{\"success\": true, \"id\": {}}}", pid)))
 }
 
 #[derive(Debug, Serialize)]
