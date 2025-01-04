@@ -119,11 +119,33 @@ pub async fn index(
     let project = format!("{}.sb3", pid);
 
     let content = ObjectContent::from(Path::new(&form.file.path().unwrap().to_str().unwrap()));
-    client
+    let resp = client
         .put_object_content(&PROJECTS_BUCKET, &project, content)
         .send()
-        .await
-        .unwrap();
+        .await;
+
+    if let Some(webhook_url) = logging_webhook() {
+        let success = if resp.is_ok()
+        {
+            "✅ We stored it on the servers successfully."
+        } else {
+            "❌ We failed to store it, <@817057495503339600>".into()
+        };
+        tokio::spawn(async move {
+            let url: &str = &webhook_url;
+            let client: WebhookClient = WebhookClient::new(url);
+            client
+                .send(move |message| {
+                    message.embed(|embed| {
+                        embed
+                            .title(&format!("\"{}\" by {} has been uploaded", &form.title, token.user))
+                            .description(&success)
+                    })
+                })
+                .await
+                .unwrap();
+        });
+    }
 
     status::Custom(Status::Ok, content::RawJson(format!("{{\"success\": true, \"id\": {}}}", pid)))
 }
