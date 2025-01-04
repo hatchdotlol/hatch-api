@@ -11,14 +11,13 @@ use rocket::{
 };
 use serde::Serialize;
 use serde_json::{json, to_value, Value};
+use webhook::client::WebhookClient;
 use std::{fs::File, io::BufReader};
 use zip::ZipArchive;
 use rocket_okapi::{gen::OpenApiGenerator, okapi::openapi3::{OpenApi, Responses}, openapi, openapi_get_routes_spec, response::OpenApiResponderInner, settings::OpenApiSettings};
 
 use crate::{
-    config::{ASSET_LIMIT, PROJECTS_BUCKET},
-    db::{db, projects},
-    token_guard::Token,
+    config::{ASSET_LIMIT, PROJECTS_BUCKET}, db::{db, projects}, logging_webhook, token_guard::Token
 };
 
 #[derive(FromForm)]
@@ -125,6 +124,7 @@ pub async fn index(
         .await;
 
     if let Some(webhook_url) = logging_webhook() {
+        let title = form.title.clone().to_owned();
         let success = if resp.is_ok()
         {
             "✅ We stored it on the servers successfully."
@@ -133,12 +133,12 @@ pub async fn index(
         };
         tokio::spawn(async move {
             let url: &str = &webhook_url;
-            let client: WebhookClient = WebhookClient::new(url);
+            let client = WebhookClient::new(url);
             client
                 .send(move |message| {
                     message.embed(|embed| {
                         embed
-                            .title(&format!("\"{}\" by {} has been uploaded", &form.title, token.user))
+                            .title(&format!("\"{}\" by {} has been uploaded", title, token.user))
                             .description(&success)
                     })
                 })

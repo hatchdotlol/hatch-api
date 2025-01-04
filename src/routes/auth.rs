@@ -203,7 +203,7 @@ pub fn register(
         };
         tokio::spawn(async move {
             let url: &str = &webhook_url;
-            let client: WebhookClient = WebhookClient::new(url);
+            let client = WebhookClient::new(url);
             client
                 .send(move |message| {
                     message.embed(|embed| {
