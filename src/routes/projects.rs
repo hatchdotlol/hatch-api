@@ -125,7 +125,8 @@ pub async fn index(
 
     if let Some(webhook_url) = logging_webhook() {
         let title = form.title.clone().to_owned();
-        let success = if resp.is_ok()
+        let desc = form.description.clone().to_owned();
+        let success = format!("```\n{desc}\n```\n") + if resp.is_ok()
         {
             "✅ We stored it on the servers successfully."
         } else {
@@ -138,7 +139,7 @@ pub async fn index(
                 .send(move |message| {
                     message.embed(|embed| {
                         embed
-                            .title(&format!("\"{}\" by {} has been uploaded", title, token.user))
+                            .title(&format!("\"{}\" by user #{} has been uploaded", title, token.user))
                             .description(&success)
                     })
                 })
