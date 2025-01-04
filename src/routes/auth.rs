@@ -373,6 +373,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     (
         Status::Ok,
         Json(User {
+            id: user as usize,
             name: row.get(1).unwrap(),
             display_name,
             country: row.get(4).unwrap(),
@@ -384,6 +385,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             following_count: Some(following_count),
             follower_count: Some(follower_count),
             verified,
+            project_count: None
         }),
     )
 }

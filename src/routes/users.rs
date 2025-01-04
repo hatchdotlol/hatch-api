@@ -115,6 +115,7 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
         );
     };
 
+    let id: usize = row.get(0).unwrap();
     let display_name: Option<String> = row.get(3).unwrap();
     let bio: Option<String> = row.get(5).unwrap();
 
@@ -139,10 +140,17 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
         None => 0,
     };
 
+    let mut select = cur
+        .prepare("SELECT COUNT(*) FROM projects WHERE author = ?1")
+        .unwrap();
+    let mut rows = select.query((id,)).unwrap();
+    let project_count = rows.next().unwrap();
+
     (
         Status::Ok,
         Json(
             to_value(User {
+                id,
                 name: row.get(1).unwrap(),
                 display_name,
                 country: row.get(4).unwrap(),
@@ -154,6 +162,7 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
                 following_count: Some(following_count),
                 follower_count: Some(follower_count),
                 verified: None,
+                project_count: project_count.unwrap().get(0).unwrap(),
             })
             .unwrap(),
         ),
@@ -323,23 +332,25 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
     let followers = &followers[..followers.len() - 1].replace(",", ", ");
 
     let mut select = cur.prepare(&format!(
-        "SELECT name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", followers
+        "SELECT id, name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", followers
     )).unwrap();
 
     let followers: Vec<_> = select
         .query_map((), |row| {
             Ok(User {
-                name: row.get(0).unwrap(),
-                display_name: row.get(1).unwrap(),
-                country: row.get(2).unwrap(),
-                bio: row.get(3).unwrap(),
+                id: row.get(0).unwrap(),
+                name: row.get(1).unwrap(),
+                display_name: row.get(2).unwrap(),
+                country: row.get(3).unwrap(),
+                bio: row.get(4).unwrap(),
                 highlighted_projects: None,
-                profile_picture: row.get(5).unwrap(),
-                join_date: row.get(6).unwrap(),
-                banner_image: row.get(7).unwrap(),
+                profile_picture: row.get(6).unwrap(),
+                join_date: row.get(7).unwrap(),
+                banner_image: row.get(8).unwrap(),
                 follower_count: None,
                 following_count: None,
                 verified: None,
+                project_count: None
             })
         })
         .unwrap()
@@ -372,23 +383,25 @@ pub fn following(user: &str) -> (Status, Json<Value>) {
     let following = &following[..following.len() - 1].replace(",", ", ");
 
     let mut select = cur.prepare(&format!(
-        "SELECT name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", following
+        "SELECT id, name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", following
     )).unwrap();
 
     let following: Vec<_> = select
         .query_map((), |row| {
             Ok(User {
-                name: row.get(0).unwrap(),
-                display_name: row.get(1).unwrap(),
-                country: row.get(2).unwrap(),
-                bio: row.get(3).unwrap(),
+                id: row.get(0).unwrap(),
+                name: row.get(1).unwrap(),
+                display_name: row.get(2).unwrap(),
+                country: row.get(3).unwrap(),
+                bio: row.get(4).unwrap(),
                 highlighted_projects: None,
-                profile_picture: row.get(5).unwrap(),
-                join_date: row.get(6).unwrap(),
-                banner_image: row.get(7).unwrap(),
+                profile_picture: row.get(6).unwrap(),
+                join_date: row.get(7).unwrap(),
+                banner_image: row.get(8).unwrap(),
                 follower_count: None,
                 following_count: None,
                 verified: None,
+                project_count: None
             })
         })
         .unwrap()

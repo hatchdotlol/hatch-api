@@ -24,3 +24,4 @@ dotenv = "0.15.0"
 zip = "2.2.2"
 rocket_okapi = { version = "0.9.0", features = ["swagger"] }
 schemars = "0.8.21"
+rustrict = "0.7.33"

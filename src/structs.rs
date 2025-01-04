@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
+    pub id: usize,
     pub name: String,
     pub display_name: Option<String>,
     pub country: String,
@@ -21,6 +22,8 @@ pub struct User {
     pub following_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verified: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub project_count: Option<usize>
 }
 
 #[derive(Debug)]
