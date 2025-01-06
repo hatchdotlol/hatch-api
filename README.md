@@ -37,3 +37,5 @@ print(me.json())
 update_details = requests.get(f"{BASE}/user", headers={"Token": token}, body={...})
 print(update_details.json())
 ```
+
+More docs can be located through `/openapi.json` and the `/docs` interface. Some routes are missing, however, namely: `POST /projects` `POST /uploads/pfp`. Probably due to [this issue](https://github.com/GREsau/schemars/issues/103)

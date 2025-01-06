@@ -65,7 +65,7 @@ fn rocket() -> _ {
     let mut app = rocket::build()
         .register("/", catchers![not_found, bad_request])
         .mount(
-            "/swagger-ui/",
+            "/docs/",
             make_swagger_ui(&SwaggerUIConfig {
                 url: "../openapi.json".to_owned(),
                 ..Default::default()

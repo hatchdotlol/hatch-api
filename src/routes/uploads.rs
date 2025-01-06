@@ -140,6 +140,10 @@ pub async fn update_pfp(
     status::Custom(Status::Ok, content::RawJson(String::from("asfdsfd")))
 }
 
+/// # Get Hatch profile picture
+///
+/// Returns 200 OK with image file stream (empty image for non-existent users)
+/// (this really should not be the case!) 
 #[openapi(tag = "Uploads")]
 #[get("/pfp/<user>")]
 pub async fn user(user: &str) -> (ContentType, Vec<u8>) {

@@ -45,6 +45,11 @@ pub fn email_regex() -> &'static Regex {
     })
 }
 
+/// # Register a Hatch account
+///
+/// May require an `Admin-Key` in headers.
+/// Requires JSON body with username, password, and email.
+/// Returns 200 OK with `{"success": true}` or 400 Bad Request with `{"message": "..."}`
 #[openapi(tag = "Auth")]
 #[post("/register", format = "application/json", data = "<creds>")]
 pub fn register(
@@ -220,6 +225,10 @@ pub fn register(
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}".into()))
 }
 
+/// # Log into a Hatch account
+///
+/// Requires JSON body with username and password.
+/// Returns 200 OK with `{"token": "..."}` or 404 Not Found or 400 Bad Request with `{"message": "..."}`
 #[openapi(tag = "Auth")]
 #[post("/login", format = "application/json", data = "<creds>")]
 pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String>> {
@@ -294,6 +303,10 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     }
 }
 
+/// # Verify a Hatch account email
+///
+/// Requires `email_token` URL param. 
+/// Redirects to main site regardless of internal success
 #[openapi(tag = "Auth")]
 #[get("/verify?<email_token>")]
 pub fn verify(email_token: &str) -> Redirect {
@@ -314,20 +327,46 @@ pub fn verify(email_token: &str) -> Redirect {
             .unwrap();
     }
 
-    Redirect::to(uri!("https://hatchdotlol.github.io/hatch-www/"))
+    Redirect::to(uri!("https://dev.hatch.lol"))
 }
 
+/// # Log out of a Hatch account
+///
+/// Requires `Token` header.
+/// Returns 200 OK with `{"success": true}` regardless of internal success
 #[openapi(tag = "Auth")]
-#[post("/logout")]
+#[get("/logout")]
 pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
 
-    cur.execute("DELETE FROM tokens WHERE token = ?1", [token.token])
+    cur.execute("DELETE FROM auth_tokens WHERE token = ?1", [token.token])
         .unwrap();
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
+/// # Delete a Hatch account
+///
+/// Requires `Token` header.
+/// Returns 200 OK with `{"success": true}` regardless of internal success
+#[openapi(tag = "Auth")]
+#[get("/delete")]
+pub fn delete(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
+    let cur = db().lock().unwrap();
+
+    cur.execute("DELETE FROM auth_tokens WHERE token = ?1", [token.token])
+        .unwrap();
+
+    cur.execute("DELETE FROM users WHERE id = ?1", [token.user])
+        .unwrap();
+
+    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
+}
+
+/// # Get current account info
+///
+/// Requires `Token` header.
+/// Returns 200 OK with `User` info 
 #[openapi(tag = "Auth")]
 #[get("/me")]
 pub fn me(token: Token<'_>) -> (Status, Json<User>) {

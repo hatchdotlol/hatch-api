@@ -166,6 +166,10 @@ struct ProjectInfo {
     description: String,
 }
 
+/// # Get Hatch project info
+///
+/// Requires `Token` header for unshared projects.
+/// Returns 200 OK with `ProjectInfo`
 #[openapi(tag = "Projects")]
 #[get("/<id>")]
 pub fn project(token: Option<Token<'_>>, id: u32) -> (Status, Json<Value>) {
@@ -259,6 +263,10 @@ impl OpenApiResponderInner for ContentResponder<Vec<u8>> {
     }
 }
 
+/// # Get Hatch project file
+///
+/// Requires `Token` header for unshared projects.
+/// Returns 404 Not Found or 200 OK with project file stream
 #[openapi(tag = "Projects")]
 #[get("/<id>/content")]
 pub async fn project_content(

@@ -29,6 +29,10 @@ pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, O
     openapi_get_routes_spec![settings: update_user_info, user, unfollow, follow, followers, following]
 }
 
+/// # Update account info
+///
+/// Requires `Token` header and `UserInfo` JSON body.
+/// Returns 200 OK with `{"success": true}` or 400 Bad Request with `{"error": "..."}`
 #[openapi(tag = "Users")]
 #[post("/", format = "application/json", data = "<user_info>")]
 pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status, Json<Value>) {
@@ -99,6 +103,9 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
     (Status::Ok, Json(json!({"success": true})))
 }
 
+/// # Get public user info
+/// 
+/// Returns 404 Not Found with `{"message": "..."}` or 200 Ok with `User` info
 #[openapi(tag = "Users")]
 #[get("/<user>")]
 pub fn user(user: &str) -> (Status, Json<Value>) {
@@ -169,6 +176,10 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
     )
 }
 
+/// # Follow a user
+///
+/// Requires `Token` header.
+/// Returns 404 Not Found or 400 Bad Request with `{"message": ""}` or 200 OK with `{"success": true}`
 #[openapi(tag = "Users")]
 #[post("/<user>/follow")]
 pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
@@ -227,6 +238,10 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(json!({"success": true})))
 }
 
+/// # Unfollow a user
+///
+/// Requires `Token` header.
+/// Returns 404 Not Found or 400 Bad Request with `{"message": ""}` or 200 OK with `{"success": true}`
 #[openapi(tag = "Users")]
 #[post("/<user>/unfollow")]
 pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
@@ -309,6 +324,9 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 
 // TODO: improve this spaghetti
 
+/// # Get user followers
+///
+/// Returns 404 Not Found or 200 OK with list of `User`
 #[openapi(tag = "Users")]
 #[get("/<user>/followers")]
 pub fn followers(user: &str) -> (Status, Json<Value>) {
@@ -360,6 +378,9 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(Value::Array(followers)))
 }
 
+/// # Get user following
+///
+/// Returns 404 Not Found or 200 OK with list of `User`
 #[openapi(tag = "Users")]
 #[get("/<user>/following")]
 pub fn following(user: &str) -> (Status, Json<Value>) {
