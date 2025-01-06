@@ -18,6 +18,7 @@ use rocket::serde::Deserialize;
 use rocket_okapi::okapi::openapi3::OpenApi;
 use rocket_okapi::{openapi, openapi_get_routes_spec};
 use rocket_okapi::settings::OpenApiSettings;
+use rustrict::CensorStr;
 
 use std::sync::OnceLock;
 use tokio::time::Duration;
@@ -88,6 +89,13 @@ pub fn register(
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"ADD AN EMAIL. NO IFS. NO BUTS.\"}".into()),
+        );
+    }
+
+    if (&creds.username).isnt(Type::SAFE) {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Inappropriate username\"}".into()),
         );
     }
 
