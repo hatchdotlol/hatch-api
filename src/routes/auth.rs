@@ -16,14 +16,14 @@ use rocket::response::{content, status, Redirect};
 use rocket::serde::json::Json;
 use rocket::serde::Deserialize;
 use rocket_okapi::okapi::openapi3::OpenApi;
-use rocket_okapi::{openapi, openapi_get_routes_spec};
 use rocket_okapi::settings::OpenApiSettings;
-use rustrict::CensorStr;
+use rocket_okapi::{openapi, openapi_get_routes_spec};
+use rustrict::{CensorStr, Type};
 
+use schemars::JsonSchema;
 use std::sync::OnceLock;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
-use schemars::JsonSchema;
 
 #[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
 pub struct Credentials {
@@ -248,17 +248,11 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     let mut first_row = select.query([&creds.username]).unwrap();
 
     let Ok(first_user) = first_row.next() else {
-        return status::Custom(
-            Status::NotFound,
-            content::RawJson(String::from("{\"message\": \"User not found\"}")),
-        );
+        return Err(Status::NotFound);
     };
 
     let Some(user) = first_user else {
-        return status::Custom(
-            Status::NotFound,
-            content::RawJson(String::from("{\"message\": \"User not found\"}")),
-        );
+        return Err(Status::NotFound);
     };
 
     let id = user.get::<usize, u32>(0).unwrap();
@@ -313,7 +307,7 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
 
 /// # Verify a Hatch account email
 ///
-/// Requires `email_token` URL param. 
+/// Requires `email_token` URL param.
 /// Redirects to main site regardless of internal success
 #[openapi(tag = "Auth")]
 #[get("/verify?<email_token>")]
@@ -374,7 +368,7 @@ pub fn delete(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
 /// # Get current account info
 ///
 /// Requires `Token` header.
-/// Returns 200 OK with `User` info 
+/// Returns 200 OK with `User` info
 #[openapi(tag = "Auth")]
 #[get("/me")]
 pub fn me(token: Token<'_>) -> (Status, Json<User>) {
@@ -432,7 +426,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             following_count: Some(following_count),
             follower_count: Some(follower_count),
             verified,
-            project_count: None
+            project_count: None,
         }),
     )
 }

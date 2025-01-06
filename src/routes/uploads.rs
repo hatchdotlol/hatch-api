@@ -146,22 +146,22 @@ pub async fn update_pfp(
 /// (this really should not be the case!) 
 #[openapi(tag = "Uploads")]
 #[get("/pfp/<user>")]
-pub async fn user(user: &str) -> (ContentType, Vec<u8>) {
+pub async fn user(user: &str) -> Result<Vec<u8>, Status> {
     let db = projects().lock().await;
 
     let obj = db.get_object(&PFPS_BUCKET, &format!("{user}")).send().await;
 
     let Ok(obj) = obj else {
-        return (ContentType::JPEG, vec![0]);
+        return Err(Status::NotFound);
     };
 
-    (
-        ContentType::JPEG,
-        obj.content
-            .to_segmented_bytes()
-            .await
-            .unwrap()
-            .to_bytes()
-            .to_vec(),
-    )
+    let body = obj
+        .content
+        .to_segmented_bytes()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
+
+    Ok(body)
 }

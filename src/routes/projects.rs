@@ -9,15 +9,25 @@ use rocket::{
     response::{content, status, Responder},
     serde::json::Json,
 };
+use rocket_okapi::{
+    gen::OpenApiGenerator,
+    okapi::openapi3::{OpenApi, Responses},
+    openapi, openapi_get_routes_spec,
+    response::OpenApiResponderInner,
+    settings::OpenApiSettings,
+};
+use schemars::JsonSchema;
 use serde::Serialize;
-use serde_json::{json, to_value, Value};
-use webhook::client::WebhookClient;
+use serde_json::{json, Value};
 use std::{fs::File, io::BufReader};
+use webhook::client::WebhookClient;
 use zip::ZipArchive;
-use rocket_okapi::{gen::OpenApiGenerator, okapi::openapi3::{OpenApi, Responses}, openapi, openapi_get_routes_spec, response::OpenApiResponderInner, settings::OpenApiSettings};
 
 use crate::{
-    config::{ASSET_LIMIT, PROJECTS_BUCKET}, db::{db, projects}, logging_webhook, token_guard::Token
+    config::{ASSET_LIMIT, PROJECTS_BUCKET},
+    db::{db, projects},
+    logging_webhook,
+    token_guard::Token,
 };
 
 #[derive(FromForm)]
@@ -126,12 +136,12 @@ pub async fn index(
     if let Some(webhook_url) = logging_webhook() {
         let title = form.title.clone().to_owned();
         let desc = form.description.clone().to_owned();
-        let success = format!("```\n{desc}\n```\n") + if resp.is_ok()
-        {
-            "✅ We stored it on the servers successfully."
-        } else {
-            "❌ We failed to store it, <@817057495503339600>".into()
-        };
+        let success = format!("```\n{desc}\n```\n")
+            + if resp.is_ok() {
+                "✅ We stored it on the servers successfully."
+            } else {
+                "❌ We failed to store it, <@817057495503339600>".into()
+            };
         tokio::spawn(async move {
             let url: &str = &webhook_url;
             let client = WebhookClient::new(url);
@@ -139,7 +149,10 @@ pub async fn index(
                 .send(move |message| {
                     message.embed(|embed| {
                         embed
-                            .title(&format!("\"{}\" by user #{} has been uploaded", title, token.user))
+                            .title(&format!(
+                                "\"{}\" by user #{} has been uploaded",
+                                title, token.user
+                            ))
                             .description(&success)
                     })
                 })
@@ -148,17 +161,20 @@ pub async fn index(
         });
     }
 
-    status::Custom(Status::Ok, content::RawJson(format!("{{\"success\": true, \"id\": {}}}", pid)))
+    status::Custom(
+        Status::Ok,
+        content::RawJson(format!("{{\"success\": true, \"id\": {}}}", pid)),
+    )
 }
 
-#[derive(Debug, Serialize)]
-struct Author {
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Author {
     username: String,
     profile_picture: String,
 }
 
-#[derive(Debug, Serialize)]
-struct ProjectInfo {
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct ProjectInfo {
     id: u32,
     author: Author,
     upload_ts: i64,
@@ -172,15 +188,15 @@ struct ProjectInfo {
 /// Returns 200 OK with `ProjectInfo`
 #[openapi(tag = "Projects")]
 #[get("/<id>")]
-pub fn project(token: Option<Token<'_>>, id: u32) -> (Status, Json<Value>) {
+pub fn project(
+    token: Option<Token<'_>>,
+    id: u32,
+) -> Result<Json<ProjectInfo>, (Status, Json<Value>)> {
     let cur = db().lock().unwrap();
     let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();
     let Some(project) = query.next().unwrap() else {
-        return (
-            Status::NotFound,
-            Json(json!({"error": 404, "message": "Not found"})),
-        );
+        return Err(Status::NotFound);
     };
 
     let author_id: u32 = project.get(1).unwrap();
@@ -188,37 +204,25 @@ pub fn project(token: Option<Token<'_>>, id: u32) -> (Status, Json<Value>) {
     let mut select = cur.prepare("SELECT * FROM users WHERE id=?1").unwrap();
     let mut query = select.query((author_id,)).unwrap();
     let Some(author) = query.next().unwrap() else {
-        return (
-            Status::NotFound,
-            Json(json!({"error": 404, "message": "Not found"})),
-        );
+        return Err(Status::NotFound);
     };
 
     if !project.get::<usize, bool>(5).unwrap() {
         if token.is_none() || token.is_some_and(|t| t.user != author_id) {
-            return (
-                Status::NotFound,
-                Json(json!({"error": 404, "message": "Not found"})),
-            );
+            return Err(Status::NotFound);
         }
     }
 
-    (
-        Status::Ok,
-        Json(
-            to_value(ProjectInfo {
-                id: project.get(1).unwrap(),
-                author: Author {
-                    username: author.get(1).unwrap(),
-                    profile_picture: author.get(7).unwrap(),
-                },
-                upload_ts: project.get(2).unwrap(),
-                title: project.get(3).unwrap(),
-                description: project.get(4).unwrap(),
-            })
-            .unwrap(),
-        ),
-    )
+    Ok(Json(ProjectInfo {
+        id: project.get(1).unwrap(),
+        author: Author {
+            username: author.get(1).unwrap(),
+            profile_picture: author.get(7).unwrap(),
+        },
+        upload_ts: project.get(2).unwrap(),
+        title: project.get(3).unwrap(),
+        description: project.get(4).unwrap(),
+    }))
 }
 
 fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
@@ -258,7 +262,9 @@ impl<'r, 'o: 'r, T: Responder<'r, 'o>> ContentResponder<T> {
 }
 
 impl OpenApiResponderInner for ContentResponder<Vec<u8>> {
-    fn responses(_gen: &mut OpenApiGenerator) -> rocket_okapi::Result<rocket_okapi::okapi::openapi3::Responses> {
+    fn responses(
+        _gen: &mut OpenApiGenerator,
+    ) -> rocket_okapi::Result<rocket_okapi::okapi::openapi3::Responses> {
         Ok(Responses::default())
     }
 }

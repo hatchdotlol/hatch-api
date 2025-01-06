@@ -1,13 +1,12 @@
-use rocket::{
-    http::Status,
-    serde::json::{to_value, Json},
+use rocket::{http::Status, serde::json::Json};
+use rocket_okapi::{
+    okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
 };
 use rusqlite::types::Null;
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use url::Url;
-use rocket_okapi::{okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings};
 
 use crate::{
     config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
@@ -104,11 +103,11 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
 }
 
 /// # Get public user info
-/// 
+///
 /// Returns 404 Not Found with `{"message": "..."}` or 200 Ok with `User` info
 #[openapi(tag = "Users")]
 #[get("/<user>")]
-pub fn user(user: &str) -> (Status, Json<Value>) {
+pub fn user(user: &str) -> Result<Json<User>, (Status, Json<Value>)> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -116,10 +115,7 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
         .unwrap();
     let mut row = select.query([user]).unwrap();
     let Some(row) = row.next().unwrap() else {
-        return (
-            Status::NotFound,
-            Json(json!({"error": 404, "message": "Not found"})),
-        );
+        return Err(Status::NotFound);
     };
 
     let id: usize = row.get(0).unwrap();
@@ -153,27 +149,21 @@ pub fn user(user: &str) -> (Status, Json<Value>) {
     let mut rows = select.query((id,)).unwrap();
     let project_count = rows.next().unwrap();
 
-    (
-        Status::Ok,
-        Json(
-            to_value(User {
-                id,
-                name: row.get(1).unwrap(),
-                display_name,
-                country: row.get(4).unwrap(),
-                bio,
-                highlighted_projects: Some(highlighted_projects),
-                profile_picture: row.get(7).unwrap(),
-                join_date: row.get(8).unwrap(),
-                banner_image,
-                following_count: Some(following_count),
-                follower_count: Some(follower_count),
-                verified: None,
-                project_count: project_count.unwrap().get(0).unwrap(),
-            })
-            .unwrap(),
-        ),
-    )
+    Ok(Json(User {
+        id,
+        name: row.get(1).unwrap(),
+        display_name,
+        country: row.get(4).unwrap(),
+        bio,
+        highlighted_projects: Some(highlighted_projects),
+        profile_picture: row.get(7).unwrap(),
+        join_date: row.get(8).unwrap(),
+        banner_image,
+        following_count: Some(following_count),
+        follower_count: Some(follower_count),
+        verified: None,
+        project_count: project_count.unwrap().get(0).unwrap(),
+    }))
 }
 
 /// # Follow a user
@@ -190,10 +180,7 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
-        return (
-            Status::NotFound,
-            Json(json!({"error": 404, "message": "Not found"})),
-        );
+        return Err(Status::NotFound);
     };
     let followee = row.get::<usize, u32>(0).unwrap();
 
@@ -252,10 +239,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
-        return (
-            Status::NotFound,
-            Json(json!({"error": 404, "message": "Not found"})),
-        );
+        return Err(Status::NotFound);
     };
     let unfollowee = row.get::<usize, u32>(0).unwrap();
 
@@ -322,6 +306,11 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(json!({"success": true})))
 }
 
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Followers {
+    followers: Vec<User>,
+}
+
 // TODO: improve this spaghetti
 
 /// # Get user followers
@@ -329,7 +318,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 /// Returns 404 Not Found or 200 OK with list of `User`
 #[openapi(tag = "Users")]
 #[get("/<user>/followers")]
-pub fn followers(user: &str) -> (Status, Json<Value>) {
+pub fn followers(user: &str) -> Result<Json<Followers>, (Status, Json<Value>)> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -337,14 +326,11 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
-        return (
-            Status::NotFound,
-            Json(json!({"error": 404, "message": "Not found"})),
-        );
+        return Err(Status::NotFound);
     };
 
     let Some(followers) = row.get::<usize, Option<String>>(0).unwrap() else {
-        return (Status::Ok, Json(json!([])));
+        return Ok(Json(Followers { followers: vec![] }));
     };
 
     let followers = &followers[..followers.len() - 1].replace(",", ", ");
@@ -368,14 +354,19 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
                 follower_count: None,
                 following_count: None,
                 verified: None,
-                project_count: None
+                project_count: None,
             })
         })
         .unwrap()
-        .map(|x| to_value(x.unwrap()).unwrap())
+        .map(|x| x.unwrap())
         .collect();
 
-    (Status::Ok, Json(Value::Array(followers)))
+    Ok(Json(Followers { followers }))
+}
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Following {
+    following: Vec<User>,
 }
 
 /// # Get user following
@@ -383,7 +374,7 @@ pub fn followers(user: &str) -> (Status, Json<Value>) {
 /// Returns 404 Not Found or 200 OK with list of `User`
 #[openapi(tag = "Users")]
 #[get("/<user>/following")]
-pub fn following(user: &str) -> (Status, Json<Value>) {
+pub fn following(user: &str) -> Result<Json<Following>, (Status, Json<Value>)> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -391,14 +382,11 @@ pub fn following(user: &str) -> (Status, Json<Value>) {
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
-        return (
-            Status::NotFound,
-            Json(json!({"error": 404, "message": "Not found"})),
-        );
+        return Err(Status::NotFound);
     };
 
     let Some(following) = row.get::<usize, Option<String>>(0).unwrap() else {
-        return (Status::Ok, Json(json!([])));
+        return Ok(Json(Following { following: vec![] }));
     };
 
     let following = &following[..following.len() - 1].replace(",", ", ");
@@ -422,12 +410,12 @@ pub fn following(user: &str) -> (Status, Json<Value>) {
                 follower_count: None,
                 following_count: None,
                 verified: None,
-                project_count: None
+                project_count: None,
             })
         })
         .unwrap()
-        .map(|x| to_value(x.unwrap()).unwrap())
+        .map(|x| x.unwrap())
         .collect();
 
-    (Status::Ok, Json(Value::Array(following)))
+    Ok(Json(Following { following }))
 }
