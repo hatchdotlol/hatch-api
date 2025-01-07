@@ -80,7 +80,7 @@ fn rocket() -> _ {
         "/auth" => auth::get_routes_and_docs(&openapi_settings),
         "/projects" => projects::get_routes_and_docs(&openapi_settings),
         "/uploads" => uploads::get_routes_and_docs(&openapi_settings),
-        "users" => users::get_routes_and_docs(&openapi_settings)
+        "/users" => users::get_routes_and_docs(&openapi_settings)
     };
 
     app

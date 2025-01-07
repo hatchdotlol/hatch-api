@@ -30,3 +30,11 @@ pub struct User {
 pub enum AuthError {
     Invalid,
 }
+
+#[derive(Debug, Serialize, JsonSchema)]
+pub struct Author {
+    pub username: String,
+    pub profile_picture: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+}

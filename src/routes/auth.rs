@@ -248,11 +248,17 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     let mut first_row = select.query([&creds.username]).unwrap();
 
     let Ok(first_user) = first_row.next() else {
-        return Err(Status::NotFound);
+        return status::Custom(
+            Status::NotFound,
+            content::RawJson("{\"message\": \"Not Found\"}".into()),
+        );
     };
 
     let Some(user) = first_user else {
-        return Err(Status::NotFound);
+        return status::Custom(
+            Status::NotFound,
+            content::RawJson("{\"message\": \"Not Found\"}".into()),
+        );
     };
 
     let id = user.get::<usize, u32>(0).unwrap();

@@ -82,6 +82,19 @@ pub fn db() -> &'static Mutex<Connection> {
         )
         .unwrap();
 
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS comments (
+                id INTEGER PRIMARY KEY,
+                content TEXT NOT NULL,
+                author INTEGER NOT NULL,
+                post_ts INTEGER NOT NULL,
+                reply_to INTEGER,
+                location INTEGER NOT NULL,
+                resource_id INTEGER NOT NULL
+            )",
+            (),
+        ).unwrap();
+
         conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 
         Mutex::new(conn)

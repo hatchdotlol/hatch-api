@@ -16,18 +16,15 @@ use rocket_okapi::{
     response::OpenApiResponderInner,
     settings::OpenApiSettings,
 };
+use rustrict::{CensorStr, Type};
 use schemars::JsonSchema;
 use serde::Serialize;
-use serde_json::{json, Value};
 use std::{fs::File, io::BufReader};
 use webhook::client::WebhookClient;
 use zip::ZipArchive;
 
 use crate::{
-    config::{ASSET_LIMIT, PROJECTS_BUCKET},
-    db::{db, projects},
-    logging_webhook,
-    token_guard::Token,
+    config::{ASSET_LIMIT, PROJECTS_BUCKET}, db::{db, projects}, logging_webhook, structs::Author, token_guard::Token
 };
 
 #[derive(FromForm)]
@@ -118,6 +115,13 @@ pub async fn index(
         }
     }
 
+    if (&form.title).isnt(Type::SAFE) {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson(r#"{"error": "Bad project title"}"#.into()),
+        );
+    }
+
     let client = projects().lock().await;
     let pid = next_project_id(Project {
         user_id: token.user,
@@ -168,12 +172,6 @@ pub async fn index(
 }
 
 #[derive(Debug, Serialize, JsonSchema)]
-pub struct Author {
-    username: String,
-    profile_picture: String,
-}
-
-#[derive(Debug, Serialize, JsonSchema)]
 pub struct ProjectInfo {
     id: u32,
     author: Author,
@@ -191,7 +189,7 @@ pub struct ProjectInfo {
 pub fn project(
     token: Option<Token<'_>>,
     id: u32,
-) -> Result<Json<ProjectInfo>, (Status, Json<Value>)> {
+) -> Result<Json<ProjectInfo>, Status> {
     let cur = db().lock().unwrap();
     let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();
@@ -218,6 +216,7 @@ pub fn project(
         author: Author {
             username: author.get(1).unwrap(),
             profile_picture: author.get(7).unwrap(),
+            display_name: Some(author.get(3).unwrap())
         },
         upload_ts: project.get(2).unwrap(),
         title: project.get(3).unwrap(),

@@ -107,7 +107,7 @@ pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status,
 /// Returns 404 Not Found with `{"message": "..."}` or 200 Ok with `User` info
 #[openapi(tag = "Users")]
 #[get("/<user>")]
-pub fn user(user: &str) -> Result<Json<User>, (Status, Json<Value>)> {
+pub fn user(user: &str) -> Result<Json<User>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -180,7 +180,7 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
-        return Err(Status::NotFound);
+        return (Status::NotFound, Json(json!({"message": "Not Found"})));
     };
     let followee = row.get::<usize, u32>(0).unwrap();
 
@@ -239,7 +239,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
-        return Err(Status::NotFound);
+        return (Status::NotFound, Json(json!({"message": "Not Found"})));
     };
     let unfollowee = row.get::<usize, u32>(0).unwrap();
 
@@ -318,7 +318,7 @@ pub struct Followers {
 /// Returns 404 Not Found or 200 OK with list of `User`
 #[openapi(tag = "Users")]
 #[get("/<user>/followers")]
-pub fn followers(user: &str) -> Result<Json<Followers>, (Status, Json<Value>)> {
+pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -374,7 +374,7 @@ pub struct Following {
 /// Returns 404 Not Found or 200 OK with list of `User`
 #[openapi(tag = "Users")]
 #[get("/<user>/following")]
-pub fn following(user: &str) -> Result<Json<Following>, (Status, Json<Value>)> {
+pub fn following(user: &str) -> Result<Json<Following>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur

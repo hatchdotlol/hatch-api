@@ -4,6 +4,7 @@ use rocket::{
 };
 use std::{env, sync::OnceLock};
 use rocket_okapi::{okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings};
+use crate::routes::comments::*;
 
 pub fn start_time() -> &'static str {
     static START_TIME: OnceLock<String> = OnceLock::new();
@@ -16,7 +17,7 @@ pub fn version() -> &'static str {
 }
 
 pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: index]
+    openapi_get_routes_spec![settings: index, comic_sans, user_comments, project_comments, post_project_comment]
 }
 
 #[openapi]

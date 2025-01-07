@@ -4,3 +4,4 @@ pub mod projects;
 pub mod root;
 pub mod uploads;
 pub mod users;
+pub mod comments;
