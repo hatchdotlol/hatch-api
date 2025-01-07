@@ -3,9 +3,7 @@ use rocket::{
     response::{content, status},
     serde::json::Json,
 };
-use rocket_okapi::{
-    okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
-};
+use rocket_okapi::openapi;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -42,17 +40,37 @@ pub fn project_comments(id: u32) -> Json<Comments> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2")
+        .prepare("SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE")
         .unwrap();
 
+    let mut _hidden_threads = cur
+        .prepare("SELECT id FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = FALSE AND reply_to = NULL")
+        .unwrap();
+
+    let hidden_threads: Vec<_> = _hidden_threads
+        .query_map((Location::User as u8, id), |row| {
+            Ok(row.get::<usize, u32>(0).unwrap())
+        })
+        .unwrap()
+        .map(|x| x.unwrap())
+        .collect();
+    dbg!(&hidden_threads);
+
     let comments: Vec<_> = select
-        .query_map((Location::Project as u8, id), |row| {
+        .query_map((Location::User as u8, id), |row| {
             let author_id = row.get::<usize, u32>(2).unwrap();
             let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
             let mut _row = select.query([author_id]).unwrap();
             let author_row = _row.next().unwrap().unwrap();
+            let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
 
-            Ok(Comment {
+            if let Some(reply_to) = reply_to {
+                if hidden_threads.contains(&reply_to) {
+                    return Ok(None)
+                }
+            }
+
+            Ok(Some(Comment {
                 id: row.get(0).unwrap(),
                 content: row.get(1).unwrap(),
                 author: Author {
@@ -61,11 +79,11 @@ pub fn project_comments(id: u32) -> Json<Comments> {
                     display_name: Some(author_row.get(3).unwrap()),
                 },
                 post_date: row.get(3).unwrap(),
-                reply_to: row.get(4).unwrap(),
-            })
+                reply_to,
+            }))
         })
         .unwrap()
-        .map(|x| x.unwrap())
+        .filter_map(|x| x.unwrap())
         .collect();
 
     Json(Comments { comments })
@@ -89,8 +107,21 @@ pub fn user_comments(user: &str) -> Result<Json<Comments>, Status> {
     let id: usize = row.get(0).unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2")
+        .prepare("SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE")
         .unwrap();
+
+    let mut _hidden_threads = cur
+        .prepare("SELECT id FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = FALSE AND reply_to = NULL")
+        .unwrap();
+
+    let hidden_threads: Vec<_> = _hidden_threads
+        .query_map((Location::User as u8, id), |row| {
+            Ok(row.get::<usize, u32>(0).unwrap())
+        })
+        .unwrap()
+        .map(|x| x.unwrap())
+        .collect();
+    dbg!(&hidden_threads);
 
     let comments: Vec<_> = select
         .query_map((Location::User as u8, id), |row| {
@@ -98,8 +129,15 @@ pub fn user_comments(user: &str) -> Result<Json<Comments>, Status> {
             let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
             let mut _row = select.query([author_id]).unwrap();
             let author_row = _row.next().unwrap().unwrap();
+            let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
 
-            Ok(Comment {
+            if let Some(reply_to) = reply_to {
+                if hidden_threads.contains(&reply_to) {
+                    return Ok(None)
+                }
+            }
+
+            Ok(Some(Comment {
                 id: row.get(0).unwrap(),
                 content: row.get(1).unwrap(),
                 author: Author {
@@ -108,11 +146,11 @@ pub fn user_comments(user: &str) -> Result<Json<Comments>, Status> {
                     display_name: Some(author_row.get(3).unwrap()),
                 },
                 post_date: row.get(3).unwrap(),
-                reply_to: row.get(4).unwrap(),
-            })
+                reply_to,
+            }))
         })
         .unwrap()
-        .map(|x| x.unwrap())
+        .filter_map(|x| x.unwrap())
         .collect();
 
     Ok(Json(Comments { comments }))
@@ -121,12 +159,13 @@ pub fn user_comments(user: &str) -> Result<Json<Comments>, Status> {
 #[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
 pub struct PostComment {
     content: String,
+    reply_to: Option<u32>,
 }
 
 /// # Post a user comment
 #[openapi(tag = "Comments")]
 #[post(
-    "/projects/<id>/comments?<reply_to>",
+    "/projects/<id>/comments",
     format = "application/json",
     data = "<comment>"
 )]
@@ -134,7 +173,6 @@ pub fn post_project_comment(
     token: Token<'_>,
     id: u32,
     comment: Json<PostComment>,
-    reply_to: Option<u32>,
 ) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
 
@@ -149,20 +187,32 @@ pub fn post_project_comment(
 
     if (&comment.content).is_empty() {
         return status::Custom(
-            Status::NotFound,
-            content::RawJson("{\"message\": \"Not Found\"}".into()),
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Empty comment\"}".into()),
         );
     }
 
-    if let Some(reply_to) = reply_to {
+    if let Some(reply_to) = comment.reply_to {
         let mut select = cur.prepare("SELECT * FROM comments WHERE id=?1").unwrap();
         let mut query = select.query((reply_to,)).unwrap();
-        if query.next().unwrap().is_none() {
+        let Some(row) = query.next().unwrap() else {
             return status::Custom(
                 Status::NotFound,
-                content::RawJson("{\"message\": \"Comment in reply_to not found\"}".into()),
+                content::RawJson("{\"message\": \"Reply not found\"}".into()),
             );
         };
+        if row.get::<usize, u32>(6).unwrap() != id {
+            return status::Custom(
+                Status::NotFound,
+                content::RawJson("{\"message\": \"Reply not found\"}".into()),
+            );
+        }
+        if !row.get::<usize, bool>(7).unwrap() {
+            return status::Custom(
+                Status::NotFound,
+                content::RawJson("{\"message\": \"Reply not found\"}".into()),
+            );
+        }
     }
 
     cur.execute(
@@ -172,20 +222,22 @@ pub fn post_project_comment(
             post_ts,
             reply_to,
             location,
-            resource_id
+            resource_id,
+            visible
         ) VALUES (
             ?1,
             ?2,
             ?3,
             ?4,
             ?5,
-            ?6
+            ?6,
+            TRUE
         )",
         (
             &comment.content,
             token.user,
             chrono::Utc::now().timestamp(),
-            reply_to,
+            comment.reply_to,
             Location::Project as u32,
             id,
         ),
@@ -206,4 +258,22 @@ pub fn post_project_comment(
         Status::Ok,
         content::RawJson(format!("{{\"success\": true, \"id\": {}}}", cid)),
     )
+}
+
+/// # Delete a user comment
+#[openapi(tag = "Comments")]
+#[delete("/projects/<id>/comments/<comment_id>")]
+pub fn delete_project_comment(
+    token: Token<'_>,
+    id: u32,
+    comment_id: u32,
+) -> status::Custom<content::RawJson<&'static str>> {
+    let cur = db().lock().unwrap();
+
+    cur.execute(
+        "UPDATE comments SET visible = FALSE WHERE location = ?1 AND resource_id = ?2 AND id = ?3",
+        (Location::Project as u8, id, comment_id),
+    ).unwrap();
+
+    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }

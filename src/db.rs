@@ -90,7 +90,8 @@ pub fn db() -> &'static Mutex<Connection> {
                 post_ts INTEGER NOT NULL,
                 reply_to INTEGER,
                 location INTEGER NOT NULL,
-                resource_id INTEGER NOT NULL
+                resource_id INTEGER NOT NULL,
+                visible INTEGER NOT NULL
             )",
             (),
         ).unwrap();
