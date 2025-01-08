@@ -56,6 +56,7 @@ fn rocket() -> _ {
         "http://localhost:8000",
         "http://localhost:3000",
         "https://hatchdotlol.github.io",
+        "https://warp.algebrahelp.org",
     ]);
 
     // You can also deserialize this
