@@ -115,7 +115,7 @@ pub async fn index(
         }
     }
 
-    if (&form.title).isnt(Type::SAFE) {
+    if (&form.title).isnt(Type::EVASIVE) || (&form.title).isnt(Type::INAPPROPRIATE) {
         return status::Custom(
             Status::BadRequest,
             content::RawJson(r#"{"error": "Bad project title"}"#.into()),
