@@ -92,7 +92,7 @@ pub fn register(
         );
     }
 
-    if (&creds.username).isnt(Type::SAFE) {
+    if (&creds.username).is(Type::EVASIVE) || (&creds.username).is(Type::INAPPROPRIATE) {
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"Inappropriate username\"}".into()),
@@ -435,4 +435,14 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             project_count: None,
         }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn green_fn() {
+        dbg!("sex".isnt(Type::INAPPROPRIATE), "sex".isnt(Type::EVASIVE));
+    }
 }
