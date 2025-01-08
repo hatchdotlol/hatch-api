@@ -13,9 +13,9 @@ use config::*;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
+use rocket_okapi::{mount_endpoints_and_merged_docs, swagger_ui::*};
 use routes::root::{start_time, version};
 use routes::{auth, projects, root, uploads, users};
-use rocket_okapi::{mount_endpoints_and_merged_docs, swagger_ui::*};
 
 #[catch(404)]
 fn not_found() -> status::Custom<content::RawJson<String>> {
@@ -49,13 +49,29 @@ fn rocket() -> _ {
     // report_webhook();
     admin_key();
 
-    let allowed_origins = AllowedOrigins::some_exact(&["https://hatch.lol", "https://dev.hatch.lol", "https://turbowarp.org", "http://localhost:8000", "https://hatchdotlol.github.io"]);
+    let allowed_origins = AllowedOrigins::some_exact(&[
+        "https://hatch.lol",
+        "https://dev.hatch.lol",
+        "https://turbowarp.org",
+        "http://localhost:8000",
+        "http://localhost:3000",
+        "https://hatchdotlol.github.io",
+    ]);
 
     // You can also deserialize this
     let cors = CorsOptions {
         allowed_origins,
-        allowed_methods: vec![Method::Get, Method::Post, Method::Delete, Method::Patch].into_iter().map(From::from).collect(),
-        allowed_headers: AllowedHeaders::some(&["Authorization", "Accept", "Admin-Key", "Token", "Content-Type"]),
+        allowed_methods: vec![Method::Get, Method::Post, Method::Delete, Method::Patch]
+            .into_iter()
+            .map(From::from)
+            .collect(),
+        allowed_headers: AllowedHeaders::some(&[
+            "Authorization",
+            "Accept",
+            "Admin-Key",
+            "Token",
+            "Content-Type",
+        ]),
         allow_credentials: true,
         ..Default::default()
     }
