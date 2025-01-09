@@ -305,3 +305,15 @@ pub async fn project_content(
         format!("attachment; filename=\"{}.sb3\"", id),
     ))
 }
+
+#[openapi(tag = "Projects")]
+#[get("/<id>/report")]
+pub async fn report_project(
+    token: Token<'_>,
+    id: u32
+) -> status::Custom<content::RawJson<String>> {
+    status::Custom(
+        Status::Ok,
+        content::RawJson("{\"message\": \"todo\"}".into())
+    )
+}

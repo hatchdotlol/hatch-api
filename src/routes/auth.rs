@@ -434,7 +434,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             follower_count: Some(follower_count),
             verified,
             project_count: None,
-            hatch_team: Some(mods().contains(&row.get::<usize, &str>(1).unwrap()))
+            hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str()))
         }),
     )
 }

@@ -1,4 +1,5 @@
 use rocket::{http::Status, serde::json::Json};
+use rocket_governor::RocketGovernor;
 use rocket_okapi::{
     okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
 };
@@ -11,6 +12,8 @@ use url::Url;
 use crate::{
     config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
     db::db,
+    limit_guard::TenPerSecond,
+    mods,
     structs::User,
     token_guard::Token,
 };
@@ -32,9 +35,13 @@ pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, O
 ///
 /// Requires `Token` header and `UserInfo` JSON body.
 /// Returns 200 OK with `{"success": true}` or 400 Bad Request with `{"error": "..."}`
-#[openapi(tag = "Users")]
+#[openapi(tag = "Users", ignore = "_l")]
 #[post("/", format = "application/json", data = "<user_info>")]
-pub fn update_user_info(token: Token<'_>, user_info: Json<UserInfo>) -> (Status, Json<Value>) {
+pub fn update_user_info(
+    token: Token<'_>,
+    user_info: Json<UserInfo>,
+    _l: RocketGovernor<TenPerSecond>,
+) -> (Status, Json<Value>) {
     if user_info
         .bio
         .is_some_and(|bio| bio.chars().count() > BIO_LIMIT)
@@ -163,6 +170,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         follower_count: Some(follower_count),
         verified: None,
         project_count: project_count.unwrap().get(0).unwrap(),
+        hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
     }))
 }
 
@@ -355,6 +363,7 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
                 following_count: None,
                 verified: None,
                 project_count: None,
+                hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
             })
         })
         .unwrap()
@@ -411,6 +420,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
                 following_count: None,
                 verified: None,
                 project_count: None,
+                hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
             })
         })
         .unwrap()

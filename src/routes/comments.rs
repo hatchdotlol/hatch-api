@@ -3,11 +3,12 @@ use rocket::{
     response::{content, status},
     serde::json::Json,
 };
+use rocket_governor::RocketGovernor;
 use rocket_okapi::openapi;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{db::db, structs::Author, token_guard::Token};
+use crate::{db::db, limit_guard::TenPerSecond, structs::Author, token_guard::Token};
 
 #[derive(Clone, Copy, Debug, Serialize, JsonSchema)]
 enum Location {
@@ -92,9 +93,9 @@ pub fn project_comments(id: u32) -> Json<Comments> {
 /// # Get Hatch user comments
 ///
 /// Returns 200 OK with `Comments`
-#[openapi(tag = "Comments")]
+#[openapi(tag = "Comments", ignore = "_l")]
 #[get("/users/<user>/comments")]
-pub fn user_comments(user: &str) -> Result<Json<Comments>, Status> {
+pub fn user_comments(user: &str, _l: RocketGovernor<TenPerSecond>) -> Result<Json<Comments>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -163,16 +164,17 @@ pub struct PostComment {
 }
 
 /// # Post a user comment
-#[openapi(tag = "Comments")]
+#[openapi(tag = "Comments", ignore = "_l")]
 #[post(
     "/projects/<id>/comments",
     format = "application/json",
-    data = "<comment>"
+    data = "<comment>",
 )]
 pub fn post_project_comment(
     token: Token<'_>,
     id: u32,
     comment: Json<PostComment>,
+    _l: RocketGovernor<TenPerSecond>
 ) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
 
@@ -261,14 +263,32 @@ pub fn post_project_comment(
 }
 
 /// # Delete a user comment
-#[openapi(tag = "Comments")]
+#[openapi(tag = "Comments", ignore = "_l")]
 #[delete("/projects/<id>/comments/<comment_id>")]
 pub fn delete_project_comment(
     token: Token<'_>,
     id: u32,
     comment_id: u32,
+    _l: RocketGovernor<TenPerSecond>
 ) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
+
+    let mut select = cur.prepare("SELECT author FROM comments WHERE id = ?1").unwrap();
+    let mut rows = select.query((id,)).unwrap();
+
+    if let Some(first) = rows.next().unwrap() {
+        if first.get::<usize, u32>(0).unwrap() != token.user {
+            return status::Custom(
+                Status::Unauthorized,
+                content::RawJson("{\"message\": \"Unauthorized to delete this comment\"}".into()),
+            );
+        }
+    } else {
+        return status::Custom(
+            Status::NotFound,
+            content::RawJson("{\"message\": \"Not Found\"}".into()),
+        );
+    }
 
     cur.execute(
         "UPDATE comments SET visible = FALSE WHERE location = ?1 AND resource_id = ?2 AND id = ?3",
