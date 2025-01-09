@@ -24,6 +24,8 @@ pub struct User {
     pub verified: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub project_count: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hatch_team: Option<bool>,
 }
 
 #[derive(Debug)]

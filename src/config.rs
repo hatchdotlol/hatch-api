@@ -285,7 +285,7 @@ pub const COUNTRIES: [&'static str; 252] = [
 pub const VERIFICATION_TEMPLATE: &'static str = r#"
 <body style="background-color:#f9f9f9;">
 <div style="margin:0px auto;max-width:600px;font-family:Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;font-size:16px;line-height:24px">
-<img src="https://ci3.googleusercontent.com/meips/ADKq_NYSN-XcBSJFc0x3Picm27dUi35wi71cd_pbKriQt64Jsx3pIN4Hp-ZwmlOPdwgKKqUg=s0-d-e1-ft#https://rdr.lol/u/cVuLWI.png" height="50">
+<img src="https://rdr.lol/u/qEJWct.png" height="50">
 <hr>
 <div style="background-color:white;padding: 10px;color: black !important;">
 <h2>Welcome to hatch.lol!</h2>
@@ -299,6 +299,13 @@ pub const VERIFICATION_TEMPLATE: &'static str = r#"
 </div>
 </body>
 "#;
+
+pub fn mods() -> Vec<&'static str> {
+    static MODS: OnceLock<String> = OnceLock::new();
+    MODS.get_or_init(|| env::var("MODS").expect("MODS not present"))
+        .split(",")
+        .collect::<Vec<_>>()
+}
 
 pub fn postal_url() -> &'static str {
     static ADMIN_KEY: OnceLock<String> = OnceLock::new();

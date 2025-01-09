@@ -5,6 +5,7 @@ use crate::config::{
 };
 use crate::db::db;
 use crate::entropy::calculate_entropy;
+use crate::mods;
 use crate::structs::User;
 use crate::token_guard::Token;
 
@@ -433,6 +434,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             follower_count: Some(follower_count),
             verified,
             project_count: None,
+            hatch_team: Some(mods().contains(&row.get::<usize, &str>(1).unwrap()))
         }),
     )
 }
