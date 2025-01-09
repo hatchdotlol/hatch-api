@@ -12,6 +12,7 @@ use url::Url;
 use crate::{
     config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
     db::db,
+    limit_guard::TenPerSecond,
     mods,
     structs::User,
     token_guard::Token,
@@ -39,6 +40,7 @@ pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, O
 pub fn update_user_info(
     token: Token<'_>,
     user_info: Json<UserInfo>,
+    _l: RocketGovernor<TenPerSecond>,
 ) -> (Status, Json<Value>) {
     if user_info
         .bio

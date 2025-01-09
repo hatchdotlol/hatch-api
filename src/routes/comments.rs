@@ -8,7 +8,7 @@ use rocket_okapi::openapi;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{db::db, structs::Author, token_guard::Token};
+use crate::{db::db, limit_guard::TenPerSecond, structs::Author, token_guard::Token};
 
 #[derive(Clone, Copy, Debug, Serialize, JsonSchema)]
 enum Location {
@@ -95,7 +95,7 @@ pub fn project_comments(id: u32) -> Json<Comments> {
 /// Returns 200 OK with `Comments`
 #[openapi(tag = "Comments", ignore = "_l")]
 #[get("/users/<user>/comments")]
-pub fn user_comments(user: &str) -> Result<Json<Comments>, Status> {
+pub fn user_comments(user: &str, _l: RocketGovernor<TenPerSecond>) -> Result<Json<Comments>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -174,6 +174,7 @@ pub fn post_project_comment(
     token: Token<'_>,
     id: u32,
     comment: Json<PostComment>,
+    _l: RocketGovernor<TenPerSecond>
 ) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
 
