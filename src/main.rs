@@ -8,7 +8,6 @@ pub mod entropy;
 pub mod routes;
 pub mod structs;
 pub mod token_guard;
-pub mod limit_guard;
 
 use config::*;
 use rocket::http::{Method, Status};
