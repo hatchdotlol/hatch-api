@@ -7,8 +7,12 @@ use rocket_governor::RocketGovernor;
 use rocket_okapi::openapi;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use webhook::client::WebhookClient;
 
-use crate::{db::db, limit_guard::TenPerSecond, structs::Author, token_guard::Token};
+use crate::{
+    db::db, limit_guard::TenPerSecond, logging_webhook, report_webhook, structs::Author,
+    token_guard::Token,
+};
 
 #[derive(Clone, Copy, Debug, Serialize, JsonSchema)]
 enum Location {
@@ -41,7 +45,9 @@ pub fn project_comments(id: u32) -> Json<Comments> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE")
+        .prepare(
+            "SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE",
+        )
         .unwrap();
 
     let mut _hidden_threads = cur
@@ -67,7 +73,7 @@ pub fn project_comments(id: u32) -> Json<Comments> {
 
             if let Some(reply_to) = reply_to {
                 if hidden_threads.contains(&reply_to) {
-                    return Ok(None)
+                    return Ok(None);
                 }
             }
 
@@ -95,7 +101,10 @@ pub fn project_comments(id: u32) -> Json<Comments> {
 /// Returns 200 OK with `Comments`
 #[openapi(tag = "Comments", ignore = "_l")]
 #[get("/users/<user>/comments")]
-pub fn user_comments(user: &str, _l: RocketGovernor<TenPerSecond>) -> Result<Json<Comments>, Status> {
+pub fn user_comments(
+    user: &str,
+    _l: RocketGovernor<TenPerSecond>,
+) -> Result<Json<Comments>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -108,7 +117,9 @@ pub fn user_comments(user: &str, _l: RocketGovernor<TenPerSecond>) -> Result<Jso
     let id: usize = row.get(0).unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE")
+        .prepare(
+            "SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE",
+        )
         .unwrap();
 
     let mut _hidden_threads = cur
@@ -134,7 +145,7 @@ pub fn user_comments(user: &str, _l: RocketGovernor<TenPerSecond>) -> Result<Jso
 
             if let Some(reply_to) = reply_to {
                 if hidden_threads.contains(&reply_to) {
-                    return Ok(None)
+                    return Ok(None);
                 }
             }
 
@@ -168,13 +179,13 @@ pub struct PostComment {
 #[post(
     "/projects/<id>/comments",
     format = "application/json",
-    data = "<comment>",
+    data = "<comment>"
 )]
 pub fn post_project_comment(
     token: Token<'_>,
     id: u32,
     comment: Json<PostComment>,
-    _l: RocketGovernor<TenPerSecond>
+    _l: RocketGovernor<TenPerSecond>,
 ) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
 
@@ -269,11 +280,13 @@ pub fn delete_project_comment(
     token: Token<'_>,
     id: u32,
     comment_id: u32,
-    _l: RocketGovernor<TenPerSecond>
+    _l: RocketGovernor<TenPerSecond>,
 ) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT author FROM comments WHERE id = ?1").unwrap();
+    let mut select = cur
+        .prepare("SELECT author FROM comments WHERE id = ?1")
+        .unwrap();
     let mut rows = select.query((id,)).unwrap();
 
     if let Some(first) = rows.next().unwrap() {
@@ -293,7 +306,122 @@ pub fn delete_project_comment(
     cur.execute(
         "UPDATE comments SET visible = FALSE WHERE location = ?1 AND resource_id = ?2 AND id = ?3",
         (Location::Project as u8, id, comment_id),
-    ).unwrap();
+    )
+    .unwrap();
+
+    if let Some(webhook_url) = logging_webhook() {
+        tokio::spawn(async move {
+            let url: &str = &webhook_url;
+            let client = WebhookClient::new(url);
+            client
+                .send(move |message| {
+                    message.embed(|embed| {
+                        embed.title(&format!(
+                            "🗑️ Comment {} on project {} has been deleted. Check the DB for info",
+                            comment_id, id
+                        ))
+                    })
+                })
+                .await
+                .unwrap();
+        });
+    }
+
+    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
+}
+
+#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
+pub struct Report {
+    pub category: u32,
+    pub reason: String,
+}
+
+/// # Report a user comment
+#[openapi(tag = "Comments", ignore = "_l")]
+#[post(
+    "/projects/<id>/comments/<comment_id>/report",
+    format = "application/json",
+    data = "<report>"
+)]
+pub fn report_project_comment(
+    token: Token<'_>,
+    id: u32,
+    comment_id: u32,
+    report: Json<Report>,
+    _l: RocketGovernor<TenPerSecond>,
+) -> status::Custom<content::RawJson<&'static str>> {
+    let cur = db().lock().unwrap();
+
+    let mut select = cur.prepare("SELECT * FROM comments WHERE id = ?1").unwrap();
+    let mut rows = select.query((comment_id,)).unwrap();
+
+    let Some(comment) = rows.next().unwrap() else {
+        return status::Custom(
+            Status::NotFound,
+            content::RawJson("{\"message\": \"Not Found\"}"),
+        );
+    };
+
+    let mut select = cur
+        .prepare("SELECT id FROM reports WHERE type = \"comment\" AND resource_id = ?1")
+        .unwrap();
+    let mut rows = select.query((comment_id,)).unwrap();
+
+    if rows.next().unwrap().is_some() {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Comment already reported\"}"),
+        );
+    }
+
+    cur.execute(
+        "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"comment\")",
+        (token.user, format!("{}|{}", &report.category, &report.reason), comment_id),
+    )
+    .unwrap();
+
+    let reportee_comment = comment.get::<usize, String>(1).unwrap();
+    let reporee_author = comment.get::<usize, u32>(2).unwrap();
+
+    let mut select = cur
+        .prepare("SELECT name FROM users WHERE id = ?1")
+        .unwrap();
+    let mut rows = select.query((reporee_author,)).unwrap();
+    let reportee_author = rows.next().unwrap().unwrap().get::<usize, String>(0).unwrap();
+
+    if let Some(webhook_url) = report_webhook() {
+        tokio::spawn(async move {
+            let url: &str = &webhook_url;
+            let client = WebhookClient::new(url);
+            let report_category = match report.category {
+                0 => "Inappropriate or graphic",
+                1 => "Copyrighted or stolen material",
+                2 => "Harassment or bullying",
+                3 => "Spam",
+                4 => "Malicious links (such as malware)",
+                _ => unimplemented!(),
+            };
+            client
+                .send(move |message| {
+                    message.embed(|embed| {
+                        embed
+                            .title(&format!(
+                            "🛡️ Comment {} on project {} has been reported. Check the DB for more info",
+                            comment_id, id
+                        ))
+                            .description(&format!(
+                                "**Comment**\n```\n{}\n- {}\n```\n**Reason**\n```\n{}\n\n{}\n```",
+                                reportee_comment,
+                                reportee_author,
+                                report_category,
+                                report.reason
+                            ))
+                    })
+                })
+                .await
+                .unwrap();
+        });
+    };
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }

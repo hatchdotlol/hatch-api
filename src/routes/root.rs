@@ -19,7 +19,7 @@ pub fn version() -> &'static str {
 }
 
 pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: index, comic_sans, user_comments, project_comments, post_project_comment, delete_project_comment]
+    openapi_get_routes_spec![settings: index, comic_sans, user_comments, project_comments, post_project_comment, delete_project_comment, report_project_comment]
 }
 
 #[openapi]
