@@ -34,6 +34,7 @@ pub fn index() -> status::Custom<content::RawJson<String>> {
             \"start_time\": \"{}\",
             \"website\": \"https://hatch.lol\",
             \"api\": \"https://api.hatch.lol\",
+            \"forums\": \"https://forums.hatch.lol\",
             \"email\": \"contact@hatch.lol\",
             \"version\": \"{}\"
         }}",
