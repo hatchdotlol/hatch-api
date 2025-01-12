@@ -317,6 +317,16 @@ pub fn postal_key() -> &'static str {
     ADMIN_KEY.get_or_init(|| env::var("POSTAL_KEY").expect("POSTAL_KEY not present"))
 }
 
+pub fn backup_resend_key() -> Option<&'static str> {
+    static RESEND_KEY: OnceLock<String> = OnceLock::new();
+    let resend_key = RESEND_KEY.get_or_init(|| env::var("RESEND_KEY").expect("RESEND_KEY not present"));
+    if resend_key == "" {
+        None
+    } else {
+        Some(&resend_key)
+    }
+}
+
 pub fn logging_webhook() -> Option<&'static str> {
     static WEBHOOK: OnceLock<String> = OnceLock::new();
     let webhook_url =

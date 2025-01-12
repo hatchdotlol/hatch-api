@@ -5,9 +5,9 @@ use crate::config::{
 };
 use crate::db::db;
 use crate::entropy::calculate_entropy;
-use crate::mods;
 use crate::structs::User;
 use crate::token_guard::Token;
+use crate::{backup_resend_key, mods};
 
 use chrono::TimeDelta;
 use rand::Rng;
@@ -22,6 +22,7 @@ use rocket_okapi::{openapi, openapi_get_routes_spec};
 use rustrict::{CensorStr, Type};
 
 use schemars::JsonSchema;
+use serde_json::Value;
 use std::sync::OnceLock;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
@@ -188,34 +189,90 @@ pub fn register(
     )
     .unwrap();
 
-    let link = &format!("{}/auth/verify?email_token={}", base_url(), &token);
-    let response = minreq::post(format!("{}/api/v1/send/message", postal_url()))
-        .with_body(
-            serde_json::json!({
-                "to": &creds.email.clone().unwrap(),
-                "from": "support@hatch.lol",
-                "sender": "support@hatch.lol",
-                "subject": format!("Hatch.lol verification for {}", &creds.username),
-                "html_body": VERIFICATION_TEMPLATE
-                    .replace("{{username}}", &creds.username)
-                    .replace("{{link}}", link)
-            })
-            .to_string(),
-        )
-        .with_header("Content-Type", "application/json")
-        .with_header("X-Server-API-Key", postal_key())
-        .send()
-        .unwrap();
+    let link = format!("{}/auth/verify?email_token={}", base_url(), &token);
+    let username = creds.username.clone();
+    let email = creds.email.clone().unwrap();
 
-    if let Some(webhook_url) = logging_webhook() {
-        let username = creds.username.clone();
-        let success = if String::from(response.as_str().unwrap()).contains("\"status\":\"success\"")
-        {
-            "✅ We were able to send a verification email to them: ".to_owned() + link
+    tokio::spawn(async move {
+        let mut description = "";
+
+        let send = minreq::post(format!("{}/api/v1/send/message", postal_url()))
+            .with_body(
+                serde_json::json!({
+                    "to": &email,
+                    "from": "support@hatch.lol",
+                    "sender": "support@hatch.lol",
+                    "subject": format!("Hatch.lol verification for {}", &username),
+                    "html_body": VERIFICATION_TEMPLATE
+                        .replace("{{username}}", &username)
+                        .replace("{{link}}", &link)
+                })
+                .to_string(),
+            )
+            .with_header("Content-Type", "application/json")
+            .with_header("X-Server-API-Key", postal_key())
+            .send()
+            .unwrap();
+
+        let message_id = serde_json::from_str::<Value>(send.as_str().unwrap()).unwrap()["data"]
+            ["messages"][&email]["id"]
+            .as_i64()
+            .unwrap();
+
+        tokio::time::sleep(Duration::from_secs(10)).await;
+
+        let status = minreq::post(format!("{}/api/v1/messages/deliveries", postal_url()))
+            .with_body(
+                serde_json::json!({
+                    "id": message_id
+                })
+                .to_string(),
+            )
+            .with_header("Content-Type", "application/json")
+            .with_header("X-Server-API-Key", postal_key())
+            .send()
+            .unwrap();
+
+        let json = serde_json::from_str::<Value>(status.as_str().unwrap()).unwrap();
+        let delivery_status = json["data"][0]["status"].as_str().unwrap();
+
+        if delivery_status == "HardFail" || delivery_status == "Held" {
+            if let Some(resend_key) = backup_resend_key() {
+                let status = minreq::post("https://api.resend.com/email")
+                    .with_body(
+                        serde_json::json!({
+                            "to": &email,
+                            "from": "support@hatch.lol",
+                            "sender": "support@hatch.lol",
+                            "subject": format!("Hatch.lol verification for {}", &username),
+                            "html": VERIFICATION_TEMPLATE
+                                .replace("{{username}}", &username)
+                                .replace("{{link}}", &link)
+                        })
+                        .to_string(),
+                    )
+                    .with_header("Content-Type", "application/json")
+                    .with_header("Authorization", &format!("Bearer {}", resend_key))
+                    .send()
+                    .unwrap();
+                let success = serde_json::from_str::<Value>(status.as_str().unwrap()).unwrap()
+                    ["id"]
+                    .as_str()
+                    .is_some();
+                description = if success {
+                    "✅ We were able to send a verification email to them via Resend."
+                } else {
+                    "❌ We could **not** send a verification email via Resend."
+                }
+            } else {
+                description = format!("❌ We could **not** send a verification email via Postal ({} error). Resend is not configured.", delivery_status).as_str()
+            }
         } else {
-            "❌ We failed to send a verification email to them. Check your mail dashboard for more info.".into()
-        };
-        tokio::spawn(async move {
+            description = "✅ We were able to send a verification to them via Postal."
+        }
+        let description = format!("{} The link to verify is: {}", &description, &link);
+
+        if let Some(webhook_url) = logging_webhook() {
             let url: &str = &webhook_url;
             let client = WebhookClient::new(url);
             client
@@ -223,13 +280,13 @@ pub fn register(
                     message.embed(|embed| {
                         embed
                             .title(&format!("{} has joined hatch", username))
-                            .description(&success)
+                            .description(&description)
                     })
                 })
                 .await
                 .unwrap();
-        });
-    }
+        }
+    });
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}".into()))
 }
@@ -434,17 +491,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             follower_count: Some(follower_count),
             verified,
             project_count: None,
-            hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str()))
+            hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
         }),
     )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn green_fn() {
-        dbg!("sex".isnt(Type::INAPPROPRIATE), "sex".isnt(Type::EVASIVE));
-    }
 }
