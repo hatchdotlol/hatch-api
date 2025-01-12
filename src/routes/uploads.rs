@@ -114,18 +114,19 @@ pub async fn update_pfp(
     };
     let content = ObjectContent::from(Path::new(&form.file.path().unwrap().to_str().unwrap()));
 
-    let new_pfp = format!("/uploads/pfp/{}.{}", token.user, ext);
+    let file = format!("{}.{}", token.user, ext);
+    let new_pfp = format!("/uploads/pfp/{}", file.as_str());
     let previous_pfp = get_user_pfp(token.user);
 
     client
-        .put_object_content(&PFPS_BUCKET, &new_pfp, content)
+        .put_object_content(&PFPS_BUCKET, file.as_str(), content)
         .send()
         .await
         .unwrap();
 
     if new_pfp != previous_pfp {
         client
-            .remove_object(&PFPS_BUCKET, &*previous_pfp)
+            .remove_object(&PFPS_BUCKET, file.as_str())
             .send()
             .await
             .unwrap();
