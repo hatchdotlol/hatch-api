@@ -40,3 +40,9 @@ pub struct Author {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
 }
+
+#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
+pub struct Report {
+    pub category: u32,
+    pub reason: String,
+}

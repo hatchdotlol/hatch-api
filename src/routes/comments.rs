@@ -10,14 +10,17 @@ use serde::{Deserialize, Serialize};
 use webhook::client::WebhookClient;
 
 use crate::{
-    db::db, limit_guard::TenPerSecond, logging_webhook, report_webhook, structs::Author,
+    db::db,
+    limit_guard::TenPerSecond,
+    logging_webhook, report_webhook,
+    structs::{Author, Report},
     token_guard::Token,
 };
 
 #[derive(Clone, Copy, Debug, Serialize, JsonSchema)]
 enum Location {
     Project = 0,
-    Gallery = 1,
+    // Gallery = 1,
     User = 2,
 }
 
@@ -330,12 +333,6 @@ pub fn delete_project_comment(
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
-pub struct Report {
-    pub category: u32,
-    pub reason: String,
-}
-
 /// # Report a user comment
 #[openapi(tag = "Comments", ignore = "_l")]
 #[post(
@@ -374,33 +371,47 @@ pub fn report_project_comment(
         );
     }
 
+    let report_category = match report.category {
+        0 => "Inappropriate or graphic",
+        1 => "Copyrighted or stolen material",
+        2 => "Harassment or bullying",
+        3 => "Spam",
+        4 => "Malicious links (such as malware)",
+        _ => {
+            return status::Custom(
+                Status::BadRequest,
+                content::RawJson("{\"message\": \"Invalid category\"}"),
+            );
+        }
+    };
+
     cur.execute(
         "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"comment\")",
-        (token.user, format!("{}|{}", &report.category, &report.reason), comment_id),
+        (
+            token.user,
+            format!("{}|{}", &report.category, &report.reason),
+            comment_id,
+        ),
     )
     .unwrap();
 
-    let reportee_comment = comment.get::<usize, String>(1).unwrap();
-    let reporee_author = comment.get::<usize, u32>(2).unwrap();
-
-    let mut select = cur
-        .prepare("SELECT name FROM users WHERE id = ?1")
-        .unwrap();
-    let mut rows = select.query((reporee_author,)).unwrap();
-    let reportee_author = rows.next().unwrap().unwrap().get::<usize, String>(0).unwrap();
-
     if let Some(webhook_url) = report_webhook() {
+        let reportee_comment = comment.get::<usize, String>(1).unwrap();
+        let reporee_author = comment.get::<usize, u32>(2).unwrap();
+
+        let mut select = cur.prepare("SELECT name FROM users WHERE id = ?1").unwrap();
+        let mut rows = select.query((reporee_author,)).unwrap();
+        let reportee_author = rows
+            .next()
+            .unwrap()
+            .unwrap()
+            .get::<usize, String>(0)
+            .unwrap();
+
         tokio::spawn(async move {
             let url: &str = &webhook_url;
             let client = WebhookClient::new(url);
-            let report_category = match report.category {
-                0 => "Inappropriate or graphic",
-                1 => "Copyrighted or stolen material",
-                2 => "Harassment or bullying",
-                3 => "Spam",
-                4 => "Malicious links (such as malware)",
-                _ => unimplemented!(),
-            };
+
             client
                 .send(move |message| {
                     message.embed(|embed| {

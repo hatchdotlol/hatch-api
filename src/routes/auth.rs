@@ -194,8 +194,6 @@ pub fn register(
     let email = creds.email.clone().unwrap();
 
     tokio::spawn(async move {
-        let mut description: String = "".into();
-
         let send = minreq::post(format!("{}/api/v1/send/message", postal_url()))
             .with_body(
                 serde_json::json!({
@@ -236,7 +234,7 @@ pub fn register(
         let json = serde_json::from_str::<Value>(status.as_str().unwrap()).unwrap();
         let delivery_status = json["data"][0]["status"].as_str().unwrap();
 
-        if delivery_status == "HardFail" || delivery_status == "Held" {
+        let description = if delivery_status == "HardFail" || delivery_status == "Held" {
             if let Some(resend_key) = backup_resend_key() {
                 let status = minreq::post("https://api.resend.com/email")
                     .with_body(
@@ -259,17 +257,17 @@ pub fn register(
                     ["id"]
                     .as_str()
                     .is_some();
-                description = if success {
+                if success {
                     "✅ We were able to send a verification email to them via Resend.".into()
                 } else {
                     "❌ We could **not** send a verification email via Resend.".into()
                 }
             } else {
-                description = format!("❌ We could **not** send a verification email via Postal ({} error). Resend is not configured.", delivery_status)
+                format!("❌ We could **not** send a verification email via Postal ({} error). Resend is not configured.", delivery_status)
             }
         } else {
-            description = "✅ We were able to send a verification to them via Postal.".into()
-        }
+            "✅ We were able to send a verification to them via Postal.".into()
+        };
         let description = format!("{} The link to verify is: {}", &description, &link);
 
         if let Some(webhook_url) = logging_webhook() {

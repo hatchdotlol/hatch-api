@@ -1,4 +1,8 @@
-use rocket::{http::Status, serde::json::Json};
+use rocket::{
+    http::Status,
+    response::{content, status},
+    serde::json::Json,
+};
 use rocket_governor::RocketGovernor;
 use rocket_okapi::{
     okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
@@ -8,13 +12,14 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use url::Url;
+use webhook::client::WebhookClient;
 
 use crate::{
     config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
     db::db,
     limit_guard::TenPerSecond,
-    mods,
-    structs::User,
+    mods, report_webhook,
+    structs::{Report, User},
     token_guard::Token,
 };
 
@@ -28,7 +33,7 @@ pub struct UserInfo<'r> {
 }
 
 pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: update_user_info, user, unfollow, follow, followers, following]
+    openapi_get_routes_spec![settings: update_user_info, user, unfollow, follow, followers, following, report_user]
 }
 
 /// # Update account info
@@ -428,4 +433,87 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
         .collect();
 
     Ok(Json(Following { following }))
+}
+
+/// # Report a user
+#[openapi(tag = "Users")]
+#[post("/<user>/report", format = "application/json", data = "<report>")]
+pub async fn report_user(
+    token: Token<'_>,
+    user: &str,
+    report: Json<Report>,
+) -> status::Custom<content::RawJson<&'static str>> {
+    let cur = db().lock().unwrap();
+    let mut select = cur.prepare("SELECT * FROM users WHERE name=?1").unwrap();
+    let mut query = select.query((user,)).unwrap();
+    if query.next().unwrap().is_none() {
+        return status::Custom(
+            Status::NotFound,
+            content::RawJson("{\"message\": \"Not Found\"}".into()),
+        );
+    };
+
+    let mut select = cur
+        .prepare("SELECT id FROM reports WHERE type = \"user\" AND resource_id = ?1")
+        .unwrap();
+    let mut rows = select.query((user,)).unwrap();
+
+    if rows.next().unwrap().is_some() {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"User already reported\"}"),
+        );
+    }
+
+    let report_category = match report.category {
+        0 => "Inappropriate or graphic",
+        1 => "Copyrighted or stolen material",
+        2 => "Harassment or bullying",
+        3 => "Spam",
+        4 => "Malicious links (such as malware)",
+        _ => {
+            return status::Custom(
+                Status::BadRequest,
+                content::RawJson("{\"message\": \"Invalid category\"}"),
+            );
+        }
+    };
+
+    cur.execute(
+        "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"user\")",
+        (
+            token.user,
+            format!("{}|{}", &report.category, &report.reason),
+            user,
+        ),
+    )
+    .unwrap();
+
+    if let Some(webhook_url) = report_webhook() {
+        let user = user.to_owned();
+
+        tokio::spawn(async move {
+            let url: &str = &webhook_url;
+            let client = WebhookClient::new(url);
+
+            client
+                .send(move |message| {
+                    message.embed(|embed| {
+                        embed
+                            .title(&format!(
+                                "🛡️ https://dev.hatch.lol/user/?u={} has been reported. Check the DB for more info",
+                                user
+                            ))
+                            .description(&format!(
+                                "**Reason**\n```\n{}\n\n{}\n```",
+                                report_category, report.reason
+                            ))
+                    })
+                })
+                .await
+                .unwrap();
+        });
+    }
+
+    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }

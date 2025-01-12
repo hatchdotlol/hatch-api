@@ -24,7 +24,7 @@ use webhook::client::WebhookClient;
 use zip::ZipArchive;
 
 use crate::{
-    config::{ASSET_LIMIT, PROJECTS_BUCKET}, db::{db, projects}, logging_webhook, structs::Author, token_guard::Token
+    config::{ASSET_LIMIT, PROJECTS_BUCKET}, db::{db, projects}, logging_webhook, report_webhook, structs::{Author, Report}, token_guard::Token
 };
 
 #[derive(FromForm)]
@@ -41,7 +41,7 @@ struct Project {
 }
 
 pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: index, project, project_content]
+    openapi_get_routes_spec![settings: index, project, project_content, report_project]
 }
 
 /// Gets the next usable project ID and makes a new project
@@ -307,13 +307,82 @@ pub async fn project_content(
 }
 
 #[openapi(tag = "Projects")]
-#[get("/<id>/report")]
+#[post(
+    "/<id>/report",
+    format = "application/json",
+    data = "<report>"
+)]
 pub async fn report_project(
     token: Token<'_>,
-    id: u32
-) -> status::Custom<content::RawJson<String>> {
-    status::Custom(
-        Status::Ok,
-        content::RawJson("{\"message\": \"todo\"}".into())
+    id: u32,
+    report: Json<Report>
+) -> status::Custom<content::RawJson<&'static str>> {
+    let cur = db().lock().unwrap();
+    let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut query = select.query((id,)).unwrap();
+    if query.next().unwrap().is_none() {
+        return status::Custom(
+            Status::NotFound,
+            content::RawJson("{\"message\": \"Not Found\"}".into()),
+        );
+    };
+
+    let mut select = cur
+        .prepare("SELECT id FROM reports WHERE type = \"project\" AND resource_id = ?1")
+        .unwrap();
+    let mut rows = select.query((id,)).unwrap();
+
+    if rows.next().unwrap().is_some() {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Project already reported\"}"),
+        );
+    }
+
+    let report_category = match report.category {
+        0 => "Inappropriate or graphic",
+        1 => "Copyrighted or stolen material",
+        2 => "Harassment or bullying",
+        3 => "Spam",
+        4 => "Malicious links (such as malware)",
+        _ => {
+            return status::Custom(
+                Status::BadRequest,
+                content::RawJson("{\"message\": \"Invalid category\"}"),
+            );
+        },
+    };
+
+    cur.execute(
+        "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"project\")",
+        (token.user, format!("{}|{}", &report.category, &report.reason), id),
     )
+    .unwrap();
+
+    if let Some(webhook_url) = report_webhook() {
+        tokio::spawn(async move {
+            let url: &str = &webhook_url;
+            let client = WebhookClient::new(url);
+
+            client
+                .send(move |message| {
+                    message.embed(|embed| {
+                        embed
+                            .title(&format!(
+                            "🛡️ https://dev.hatch.lol/project/?id={} has been reported. Check the DB for more info",
+                            id
+                        ))
+                            .description(&format!(
+                                "**Reason**\n```\n{}\n\n{}\n```",
+                                report_category,
+                                report.reason
+                            ))
+                    })
+                })
+                .await
+                .unwrap();
+        });
+    }
+
+    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
