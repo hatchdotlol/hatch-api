@@ -194,7 +194,7 @@ pub fn register(
     let email = creds.email.clone().unwrap();
 
     tokio::spawn(async move {
-        let mut description = "";
+        let mut description: String = "".into();
 
         let send = minreq::post(format!("{}/api/v1/send/message", postal_url()))
             .with_body(
@@ -260,15 +260,15 @@ pub fn register(
                     .as_str()
                     .is_some();
                 description = if success {
-                    "✅ We were able to send a verification email to them via Resend."
+                    "✅ We were able to send a verification email to them via Resend.".into()
                 } else {
-                    "❌ We could **not** send a verification email via Resend."
+                    "❌ We could **not** send a verification email via Resend.".into()
                 }
             } else {
-                description = format!("❌ We could **not** send a verification email via Postal ({} error). Resend is not configured.", delivery_status).as_str()
+                description = format!("❌ We could **not** send a verification email via Postal ({} error). Resend is not configured.", delivery_status)
             }
         } else {
-            description = "✅ We were able to send a verification to them via Postal."
+            description = "✅ We were able to send a verification to them via Postal.".into()
         }
         let description = format!("{} The link to verify is: {}", &description, &link);
 
