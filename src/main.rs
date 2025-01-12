@@ -61,7 +61,7 @@ fn rocket() -> _ {
         "https://warp.algebrahelp.org",
         "https://forums.hatch.lol",
         "https://jabin.is-a.dev",
-        "https://jab11n.tech",
+        "https://hatch.jab11n.tech",
     ]);
 
     // You can also deserialize this
