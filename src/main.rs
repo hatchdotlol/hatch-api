@@ -60,6 +60,8 @@ fn rocket() -> _ {
         "https://hatchdotlol.github.io",
         "https://warp.algebrahelp.org",
         "https://forums.hatch.lol",
+        "https://jabin.is-a.dev",
+        "https://jab11n.tech",
     ]);
 
     // You can also deserialize this
