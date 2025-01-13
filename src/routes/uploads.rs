@@ -13,8 +13,8 @@ use rocket::http::{ContentType, Status};
 use rocket::response::{content, status};
 use rocket_okapi::okapi::openapi3::OpenApi;
 use rocket_okapi::settings::OpenApiSettings;
-use tokio::io::AsyncReadExt;
 use rocket_okapi::{openapi, openapi_get_routes_spec};
+use tokio::io::AsyncReadExt;
 
 #[derive(FromForm)]
 pub struct Upload<'f> {
@@ -144,7 +144,7 @@ pub async fn update_pfp(
 /// # Get Hatch profile picture
 ///
 /// Returns 200 OK with image file stream (empty image for non-existent users)
-/// (this really should not be the case!) 
+/// (this really should not be the case!)
 #[openapi(tag = "Uploads")]
 #[get("/pfp/<user>")]
 pub async fn user(user: &str) -> Result<Vec<u8>, Status> {

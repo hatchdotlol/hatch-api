@@ -319,7 +319,8 @@ pub fn postal_key() -> &'static str {
 
 pub fn backup_resend_key() -> Option<&'static str> {
     static RESEND_KEY: OnceLock<String> = OnceLock::new();
-    let resend_key = RESEND_KEY.get_or_init(|| env::var("RESEND_KEY").expect("RESEND_KEY not present"));
+    let resend_key =
+        RESEND_KEY.get_or_init(|| env::var("RESEND_KEY").expect("RESEND_KEY not present"));
     if resend_key == "" {
         None
     } else {

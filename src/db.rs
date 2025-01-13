@@ -94,7 +94,8 @@ pub fn db() -> &'static Mutex<Connection> {
                 visible INTEGER NOT NULL
             )",
             (),
-        ).unwrap();
+        )
+        .unwrap();
 
         conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 

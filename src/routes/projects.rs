@@ -1,7 +1,8 @@
 use std::path::Path;
 
+use crate::rocket::futures::StreamExt;
 use minio::s3::builders::ObjectContent;
-use minio::s3::types::S3Api;
+use minio::s3::types::{S3Api, ToStream};
 use rocket::{
     form::Form,
     fs::TempFile,
@@ -9,6 +10,7 @@ use rocket::{
     response::{content, status, Responder},
     serde::json::Json,
 };
+use rocket_governor::RocketGovernor;
 use rocket_okapi::{
     gen::OpenApiGenerator,
     okapi::openapi3::{OpenApi, Responses},
@@ -24,7 +26,12 @@ use webhook::client::WebhookClient;
 use zip::ZipArchive;
 
 use crate::{
-    config::{ASSET_LIMIT, PROJECTS_BUCKET}, db::{db, projects}, logging_webhook, report_webhook, structs::{Author, Report}, token_guard::Token
+    config::{ASSET_LIMIT, PROJECTS_BUCKET},
+    db::{db, projects},
+    limit_guard::OnePerMinute,
+    logging_webhook, report_webhook,
+    structs::{Author, Report},
+    token_guard::Token,
 };
 
 #[derive(FromForm)]
@@ -34,6 +41,13 @@ pub struct Upload<'f> {
     description: String,
 }
 
+#[derive(FromForm)]
+pub struct Update<'f> {
+    file: Option<TempFile<'f>>,
+    title: Option<String>,
+    description: Option<String>,
+}
+
 struct Project {
     user_id: u32,
     title: String,
@@ -41,7 +55,7 @@ struct Project {
 }
 
 pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: index, project, project_content, report_project]
+    openapi_get_routes_spec![settings: index, project, project_content, report_project, update_project]
 }
 
 /// Gets the next usable project ID and makes a new project
@@ -72,6 +86,7 @@ fn next_project_id(p: Project) -> u32 {
 pub async fn index(
     token: Token<'_>,
     form: Form<Upload<'_>>,
+    // _l: RocketGovernor<'_, OnePerMinute>,
 ) -> status::Custom<content::RawJson<String>> {
     match form.file.content_type() {
         Some(_content_type) => {
@@ -171,6 +186,167 @@ pub async fn index(
     )
 }
 
+fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
+    let cur = db().lock().unwrap();
+    let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut query = select.query((id,)).unwrap();
+    let Some(project) = query.next().unwrap() else {
+        return Some(Status::NotFound);
+    };
+
+    let author_id: u32 = project.get(1).unwrap();
+
+    if !project.get::<usize, bool>(5).unwrap() {
+        if token.is_none() || token.is_some_and(|t| t.user != author_id) {
+            return Some(Status::NotFound);
+        }
+    }
+
+    None
+}
+
+#[openapi(skip)]
+#[post("/<id>/update", format = "multipart/form-data", data = "<form>")]
+pub async fn update_project(
+    token: Token<'_>,
+    _l: RocketGovernor<'_, OnePerMinute>,
+    id: u32,
+    form: Form<Update<'_>>,
+) -> status::Custom<content::RawJson<&'static str>> {
+    if checks(Some(token), id).is_some() {
+        return status::Custom(
+            Status::NotFound,
+            content::RawJson("{\"message\": \"Not Found\"}".into()),
+        );
+    }
+
+    if form
+        .title
+        .as_ref()
+        .is_some_and(|t| t.is(Type::EVASIVE) || t.is(Type::INAPPROPRIATE))
+    {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson(r#"{"error": "Bad project title"}"#.into()),
+        );
+    }
+
+    let mut project_put = 0;
+
+    if let Some(file) = &form.file {
+        match file.content_type() {
+            Some(_content_type) => {
+                if !_content_type.0.is_zip() {
+                    return status::Custom(
+                        Status::BadRequest,
+                        content::RawJson(r#"{"error": "Unsupported file type"}"#.into()),
+                    );
+                }
+            }
+            None => {
+                return status::Custom(
+                    Status::BadRequest,
+                    content::RawJson(r#"{"error": "No content type provided"}"#.into()),
+                );
+            }
+        };
+
+        let client = projects().lock().await;
+
+        let mut buf = BufReader::new(File::open(file.path().unwrap()).unwrap());
+        let mut zip = ZipArchive::new(&mut buf).unwrap();
+
+        for i in 0..zip.len() {
+            let entry = zip.by_index(i).unwrap();
+            let filename = entry.name();
+            if entry.is_dir()
+                || entry.size() > ASSET_LIMIT
+                || !(filename.ends_with(".png")
+                    || filename.ends_with(".jpg")
+                    || filename.ends_with(".jpeg")
+                    || filename.ends_with(".bmp")
+                    || filename.ends_with(".svg")
+                    || filename.ends_with(".wav")
+                    || filename.ends_with(".ogg")
+                    || filename.ends_with(".mp3")
+                    || filename == "project.json")
+            {
+                return status::Custom(
+                    Status::BadRequest,
+                    content::RawJson(r#"{"error": "💣"}"#.into()),
+                );
+            }
+        }
+
+        let project = format!("{}.sb3", id);
+
+        let content = ObjectContent::from(Path::new(file.path().unwrap().to_str().unwrap()));
+        let resp = client
+            .put_object_content(&PROJECTS_BUCKET, &project, content)
+            .send()
+            .await;
+        project_put = if resp.is_ok() { 2 } else { 1 }
+    }
+
+    if (&form.title).is_some() || (&form.description).is_some() {
+        let cur = db().lock().unwrap();
+        if (&form.title).is_some() && (&form.description).is_none() {
+            cur.execute(
+                "UPDATE projects SET title = ?1 WHERE id = ?2",
+                (&form.title, id),
+            )
+            .unwrap();
+        } else if (&form.title).is_none() && (&form.description).is_some() {
+            cur.execute(
+                "UPDATE projects SET description = ?1 WHERE id = ?2",
+                (&form.description, id),
+            )
+            .unwrap();
+        } else {
+            cur.execute(
+                "UPDATE projects SET title = ?1, description = ?2 WHERE id = ?3",
+                (&form.title, &form.description, id),
+            )
+            .unwrap();
+        }
+    }
+
+    if let Some(webhook_url) = logging_webhook() {
+        let title = form.title.clone().unwrap_or("[Unchanged title]".into());
+        let desc = form
+            .description
+            .clone()
+            .unwrap_or("[Unchanged description]".into());
+        let success = format!("```\n{title}\n---\n{desc}\n```\n") + match project_put {
+            0 => "The project file was not updated",
+            1 => {
+                "❌ The updated project file could not be put on the servers, <@817057495503339600>"
+            }
+            2 => "✅ We stored the updated project file on the servers",
+            _ => unimplemented!(),
+        };
+        tokio::spawn(async move {
+            let url: &str = &webhook_url;
+            let client = WebhookClient::new(url);
+            client
+                .send(move |message| {
+                    message.embed(|embed| {
+                        embed
+                            .title(&format!(
+                                "https://dev.hatch.lol/project?id={} was updated",
+                                id
+                            ))
+                            .description(&success)
+                    })
+                })
+                .await
+                .unwrap();
+        });
+    }
+
+    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
+}
+
 #[derive(Debug, Serialize, JsonSchema)]
 pub struct ProjectInfo {
     id: u32,
@@ -178,18 +354,10 @@ pub struct ProjectInfo {
     upload_ts: i64,
     title: String,
     description: String,
+    version: Option<usize>,
 }
 
-/// # Get Hatch project info
-///
-/// Requires `Token` header for unshared projects.
-/// Returns 200 OK with `ProjectInfo`
-#[openapi(tag = "Projects")]
-#[get("/<id>")]
-pub fn project(
-    token: Option<Token<'_>>,
-    id: u32,
-) -> Result<Json<ProjectInfo>, Status> {
+fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
     let cur = db().lock().unwrap();
     let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();
@@ -211,36 +379,73 @@ pub fn project(
         }
     }
 
-    Ok(Json(ProjectInfo {
+    return Ok(ProjectInfo {
         id: project.get(1).unwrap(),
         author: Author {
             username: author.get(1).unwrap(),
             profile_picture: author.get(7).unwrap(),
-            display_name: Some(author.get(3).unwrap())
+            display_name: Some(author.get(3).unwrap()),
         },
         upload_ts: project.get(2).unwrap(),
         title: project.get(3).unwrap(),
         description: project.get(4).unwrap(),
-    }))
+        version: None,
+    });
 }
 
-fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
-    let cur = db().lock().unwrap();
-    let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
-    let mut query = select.query((id,)).unwrap();
-    let Some(project) = query.next().unwrap() else {
-        return Some(Status::NotFound);
+/// # Get Hatch project info
+///
+/// Requires `Token` header for unshared projects.
+/// Returns 200 OK with `ProjectInfo`
+#[openapi(tag = "Projects")]
+#[get("/<id>")]
+pub async fn project(token: Option<Token<'_>>, id: u32) -> Result<Json<ProjectInfo>, Status> {
+    let Ok(project) = get_project(token, id) else {
+        return Err(Status::NotFound);
     };
 
-    let author_id: u32 = project.get(1).unwrap();
+    let filename = format!("{id}.sb3");
 
-    if !project.get::<usize, bool>(5).unwrap() {
-        if token.is_none() || token.is_some_and(|t| t.user != author_id) {
-            return Some(Status::NotFound);
+    let client = projects().lock().await;
+
+    let file = client
+        .get_object(&PROJECTS_BUCKET, &filename)
+        .send()
+        .await
+        .unwrap();
+    let latest_version = file.version_id.unwrap();
+
+    let mut files = client
+        .list_objects(&PROJECTS_BUCKET)
+        .include_versions(true)
+        .to_stream()
+        .await;
+
+    let mut versions: Vec<String> = vec![];
+
+    while let Some(result) = files.next().await {
+        match result {
+            Ok(resp) => {
+                for item in resp.contents {
+                    if item.name == filename {
+                        versions.push(item.version_id.unwrap())
+                    }
+                }
+            }
+            Err(e) => println!("Error: {:?}", e),
         }
     }
 
-    None
+    Ok(Json(ProjectInfo {
+        version: Some(
+            versions
+                .iter()
+                .rev()
+                .position(move |v| v == &latest_version)
+                .unwrap() + 1,
+        ),
+        ..project
+    }))
 }
 
 // ...rocket why must you suck so bad at anything non-text related
@@ -306,16 +511,13 @@ pub async fn project_content(
     ))
 }
 
+/// # Report a project
 #[openapi(tag = "Projects")]
-#[post(
-    "/<id>/report",
-    format = "application/json",
-    data = "<report>"
-)]
+#[post("/<id>/report", format = "application/json", data = "<report>")]
 pub async fn report_project(
     token: Token<'_>,
     id: u32,
-    report: Json<Report>
+    report: Json<Report>,
 ) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
     let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
@@ -350,12 +552,16 @@ pub async fn report_project(
                 Status::BadRequest,
                 content::RawJson("{\"message\": \"Invalid category\"}"),
             );
-        },
+        }
     };
 
     cur.execute(
         "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"project\")",
-        (token.user, format!("{}|{}", &report.category, &report.reason), id),
+        (
+            token.user,
+            format!("{}|{}", &report.category, &report.reason),
+            id,
+        ),
     )
     .unwrap();
 
