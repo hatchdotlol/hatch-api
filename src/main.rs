@@ -5,17 +5,17 @@ pub mod admin_guard;
 pub mod config;
 pub mod db;
 pub mod entropy;
+pub mod limit_guard;
 pub mod routes;
 pub mod structs;
 pub mod token_guard;
-pub mod limit_guard;
 
 use config::*;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
-use rocket_okapi::{mount_endpoints_and_merged_docs, swagger_ui::*};
 use rocket_governor::rocket_governor_catcher;
+use rocket_okapi::{mount_endpoints_and_merged_docs, swagger_ui::*};
 use routes::root::{start_time, version};
 use routes::{auth, projects, root, uploads, users};
 
@@ -31,9 +31,7 @@ fn not_found() -> status::Custom<content::RawJson<String>> {
 fn bad_request() -> status::Custom<content::RawJson<String>> {
     status::Custom(
         Status::BadRequest,
-        content::RawJson(String::from(
-            "{\"message\": \"Bad Request\"}",
-        )),
+        content::RawJson(String::from("{\"message\": \"Bad Request\"}")),
     )
 }
 
@@ -83,7 +81,10 @@ fn rocket() -> _ {
     .unwrap();
 
     let mut app = rocket::build()
-        .register("/", catchers![not_found, bad_request, rocket_governor_catcher])
+        .register(
+            "/",
+            catchers![not_found, bad_request, rocket_governor_catcher],
+        )
         .mount(
             "/docs/",
             make_swagger_ui(&SwaggerUIConfig {
