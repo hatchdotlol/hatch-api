@@ -72,6 +72,7 @@ fn create_project(p: Project) -> i64 {
     cur.last_insert_rowid()
 }
 
+#[openapi(tag = "Projects")]
 #[post("/", format = "multipart/form-data", data = "<form>")]
 pub async fn index(
     token: Token<'_>,
@@ -195,11 +196,11 @@ fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
     None
 }
 
-#[openapi(skip)]
+#[openapi(tag = "Projects")]
 #[post("/<id>/update", format = "multipart/form-data", data = "<form>")]
 pub async fn update_project(
     token: Token<'_>,
-    _l: RocketGovernor<'_, OnePerMinute>,
+    // _l: RocketGovernor<'_, OnePerMinute>,
     id: u32,
     form: Form<Update<'_>>,
 ) -> status::Custom<content::RawJson<&'static str>> {
