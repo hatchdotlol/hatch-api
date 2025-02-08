@@ -72,7 +72,6 @@ fn create_project(p: Project) -> i64 {
     cur.last_insert_rowid()
 }
 
-#[openapi(skip)]
 #[post("/", format = "multipart/form-data", data = "<form>")]
 pub async fn index(
     token: Token<'_>,
