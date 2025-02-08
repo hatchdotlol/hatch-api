@@ -58,13 +58,8 @@ pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, O
     openapi_get_routes_spec![settings: index, project, project_content, report_project, update_project]
 }
 
-/// Gets the next usable project ID and makes a new project
-fn next_project_id(p: Project) -> u32 {
+fn create_project(p: Project) -> i64 {
     let cur = db().lock().unwrap();
-    let mut select = cur
-        .prepare("SELECT id FROM projects WHERE id=(SELECT max(id) FROM projects)")
-        .unwrap();
-    let mut rows = select.query(()).unwrap();
     cur.execute(
         "INSERT INTO projects (author, upload_ts, title, description, shared) VALUES (?1, ?2, ?3, ?4, TRUE)", 
         (
@@ -74,11 +69,7 @@ fn next_project_id(p: Project) -> u32 {
             p.description,
         )
     ).unwrap();
-    if let Some(row) = rows.next().unwrap() {
-        row.get::<usize, u32>(0).unwrap() + 1
-    } else {
-        0
-    }
+    cur.last_insert_rowid()
 }
 
 #[openapi(skip)]
@@ -138,11 +129,11 @@ pub async fn index(
     }
 
     let client = projects().lock().await;
-    let pid = next_project_id(Project {
+    let pid = create_project(Project {
         user_id: token.user,
         title: form.title.clone(),
         description: form.description.clone(),
-    }) - 1;
+    });
 
     let project = format!("{}.sb3", pid);
 

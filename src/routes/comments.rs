@@ -260,19 +260,9 @@ pub fn post_project_comment(
     )
     .unwrap();
 
-    let mut select = cur
-        .prepare("SELECT id FROM comments WHERE id=(SELECT max(id) FROM comments)")
-        .unwrap();
-    let mut rows = select.query(()).unwrap();
-    let cid = if let Some(row) = rows.next().unwrap() {
-        row.get::<usize, u32>(0).unwrap()
-    } else {
-        0
-    };
-
     status::Custom(
         Status::Ok,
-        content::RawJson(format!("{{\"success\": true, \"id\": {}}}", cid)),
+        content::RawJson(format!("{{\"success\": true, \"id\": {}}}", cur.last_insert_rowid())),
     )
 }
 
