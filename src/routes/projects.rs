@@ -11,13 +11,6 @@ use rocket::{
     serde::json::Json,
 };
 use rocket_governor::RocketGovernor;
-use rocket_okapi::{
-    gen::OpenApiGenerator,
-    okapi::openapi3::{OpenApi, Responses},
-    openapi, openapi_get_routes_spec,
-    response::OpenApiResponderInner,
-    settings::OpenApiSettings,
-};
 use rustrict::{CensorStr, Type};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -54,10 +47,6 @@ struct Project {
     description: String,
 }
 
-pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: index, project, project_content, report_project, update_project]
-}
-
 fn create_project(p: Project) -> i64 {
     let cur = db().lock().unwrap();
     cur.execute(
@@ -72,7 +61,6 @@ fn create_project(p: Project) -> i64 {
     cur.last_insert_rowid()
 }
 
-#[openapi(tag = "Projects")]
 #[post("/", format = "multipart/form-data", data = "<form>")]
 pub async fn index(
     token: Token<'_>,
@@ -196,7 +184,6 @@ fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
     None
 }
 
-#[openapi(tag = "Projects")]
 #[post("/<id>/update", format = "multipart/form-data", data = "<form>")]
 pub async fn update_project(
     token: Token<'_>,
@@ -384,11 +371,6 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
     });
 }
 
-/// # Get Hatch project info
-///
-/// Requires `Token` header for unshared projects.
-/// Returns 200 OK with `ProjectInfo`
-#[openapi(tag = "Projects")]
 #[get("/<id>")]
 pub async fn project(token: Option<Token<'_>>, id: u32) -> Result<Json<ProjectInfo>, Status> {
     let Ok(project) = get_project(token, id) else {
@@ -433,7 +415,8 @@ pub async fn project(token: Option<Token<'_>>, id: u32) -> Result<Json<ProjectIn
                 .iter()
                 .rev()
                 .position(move |v| v == &latest_version)
-                .unwrap() + 1,
+                .unwrap()
+                + 1,
         ),
         ..project
     }))
@@ -456,19 +439,6 @@ impl<'r, 'o: 'r, T: Responder<'r, 'o>> ContentResponder<T> {
     }
 }
 
-impl OpenApiResponderInner for ContentResponder<Vec<u8>> {
-    fn responses(
-        _gen: &mut OpenApiGenerator,
-    ) -> rocket_okapi::Result<rocket_okapi::okapi::openapi3::Responses> {
-        Ok(Responses::default())
-    }
-}
-
-/// # Get Hatch project file
-///
-/// Requires `Token` header for unshared projects.
-/// Returns 404 Not Found or 200 OK with project file stream
-#[openapi(tag = "Projects")]
 #[get("/<id>/content")]
 pub async fn project_content(
     token: Option<Token<'_>>,
@@ -502,8 +472,6 @@ pub async fn project_content(
     ))
 }
 
-/// # Report a project
-#[openapi(tag = "Projects")]
 #[post("/<id>/report", format = "application/json", data = "<report>")]
 pub async fn report_project(
     token: Token<'_>,

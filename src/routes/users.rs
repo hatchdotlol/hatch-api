@@ -4,9 +4,6 @@ use rocket::{
     serde::json::Json,
 };
 use rocket_governor::RocketGovernor;
-use rocket_okapi::{
-    okapi::openapi3::OpenApi, openapi, openapi_get_routes_spec, settings::OpenApiSettings,
-};
 use rusqlite::types::Null;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -32,15 +29,6 @@ pub struct UserInfo<'r> {
     banner_image: Option<&'r str>,
 }
 
-pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: update_user_info, user, unfollow, follow, followers, following, report_user]
-}
-
-/// # Update account info
-///
-/// Requires `Token` header and `UserInfo` JSON body.
-/// Returns 200 OK with `{"success": true}` or 400 Bad Request with `{"error": "..."}`
-#[openapi(tag = "Users", ignore = "_l")]
 #[post("/", format = "application/json", data = "<user_info>")]
 pub fn update_user_info(
     token: Token<'_>,
@@ -114,10 +102,6 @@ pub fn update_user_info(
     (Status::Ok, Json(json!({"success": true})))
 }
 
-/// # Get public user info
-///
-/// Returns 404 Not Found with `{"message": "..."}` or 200 Ok with `User` info
-#[openapi(tag = "Users")]
 #[get("/<user>")]
 pub fn user(user: &str) -> Result<Json<User>, Status> {
     let cur = db().lock().unwrap();
@@ -179,11 +163,6 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
     }))
 }
 
-/// # Follow a user
-///
-/// Requires `Token` header.
-/// Returns 404 Not Found or 400 Bad Request with `{"message": ""}` or 200 OK with `{"success": true}`
-#[openapi(tag = "Users")]
 #[post("/<user>/follow")]
 pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -238,11 +217,6 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(json!({"success": true})))
 }
 
-/// # Unfollow a user
-///
-/// Requires `Token` header.
-/// Returns 404 Not Found or 400 Bad Request with `{"message": ""}` or 200 OK with `{"success": true}`
-#[openapi(tag = "Users")]
 #[post("/<user>/unfollow")]
 pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
@@ -324,12 +298,6 @@ pub struct Followers {
     followers: Vec<User>,
 }
 
-// TODO: improve this spaghetti
-
-/// # Get user followers
-///
-/// Returns 404 Not Found or 200 OK with list of `User`
-#[openapi(tag = "Users")]
 #[get("/<user>/followers")]
 pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
     let cur = db().lock().unwrap();
@@ -383,10 +351,6 @@ pub struct Following {
     following: Vec<User>,
 }
 
-/// # Get user following
-///
-/// Returns 404 Not Found or 200 OK with list of `User`
-#[openapi(tag = "Users")]
 #[get("/<user>/following")]
 pub fn following(user: &str) -> Result<Json<Following>, Status> {
     let cur = db().lock().unwrap();
@@ -435,8 +399,6 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
     Ok(Json(Following { following }))
 }
 
-/// # Report a user
-#[openapi(tag = "Users")]
 #[post("/<user>/report", format = "application/json", data = "<report>")]
 pub async fn report_user(
     token: Token<'_>,

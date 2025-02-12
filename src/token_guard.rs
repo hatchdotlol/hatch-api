@@ -3,10 +3,6 @@ use rocket::{
     request::{FromRequest, Outcome},
     Request,
 };
-use rocket_okapi::{
-    okapi::openapi3::{Object, SecurityRequirement, SecurityScheme, SecuritySchemeData},
-    request::{OpenApiFromRequest, RequestHeaderInput},
-};
 
 use crate::db::db;
 use crate::structs::AuthError;
@@ -58,29 +54,5 @@ impl<'r> FromRequest<'r> for Token<'r> {
             }),
             Some(_) | None => Outcome::Error((Status::Unauthorized, AuthError::Invalid)),
         }
-    }
-}
-
-impl<'r> OpenApiFromRequest<'r> for Token<'r> {
-    fn from_request_input(
-        _gen: &mut rocket_okapi::gen::OpenApiGenerator,
-        _name: String,
-        _required: bool,
-    ) -> rocket_okapi::Result<rocket_okapi::request::RequestHeaderInput> {
-        let security_scheme = SecurityScheme {
-            description: Some("Requires user token to access".to_owned()),
-            data: SecuritySchemeData::ApiKey {
-                name: "Token".to_owned(),
-                location: "header".to_owned(),
-            },
-            extensions: Object::default(),
-        };
-        let mut security_req = SecurityRequirement::new();
-        security_req.insert("TokenAuth".to_owned(), Vec::new());
-        Ok(RequestHeaderInput::Security(
-            "TokenAuth".to_owned(),
-            security_scheme,
-            security_req,
-        ))
     }
 }

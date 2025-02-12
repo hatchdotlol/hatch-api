@@ -13,10 +13,11 @@ pub mod token_guard;
 use config::*;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
+use rocket::{Build, Rocket};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
 use rocket_governor::rocket_governor_catcher;
-use rocket_okapi::{mount_endpoints_and_merged_docs, swagger_ui::*};
 use routes::root::{start_time, version};
+use routes::*;
 use routes::{auth, projects, root, uploads, users};
 
 #[catch(404)]
@@ -36,7 +37,7 @@ fn bad_request() -> status::Custom<content::RawJson<String>> {
 }
 
 #[launch]
-fn rocket() -> _ {
+fn rocket() -> Rocket<Build> {
     dotenv::dotenv().ok();
 
     // pre initialize to save headache
@@ -62,7 +63,6 @@ fn rocket() -> _ {
         "https://hatch.jab11n.tech",
     ]);
 
-    // You can also deserialize this
     let cors = CorsOptions {
         allowed_origins,
         allowed_methods: vec![Method::Get, Method::Post, Method::Delete, Method::Patch]
@@ -82,29 +82,54 @@ fn rocket() -> _ {
     .to_cors()
     .unwrap();
 
-    let mut app = rocket::build()
+    rocket::build()
         .register(
             "/",
             catchers![not_found, bad_request, rocket_governor_catcher],
         )
+        .mount("/", routes![root::comic_sans, root::index])
+        .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount(
-            "/docs/",
-            make_swagger_ui(&SwaggerUIConfig {
-                url: "../openapi.json".to_owned(),
-                ..Default::default()
-            }),
+            "/auth",
+            routes![
+                auth::register,
+                auth::login,
+                auth::logout,
+                auth::verify,
+                auth::delete,
+                auth::me
+            ],
         )
-        .attach(cors);
-
-    let openapi_settings = rocket_okapi::settings::OpenApiSettings::default();
-    mount_endpoints_and_merged_docs! {
-        app, "/".to_owned(), openapi_settings,
-        "/" => root::get_routes_and_docs(&openapi_settings),
-        "/auth" => auth::get_routes_and_docs(&openapi_settings),
-        "/projects" => projects::get_routes_and_docs(&openapi_settings),
-        "/uploads" => uploads::get_routes_and_docs(&openapi_settings),
-        "/users" => users::get_routes_and_docs(&openapi_settings)
-    };
-
-    app
+        .mount(
+            "/projects",
+            routes![
+                projects::index,
+                projects::project,
+                projects::project_content,
+                projects::update_project
+            ],
+        )
+        .mount(
+            "/users",
+            routes![
+                users::user,
+                users::report_user,
+                users::update_user_info,
+                users::follow,
+                users::unfollow,
+                users::followers,
+                users::following
+            ],
+        )
+        .mount(
+            "/",
+            routes![
+                comments::user_comments,
+                comments::post_project_comment,
+                comments::delete_project_comment,
+                comments::report_project_comment,
+                comments::project_comments
+            ],
+        )
+        .attach(cors)
 }

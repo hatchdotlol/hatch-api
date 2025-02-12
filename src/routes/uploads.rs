@@ -11,18 +11,11 @@ use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::http::{ContentType, Status};
 use rocket::response::{content, status};
-use rocket_okapi::okapi::openapi3::OpenApi;
-use rocket_okapi::settings::OpenApiSettings;
-use rocket_okapi::{openapi, openapi_get_routes_spec};
 use tokio::io::AsyncReadExt;
 
 #[derive(FromForm)]
 pub struct Upload<'f> {
     file: TempFile<'f>,
-}
-
-pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: update_pfp, user]
 }
 
 fn get_user_pfp(user: u32) -> String {
@@ -37,7 +30,6 @@ fn get_user_pfp(user: u32) -> String {
     row.get::<usize, String>(0).unwrap()
 }
 
-#[openapi(skip)]
 #[post("/pfp", format = "multipart/form-data", data = "<form>")]
 pub async fn update_pfp(
     token: Token<'_>,
@@ -141,11 +133,6 @@ pub async fn update_pfp(
     status::Custom(Status::Ok, content::RawJson(String::from("asfdsfd")))
 }
 
-/// # Get Hatch profile picture
-///
-/// Returns 200 OK with image file stream (empty image for non-existent users)
-/// (this really should not be the case!)
-#[openapi(tag = "Uploads")]
 #[get("/pfp/<user>")]
 pub async fn user(user: &str) -> Result<Vec<u8>, Status> {
     let db = projects().lock().await;

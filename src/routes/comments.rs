@@ -4,7 +4,6 @@ use rocket::{
     serde::json::Json,
 };
 use rocket_governor::RocketGovernor;
-use rocket_okapi::openapi;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use webhook::client::WebhookClient;
@@ -39,10 +38,6 @@ pub struct Comments {
     comments: Vec<Comment>,
 }
 
-/// # Get Hatch project comments
-///
-/// Returns 200 OK with `Comments`
-#[openapi(tag = "Comments")]
 #[get("/projects/<id>/comments")]
 pub fn project_comments(id: u32) -> Json<Comments> {
     let cur = db().lock().unwrap();
@@ -64,7 +59,6 @@ pub fn project_comments(id: u32) -> Json<Comments> {
         .unwrap()
         .map(|x| x.unwrap())
         .collect();
-    dbg!(&hidden_threads);
 
     let comments: Vec<_> = select
         .query_map((Location::User as u8, id), |row| {
@@ -99,10 +93,6 @@ pub fn project_comments(id: u32) -> Json<Comments> {
     Json(Comments { comments })
 }
 
-/// # Get Hatch user comments
-///
-/// Returns 200 OK with `Comments`
-#[openapi(tag = "Comments", ignore = "_l")]
 #[get("/users/<user>/comments")]
 pub fn user_comments(
     user: &str,
@@ -136,7 +126,6 @@ pub fn user_comments(
         .unwrap()
         .map(|x| x.unwrap())
         .collect();
-    dbg!(&hidden_threads);
 
     let comments: Vec<_> = select
         .query_map((Location::User as u8, id), |row| {
@@ -177,8 +166,6 @@ pub struct PostComment {
     reply_to: Option<u32>,
 }
 
-/// # Post a user comment
-#[openapi(tag = "Comments", ignore = "_l")]
 #[post(
     "/projects/<id>/comments",
     format = "application/json",
@@ -262,12 +249,13 @@ pub fn post_project_comment(
 
     status::Custom(
         Status::Ok,
-        content::RawJson(format!("{{\"success\": true, \"id\": {}}}", cur.last_insert_rowid())),
+        content::RawJson(format!(
+            "{{\"success\": true, \"id\": {}}}",
+            cur.last_insert_rowid()
+        )),
     )
 }
 
-/// # Delete a user comment
-#[openapi(tag = "Comments", ignore = "_l")]
 #[delete("/projects/<id>/comments/<comment_id>")]
 pub fn delete_project_comment(
     token: Token<'_>,
@@ -323,8 +311,6 @@ pub fn delete_project_comment(
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
-/// # Report a user comment
-#[openapi(tag = "Comments", ignore = "_l")]
 #[post(
     "/projects/<id>/comments/<comment_id>/report",
     format = "application/json",

@@ -16,9 +16,6 @@ use rocket::http::Status;
 use rocket::response::{content, status, Redirect};
 use rocket::serde::json::Json;
 use rocket::serde::Deserialize;
-use rocket_okapi::okapi::openapi3::OpenApi;
-use rocket_okapi::settings::OpenApiSettings;
-use rocket_okapi::{openapi, openapi_get_routes_spec};
 use rustrict::{CensorStr, Type};
 
 use schemars::JsonSchema;
@@ -34,10 +31,6 @@ pub struct Credentials {
     pub email: Option<String>,
 }
 
-pub fn get_routes_and_docs(settings: &OpenApiSettings) -> (Vec<rocket::Route>, OpenApi) {
-    openapi_get_routes_spec![settings: register, login, logout, verify, me]
-}
-
 pub fn email_regex() -> &'static Regex {
     static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
     EMAIL_REGEX.get_or_init(|| {
@@ -48,12 +41,6 @@ pub fn email_regex() -> &'static Regex {
     })
 }
 
-/// # Register a Hatch account
-///
-/// May require an `Admin-Key` in headers.
-/// Requires JSON body with username, password, and email.
-/// Returns 200 OK with `{"success": true}` or 400 Bad Request with `{"message": "..."}`
-#[openapi(tag = "Auth")]
 #[post("/register", format = "application/json", data = "<creds>")]
 pub fn register(
     _key: AdminToken<'_>,
@@ -289,11 +276,6 @@ pub fn register(
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}".into()))
 }
 
-/// # Log into a Hatch account
-///
-/// Requires JSON body with username and password.
-/// Returns 200 OK with `{"token": "..."}` or 404 Not Found or 400 Bad Request with `{"message": "..."}`
-#[openapi(tag = "Auth")]
 #[post("/login", format = "application/json", data = "<creds>")]
 pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
@@ -367,11 +349,6 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
     }
 }
 
-/// # Verify a Hatch account email
-///
-/// Requires `email_token` URL param.
-/// Redirects to main site regardless of internal success
-#[openapi(tag = "Auth")]
 #[get("/verify?<email_token>")]
 pub fn verify(email_token: &str) -> Redirect {
     let cur = db().lock().unwrap();
@@ -394,11 +371,6 @@ pub fn verify(email_token: &str) -> Redirect {
     Redirect::to(uri!("https://dev.hatch.lol"))
 }
 
-/// # Log out of a Hatch account
-///
-/// Requires `Token` header.
-/// Returns 200 OK with `{"success": true}` regardless of internal success
-#[openapi(tag = "Auth")]
 #[get("/logout")]
 pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
@@ -409,11 +381,6 @@ pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
-/// # Delete a Hatch account
-///
-/// Requires `Token` header.
-/// Returns 200 OK with `{"success": true}` regardless of internal success
-#[openapi(tag = "Auth")]
 #[get("/delete")]
 pub fn delete(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
@@ -427,11 +394,6 @@ pub fn delete(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
-/// # Get current account info
-///
-/// Requires `Token` header.
-/// Returns 200 OK with `User` info
-#[openapi(tag = "Auth")]
 #[get("/me")]
 pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let cur = db().lock().unwrap();
