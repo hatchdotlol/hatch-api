@@ -7,6 +7,8 @@ use rusqlite::Connection;
 use std::sync::{Mutex, OnceLock};
 use tokio::sync::Mutex as TokioMutex;
 
+use crate::config::{minio_access_key, minio_secret_key, minio_url};
+
 /// Fetches a database connection (only one connection is made in lifetime)
 pub fn db() -> &'static Mutex<Connection> {
     static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
@@ -107,8 +109,8 @@ pub fn projects() -> &'static TokioMutex<Client> {
     static PROJECTS: OnceLock<TokioMutex<Client>> = OnceLock::new();
 
     PROJECTS.get_or_init(|| {
-        let base_url = "http://localhost:9000".parse::<BaseUrl>().unwrap();
-        let static_provider = StaticProvider::new("minioadmin", "minioadmin", None);
+        let base_url = minio_url().parse::<BaseUrl>().unwrap();
+        let static_provider = StaticProvider::new(&minio_access_key(), &minio_secret_key(), None);
 
         let client = ClientBuilder::new(base_url.clone())
             .provider(Some(Box::new(static_provider)))

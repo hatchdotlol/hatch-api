@@ -359,3 +359,20 @@ pub fn base_url() -> &'static str {
     static BASE_URL: OnceLock<String> = OnceLock::new();
     BASE_URL.get_or_init(|| env::var("BASE_URL").expect("BASE_URL not present"))
 }
+
+pub fn minio_url() -> &'static str {
+    static MINIO_URL: OnceLock<String> = OnceLock::new();
+    MINIO_URL.get_or_init(|| env::var("MINIO_URL").expect("MINIO_URL not present"))
+}
+
+pub fn minio_access_key() -> &'static str {
+    static MINIO_ACCESS_KEY: OnceLock<String> = OnceLock::new();
+    MINIO_ACCESS_KEY
+        .get_or_init(|| env::var("MINIO_ACCESS_KEY").expect("MINIO_ACCESS_KEY not present"))
+}
+
+pub fn minio_secret_key() -> &'static str {
+    static MINIO_SECRET_KEY: OnceLock<String> = OnceLock::new();
+    MINIO_SECRET_KEY
+        .get_or_init(|| env::var("MINIO_SECRET_KEY").expect("MINIO_SECRET_KEY not present"))
+}
