@@ -10,6 +10,7 @@ pub mod routes;
 pub mod structs;
 pub mod token_guard;
 
+use db::{db, projects};
 use config::*;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
@@ -41,6 +42,9 @@ fn rocket() -> Rocket<Build> {
     dotenv::dotenv().ok();
 
     // pre initialize to save headache
+    db();
+    projects();
+
     start_time();
     version();
     postal_key();
