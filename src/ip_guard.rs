@@ -16,7 +16,7 @@ pub struct ClientRealAddr {
     pub ip: IpAddr,
 }
 
-fn from_request(request: &Request<'_>) -> Option<ClientRealAddr> {
+pub fn from_request(request: &Request<'_>) -> Option<ClientRealAddr> {
     match request.real_ip() {
         Some(ip) => Some(ClientRealAddr {
             ip,

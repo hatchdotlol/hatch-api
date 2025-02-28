@@ -4,7 +4,7 @@ use rocket::{
     Request,
 };
 
-use crate::db::db;
+use crate::{db::db, ip_guard::from_request};
 use crate::structs::AuthError;
 
 pub fn is_banned(ip: &str) -> bool {
@@ -26,7 +26,7 @@ impl<'r> FromRequest<'r> for NotBanned<'r> {
     type Error = AuthError;
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let ip = &request.remote().unwrap().to_string();
+        let ip = &from_request(request).unwrap().get_ipv4_string().unwrap();
 
         if is_banned(ip) {
             Outcome::Error((Status::Unauthorized, AuthError::Invalid))
