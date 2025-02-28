@@ -80,7 +80,9 @@ pub fn db() -> &'static Mutex<Connection> {
                 upload_ts INTEGER NOT NULL,
                 title TEXT,
                 description TEXT,
-                shared INTEGER NOT NULL
+                shared INTEGER NOT NULL,
+                rating TEXT,
+                score INTEGER NOT NULL
             )",
             (),
         )

@@ -5,6 +5,7 @@ use rocket::{
     serde::json::Json,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 
 #[derive(Debug, Deserialize)]
 pub struct IP {
@@ -81,4 +82,27 @@ pub fn ip_unban(_key: AdminToken<'_>, username: &str) -> Json<Banned> {
     }
 
     Json(Banned { banned: false })
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Rating {
+    project_id: u64,
+    rating: String,
+}
+
+#[post("/set-rating", format = "application/json", data = "<rating>")]
+pub fn set_rating(rating: Json<Rating>) -> Json<Value> {
+    let ("N/A" | "E" | "7+" | "9+" | "13+") = rating.rating.as_ref() else {
+        return Json(json!({"message": "Not an age rating"}));
+    };
+
+    let cur = db().lock().unwrap();
+
+    cur.execute(
+        "UPDATE projects SET rating = ?1 WHERE id = ?2",
+        (rating.rating.to_string(), rating.project_id),
+    )
+    .unwrap();
+
+    Json(json!({"message": "success"}))
 }

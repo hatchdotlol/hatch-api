@@ -333,6 +333,7 @@ pub struct ProjectInfo {
     title: String,
     description: String,
     version: Option<usize>,
+    rating: String,
 }
 
 fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
@@ -367,6 +368,7 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
         upload_ts: project.get(2).unwrap(),
         title: project.get(3).unwrap(),
         description: project.get(4).unwrap(),
+        rating: project.get(6).unwrap(),
         version: None,
     });
 }
