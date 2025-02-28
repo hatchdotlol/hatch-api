@@ -52,7 +52,7 @@ pub fn project_comments(id: u32) -> Json<Comments> {
         .unwrap();
 
     let hidden_threads: Vec<_> = _hidden_threads
-        .query_map((Location::User as u8, id), |row| {
+        .query_map((Location::Project as u8, id), |row| {
             Ok(row.get::<usize, u32>(0).unwrap())
         })
         .unwrap()
@@ -60,13 +60,12 @@ pub fn project_comments(id: u32) -> Json<Comments> {
         .collect();
 
     let comments: Vec<_> = select
-        .query_map((Location::User as u8, id), |row| {
+        .query_map((Location::Project as u8, id), |row| {
             let author_id = row.get::<usize, u32>(2).unwrap();
             let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
             let mut _row = select.query([author_id]).unwrap();
             let author_row = _row.next().unwrap().unwrap();
             let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
-            dbg!("buh");
 
             if let Some(reply_to) = reply_to {
                 if hidden_threads.contains(&reply_to) {
