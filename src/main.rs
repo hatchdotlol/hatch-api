@@ -142,7 +142,7 @@ fn rocket() -> Rocket<Build> {
         )
         .mount(
             "/admin",
-            routes![admin::banned, admin::ip_ban, admin::ip_unban],
+            routes![admin::banned, admin::ip_ban, admin::ip_unban, admin::set_rating],
         )
         .mount(
             "/",
