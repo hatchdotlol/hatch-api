@@ -24,3 +24,8 @@ pub struct Banned {
 pub fn banned(_key: AdminToken<'_>, ip_address: Json<IP>) -> Json<Banned> {
     Json(Banned { banned: is_banned(&ip_address.ip) })
 }
+
+// #[post("/ban-ip", format = "application/json", data = "<ip_address>")]
+// pub fn ban_ip(_key: AdminToken<'_>, ip_address: Json<IP>) -> Json<Banned> {
+//     Json(Banned { banned: true })   
+// }
