@@ -66,6 +66,7 @@ pub fn project_comments(id: u32) -> Json<Comments> {
             let mut _row = select.query([author_id]).unwrap();
             let author_row = _row.next().unwrap().unwrap();
             let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
+            dbg!("buh");
 
             if let Some(reply_to) = reply_to {
                 if hidden_threads.contains(&reply_to) {
