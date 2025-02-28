@@ -9,6 +9,7 @@ pub mod limit_guard;
 pub mod routes;
 pub mod structs;
 pub mod token_guard;
+pub mod ip_guard;
 
 use db::{db, projects};
 use config::*;
@@ -34,6 +35,14 @@ fn bad_request() -> status::Custom<content::RawJson<String>> {
     status::Custom(
         Status::BadRequest,
         content::RawJson(String::from("{\"message\": \"Bad Request\"}")),
+    )
+}
+
+#[catch(401)]
+fn unauthorized() -> status::Custom<content::RawJson<String>> {
+    status::Custom(
+        Status::BadRequest,
+        content::RawJson(String::from("{\"message\": \"Unauthorized\"}")),
     )
 }
 
@@ -89,7 +98,7 @@ fn rocket() -> Rocket<Build> {
     rocket::build()
         .register(
             "/",
-            catchers![not_found, bad_request, rocket_governor_catcher],
+            catchers![not_found, bad_request, unauthorized, rocket_governor_catcher],
         )
         .mount("/", routes![root::comic_sans, root::index])
         .mount("/uploads", routes![uploads::update_pfp, uploads::user])

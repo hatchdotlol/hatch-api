@@ -10,7 +10,7 @@ use rocket::{
     response::{content, status, Responder},
     serde::json::Json,
 };
-use rocket_governor::RocketGovernor;
+// use rocket_governor::RocketGovernor;
 use rustrict::{CensorStr, Type};
 use schemars::JsonSchema;
 use serde::Serialize;
@@ -21,7 +21,7 @@ use zip::ZipArchive;
 use crate::{
     config::{ASSET_LIMIT, PROJECTS_BUCKET},
     db::{db, projects},
-    limit_guard::OnePerMinute,
+    // limit_guard::OnePerMinute,
     logging_webhook, report_webhook,
     structs::{Author, Report},
     token_guard::Token,

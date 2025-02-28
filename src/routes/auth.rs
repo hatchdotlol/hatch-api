@@ -20,6 +20,7 @@ use rustrict::{CensorStr, Type};
 
 use schemars::JsonSchema;
 use serde_json::Value;
+use std::net::SocketAddr;
 use std::sync::OnceLock;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
@@ -277,11 +278,11 @@ pub fn register(
 }
 
 #[post("/login", format = "application/json", data = "<creds>")]
-pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String>> {
+pub fn login(client_ip: SocketAddr, creds: Json<Credentials>) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT id, pw FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare("SELECT id, pw, ips FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut first_row = select.query([&creds.username]).unwrap();
 
@@ -301,6 +302,9 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
 
     let id = user.get::<usize, u32>(0).unwrap();
     let hash = user.get::<usize, String>(1).unwrap();
+    
+    let ips= user.get::<usize, String>(2).unwrap();
+    let ips = &mut ips.split("|").collect::<Vec<_>>();
 
     if bcrypt::verify(&creds.password, &hash).is_ok_and(|f| f) {
         let mut select = cur
@@ -320,7 +324,7 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
                     "INSERT INTO auth_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
                     (
                         id,
-                        token.clone(),
+                        &token,
                         format!(
                             "{}",
                             chrono::Utc::now()
@@ -336,6 +340,17 @@ pub fn login(creds: Json<Credentials>) -> status::Custom<content::RawJson<String
                 .unwrap();
             }
         }
+
+        let ip = &client_ip.to_string();
+        ips.push(ip);
+        
+        cur.execute(
+            "UPDATE users SET ips = ?1 WHERE id = ?2",
+            (
+                ips.join("|"),
+                id
+            )
+        ).unwrap();
 
         status::Custom(
             Status::Ok,

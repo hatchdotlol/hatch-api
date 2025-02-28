@@ -91,11 +91,11 @@ pub fn update_user_info(
         "UPDATE users SET bio = ?1, country = ?2, display_name = ?3, highlighted_projects = ?4, banner_image = ?5 WHERE id = ?6",
         (
             user_info.bio,
-            user_info.country.clone(),
+            &user_info.country,
             user_info.display_name,
             highlighted_projects,
             user_info.banner_image,
-            &format!("{}", token.user)
+            token.user.to_string()
         ),
     ).unwrap();
 

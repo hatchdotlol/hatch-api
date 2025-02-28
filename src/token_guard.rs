@@ -9,14 +9,16 @@ use crate::structs::AuthError;
 
 fn is_valid(token: &str) -> Option<u32> {
     let cur = db().lock().unwrap();
+
     let mut select = cur
         .prepare("SELECT user, expiration_ts FROM auth_tokens WHERE token = ?1")
         .unwrap();
     let mut query = select.query([token]).unwrap();
     let user = query.next().unwrap();
-    if let Some(tok) = user {
-        let user = tok.get::<usize, u32>(0).unwrap();
-        let expiration_date = tok.get::<usize, i64>(1).unwrap();
+    
+    if let Some(account) = user {
+        let user = account.get::<usize, u32>(0).unwrap();
+        let expiration_date = account.get::<usize, i64>(1).unwrap();
 
         if expiration_date < chrono::Utc::now().timestamp() {
             cur.execute("DELETE FROM auth_tokens WHERE user=?1", [user])
@@ -42,17 +44,19 @@ impl<'r> FromRequest<'r> for Token<'r> {
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         let token = request.headers().get_one("Token");
-        let user = if token.is_some() {
-            is_valid(token.unwrap())
+
+        let user = if let Some(token) = token {
+            is_valid(token)
         } else {
             None
         };
-        match token {
-            Some(token) if user.is_some() => Outcome::Success(Token {
-                user: user.unwrap(),
-                token,
+
+        match user {
+            Some(user_id) => Outcome::Success(Token {
+                user: user_id,
+                token: token.unwrap(),
             }),
-            Some(_) | None => Outcome::Error((Status::Unauthorized, AuthError::Invalid)),
+            None => Outcome::Error((Status::Unauthorized, AuthError::Invalid))
         }
     }
 }

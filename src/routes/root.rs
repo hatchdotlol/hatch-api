@@ -1,9 +1,10 @@
-use crate::routes::comments::*;
 use rocket::{
     http::Status,
     response::{content, status},
 };
 use std::{env, sync::OnceLock};
+
+use crate::ip_guard::NotBanned;
 
 pub fn start_time() -> &'static str {
     static START_TIME: OnceLock<String> = OnceLock::new();
@@ -16,7 +17,7 @@ pub fn version() -> &'static str {
 }
 
 #[get("/")]
-pub fn index() -> status::Custom<content::RawJson<String>> {
+pub fn index(_banned: NotBanned) -> status::Custom<content::RawJson<String>> {
     let time = start_time();
     let version = version();
     status::Custom(

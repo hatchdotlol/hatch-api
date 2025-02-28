@@ -43,7 +43,9 @@ pub fn db() -> &'static Mutex<Connection> {
                 followers TEXT,
                 following TEXT,
                 verified INTEGER NOT NULL,
-                email TEXT NOT NULL
+                email TEXT NOT NULL,
+                banned INTEGER NOT NULL,
+                ips TEXT NOT NULL,
             )",
             (),
         )
@@ -98,6 +100,14 @@ pub fn db() -> &'static Mutex<Connection> {
             (),
         )
         .unwrap();
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS ip_bans (
+                id INTEGER PRIMARY KEY,
+                address TEXT NOT NULL
+            )", 
+            (),
+        ).unwrap();
 
         conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 

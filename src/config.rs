@@ -1,25 +1,25 @@
 use std::{env, sync::OnceLock};
 
-pub const TOKEN_EXPIRY: u64 = 604800; // secs
-pub const EMAIL_TOKEN_EXPIRY: u64 = 900; // secs
+pub static TOKEN_EXPIRY: u64 = 604800; // secs
+pub static EMAIL_TOKEN_EXPIRY: u64 = 900; // secs
 
-pub const USERNAME_LIMIT: usize = 20;
-pub const BIO_LIMIT: usize = 800;
-pub const DISPLAY_NAME_LIMIT: usize = 30;
+pub static USERNAME_LIMIT: usize = 20;
+pub static BIO_LIMIT: usize = 800;
+pub static DISPLAY_NAME_LIMIT: usize = 30;
 
-pub const MAX_PFP_WIDTH: u32 = 512;
-pub const MAX_PFP_HEIGHT: u32 = 512;
+pub static MAX_PFP_WIDTH: u32 = 512;
+pub static MAX_PFP_HEIGHT: u32 = 512;
 
-pub const PROJECTS_BUCKET: &'static str = "projects";
-pub const PFPS_BUCKET: &'static str = "pfps";
+pub static PROJECTS_BUCKET: &str = "projects";
+pub static PFPS_BUCKET: &str = "pfps";
 
 // bytes
-pub const ASSET_LIMIT: u64 = 15_000_000;
-pub const PFP_LIMIT: u64 = 5_000_000;
-pub const TITLE_LIMIT: u64 = 64;
-pub const DESCRIPTION_LIMIT: u64 = 5000;
+pub static ASSET_LIMIT: u64 = 15_000_000;
+pub static PFP_LIMIT: u64 = 5_000_000;
+pub static TITLE_LIMIT: u64 = 64;
+pub static DESCRIPTION_LIMIT: u64 = 5000;
 
-pub const ALLOWED_IMAGE_HOSTS: [&'static str; 5] = [
+pub static ALLOWED_IMAGE_HOSTS: [&str; 5] = [
     "u.cubeupload.com",
     "rdr.lol",
     "i.ibb.co",
@@ -27,7 +27,7 @@ pub const ALLOWED_IMAGE_HOSTS: [&'static str; 5] = [
     "hatch.lol",
 ];
 
-pub const COUNTRIES: [&'static str; 252] = [
+pub static COUNTRIES: [&str; 252] = [
     "United States",
     "Afghanistan",
     "Åland Islands",
@@ -282,7 +282,7 @@ pub const COUNTRIES: [&'static str; 252] = [
     "Zimbabwe",
 ];
 
-pub const VERIFICATION_TEMPLATE: &'static str = r#"
+pub static VERIFICATION_TEMPLATE: &str = r#"
 <body style="background-color:#f9f9f9;">
 <div style="margin:0px auto;max-width:600px;font-family:Helvetica Neue,Helvetica,Arial,Lucida Grande,sans-serif;font-size:16px;line-height:24px">
 <img src="https://rdr.lol/u/qEJWct.png" height="50">
