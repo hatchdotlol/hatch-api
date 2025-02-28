@@ -140,7 +140,10 @@ fn rocket() -> Rocket<Build> {
                 users::following
             ],
         )
-        .mount("/admin", routes![admin::banned, admin::ip_ban])
+        .mount(
+            "/admin",
+            routes![admin::banned, admin::ip_ban, admin::ip_unban],
+        )
         .mount(
             "/",
             routes![
