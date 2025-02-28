@@ -1,7 +1,7 @@
 use crate::{
     admin_guard::AdminToken,
     // db::db,
-    ip_guard::is_banned,
+    ban_guard::is_banned,
 };
 use rocket::{
     // http::Status,

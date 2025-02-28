@@ -5,11 +5,12 @@ pub mod admin_guard;
 pub mod config;
 pub mod db;
 pub mod entropy;
-pub mod ip_guard;
+pub mod ban_guard;
 pub mod limit_guard;
 pub mod routes;
 pub mod structs;
 pub mod token_guard;
+pub mod ip_guard;
 
 use config::*;
 use db::{db, projects};

@@ -5,6 +5,7 @@ use crate::config::{
 };
 use crate::db::db;
 use crate::entropy::calculate_entropy;
+use crate::ip_guard::ClientRealAddr;
 use crate::structs::User;
 use crate::token_guard::Token;
 use crate::{backup_resend_key, mods};
@@ -20,7 +21,6 @@ use rustrict::{CensorStr, Type};
 
 use serde_json::Value;
 use std::collections::HashSet;
-use std::net::SocketAddr;
 use std::sync::OnceLock;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
@@ -279,7 +279,7 @@ pub fn register(
 
 #[post("/login", format = "application/json", data = "<creds>")]
 pub fn login(
-    client_ip: SocketAddr,
+    client_ip: ClientRealAddr,
     creds: Json<Credentials>,
 ) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
@@ -351,9 +351,9 @@ pub fn login(
         }
     }
 
-    let ip = &client_ip.to_string();
+    let ip = &client_ip.get_ipv4_string().unwrap();
     ips.push(ip);
-    
+
     let ips = ips.iter()
         .map(|s| s.to_owned())
         .collect::<HashSet<_>>()

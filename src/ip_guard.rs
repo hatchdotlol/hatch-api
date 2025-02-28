@@ -1,37 +1,111 @@
+// https://github.com/magiclen/rocket-client-addr/blob/master/src/client_real_addr.rs
+// i didnt want more crates
+
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+
 use rocket::{
     http::Status,
-    request::{FromRequest, Outcome},
-    Request,
+    outcome::Outcome,
+    request::{self, FromRequest, Request},
 };
 
-use crate::db::db;
-use crate::structs::AuthError;
-
-pub fn is_banned(ip: &str) -> bool {
-    let cur = db().lock().unwrap();
-    let mut select = cur
-        .prepare("SELECT address FROM ip_bans WHERE address = ?1")
-        .unwrap();
-    let mut query = select.query([ip]).unwrap();
-    query.next().unwrap().is_some()
+/// The request guard used for getting an IP address from a client.
+#[derive(Debug, Clone)]
+pub struct ClientRealAddr {
+    /// IP address from a client.
+    pub ip: IpAddr,
 }
 
-#[derive(Debug)]
-pub struct NotBanned<'r> {
-    _banned: &'r bool,
+fn from_request(request: &Request<'_>) -> Option<ClientRealAddr> {
+    match request.real_ip() {
+        Some(ip) => Some(ClientRealAddr {
+            ip,
+        }),
+        None => {
+            let forwarded_for_ip: Option<&str> = request.headers().get("x-forwarded-for").next(); // Only fetch the first one.
+
+            match forwarded_for_ip {
+                Some(forwarded_for_ip) => {
+                    let forwarded_for_ip = forwarded_for_ip.split(',').next(); // Only fetch the first one.
+
+                    match forwarded_for_ip {
+                        Some(forwarded_for_ip) => match forwarded_for_ip.trim().parse::<IpAddr>() {
+                            Ok(ip) => Some(ClientRealAddr {
+                                ip,
+                            }),
+                            Err(_) => request.remote().map(|addr| ClientRealAddr {
+                                ip: addr.ip()
+                            }),
+                        },
+                        None => request.remote().map(|addr| ClientRealAddr {
+                            ip: addr.ip()
+                        }),
+                    }
+                },
+                None => request.remote().map(|addr| ClientRealAddr {
+                    ip: addr.ip()
+                }),
+            }
+        },
+    }
 }
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for NotBanned<'r> {
-    type Error = AuthError;
+impl<'r> FromRequest<'r> for ClientRealAddr {
+    type Error = ();
 
-    async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let ip = &request.remote().unwrap().to_string();
+    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        match from_request(request) {
+            Some(client_addr) => Outcome::Success(client_addr),
+            None => Outcome::Forward(Status::BadRequest),
+        }
+    }
+}
 
-        if is_banned(ip) {
-            Outcome::Error((Status::Unauthorized, AuthError::Invalid))
-        } else {
-            Outcome::Success(NotBanned { _banned: &true })
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for &'r ClientRealAddr {
+    type Error = ();
+
+    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let cache: &Option<ClientRealAddr> = request.local_cache(|| from_request(request));
+
+        match cache.as_ref() {
+            Some(client_addr) => Outcome::Success(client_addr),
+            None => Outcome::Forward(Status::BadRequest),
+        }
+    }
+}
+
+impl ClientRealAddr {
+    /// Get an `Ipv4Addr` instance.
+    pub fn get_ipv4(&self) -> Option<Ipv4Addr> {
+        match &self.ip {
+            IpAddr::V4(ipv4) => Some(*ipv4),
+            IpAddr::V6(ipv6) => ipv6.to_ipv4(),
+        }
+    }
+
+    /// Get an IPv4 string.
+    pub fn get_ipv4_string(&self) -> Option<String> {
+        match &self.ip {
+            IpAddr::V4(ipv4) => Some(ipv4.to_string()),
+            IpAddr::V6(ipv6) => ipv6.to_ipv4().map(|ipv6| ipv6.to_string()),
+        }
+    }
+
+    /// Get an `Ipv6Addr` instance.
+    pub fn get_ipv6(&self) -> Ipv6Addr {
+        match &self.ip {
+            IpAddr::V4(ipv4) => ipv4.to_ipv6_mapped(),
+            IpAddr::V6(ipv6) => *ipv6,
+        }
+    }
+
+    /// Get an IPv6 string.
+    pub fn get_ipv6_string(&self) -> String {
+        match &self.ip {
+            IpAddr::V4(ipv4) => ipv4.to_ipv6_mapped().to_string(),
+            IpAddr::V6(ipv6) => ipv6.to_string(),
         }
     }
 }

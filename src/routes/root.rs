@@ -4,7 +4,7 @@ use rocket::{
 };
 use std::{env, sync::OnceLock};
 
-use crate::ip_guard::NotBanned;
+use crate::ban_guard::NotBanned;
 
 pub fn start_time() -> &'static str {
     static START_TIME: OnceLock<String> = OnceLock::new();
