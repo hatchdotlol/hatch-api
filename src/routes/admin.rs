@@ -1,6 +1,6 @@
 use crate::{
     admin_guard::AdminToken,
-    // db::db,
+    db::db,
     ban_guard::is_banned,
 };
 use rocket::{
@@ -27,7 +27,32 @@ pub fn banned(_key: AdminToken<'_>, ip_address: Json<IP>) -> Json<Banned> {
     })
 }
 
-// #[post("/ban-ip", format = "application/json", data = "<ip_address>")]
-// pub fn ban_ip(_key: AdminToken<'_>, ip_address: Json<IP>) -> Json<Banned> {
-//     Json(Banned { banned: true })
-// }
+#[post("/ip-ban/<username>")]
+pub fn ip_ban(_key: AdminToken<'_>, username: &str) -> Json<Banned> {
+    let cur = db().lock().unwrap();
+
+    let mut select = cur
+        .prepare("SELECT ips FROM users WHERE name = ?1 COLLATE nocase")
+        .unwrap();
+    let mut first_row = select.query([username]).unwrap();
+
+    let Ok(first_user) = first_row.next() else {
+        return Json(Banned { banned: false });
+    };
+
+    let Some(user) = first_user else {
+        return Json(Banned { banned: false });
+    };
+
+    let ips = user.get::<usize, String>(0).unwrap();
+    let ips = &mut ips
+        .split("|")
+        .collect::<Vec<_>>();
+
+    let mut insert = cur.prepare("INSERT INTO ip_bans (address) VALUES (?1)").unwrap();
+    for ip in ips {
+        insert.execute((ip.to_string(),)).unwrap();
+    }
+
+    Json(Banned { banned: true })
+}
