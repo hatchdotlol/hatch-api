@@ -2,15 +2,15 @@
 extern crate rocket;
 
 pub mod admin_guard;
+pub mod ban_guard;
 pub mod config;
 pub mod db;
 pub mod entropy;
-pub mod ban_guard;
+pub mod ip_guard;
 pub mod limit_guard;
 pub mod routes;
 pub mod structs;
 pub mod token_guard;
-pub mod ip_guard;
 
 use config::*;
 use db::{db, projects};
@@ -42,7 +42,7 @@ fn bad_request() -> status::Custom<content::RawJson<String>> {
 #[catch(401)]
 fn unauthorized() -> status::Custom<content::RawJson<String>> {
     status::Custom(
-        Status::BadRequest,
+        Status::Unauthorized,
         content::RawJson(String::from("{\"message\": \"Unauthorized\"}")),
     )
 }

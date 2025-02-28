@@ -307,9 +307,7 @@ pub fn login(
     let hash = user.get::<usize, String>(1).unwrap();
 
     let ips = user.get::<usize, String>(2).unwrap();
-    let ips = &mut ips
-        .split("|")
-        .collect::<Vec<_>>();
+    let ips = &mut ips.split("|").collect::<Vec<_>>();
 
     if !bcrypt::verify(&creds.password, &hash).is_ok_and(|f| f) {
         return status::Custom(
@@ -354,7 +352,8 @@ pub fn login(
     let ip = &client_ip.get_ipv4_string().unwrap();
     ips.push(ip);
 
-    let ips = ips.iter()
+    let ips = ips
+        .iter()
         .map(|s| s.to_owned())
         .collect::<HashSet<_>>()
         .into_iter()
