@@ -30,9 +30,9 @@ impl<'r> FromRequest<'r> for NotBanned<'r> {
         let ip = &(request.real_ip().unwrap_or(request.client_ip().unwrap())).to_string();
 
         if is_banned(ip) {
-            Outcome::Success(NotBanned { _banned: &true })
-        } else {
             Outcome::Error((Status::Unauthorized, AuthError::Invalid))
+        } else {
+            Outcome::Success(NotBanned { _banned: &true })
         }
     }
 }
