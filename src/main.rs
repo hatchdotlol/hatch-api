@@ -5,14 +5,14 @@ pub mod admin_guard;
 pub mod config;
 pub mod db;
 pub mod entropy;
+pub mod ip_guard;
 pub mod limit_guard;
 pub mod routes;
 pub mod structs;
 pub mod token_guard;
-pub mod ip_guard;
 
-use db::{db, projects};
 use config::*;
+use db::{db, projects};
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket::{Build, Rocket};
@@ -98,7 +98,12 @@ fn rocket() -> Rocket<Build> {
     rocket::build()
         .register(
             "/",
-            catchers![not_found, bad_request, unauthorized, rocket_governor_catcher],
+            catchers![
+                not_found,
+                bad_request,
+                unauthorized,
+                rocket_governor_catcher
+            ],
         )
         .mount("/", routes![root::comic_sans, root::index])
         .mount("/uploads", routes![uploads::update_pfp, uploads::user])
@@ -134,12 +139,7 @@ fn rocket() -> Rocket<Build> {
                 users::following
             ],
         )
-        .mount(
-            "/admin",
-            routes![
-                admin::banned
-            ]
-        )
+        .mount("/admin", routes![admin::banned])
         .mount(
             "/",
             routes![

@@ -15,7 +15,7 @@ fn is_valid(token: &str) -> Option<u32> {
         .unwrap();
     let mut query = select.query([token]).unwrap();
     let user = query.next().unwrap();
-    
+
     if let Some(account) = user {
         let user = account.get::<usize, u32>(0).unwrap();
         let expiration_date = account.get::<usize, i64>(1).unwrap();
@@ -56,7 +56,7 @@ impl<'r> FromRequest<'r> for Token<'r> {
                 user: user_id,
                 token: token.unwrap(),
             }),
-            None => Outcome::Error((Status::Unauthorized, AuthError::Invalid))
+            None => Outcome::Error((Status::Unauthorized, AuthError::Invalid)),
         }
     }
 }

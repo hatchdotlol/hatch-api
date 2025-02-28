@@ -105,9 +105,10 @@ pub fn db() -> &'static Mutex<Connection> {
             "CREATE TABLE IF NOT EXISTS ip_bans (
                 id INTEGER PRIMARY KEY,
                 address TEXT NOT NULL
-            )", 
+            )",
             (),
-        ).unwrap();
+        )
+        .unwrap();
 
         conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 

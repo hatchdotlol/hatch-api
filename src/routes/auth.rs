@@ -19,6 +19,7 @@ use rocket::serde::Deserialize;
 use rustrict::{CensorStr, Type};
 
 use serde_json::Value;
+use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::sync::OnceLock;
 use tokio::time::Duration;
@@ -277,7 +278,10 @@ pub fn register(
 }
 
 #[post("/login", format = "application/json", data = "<creds>")]
-pub fn login(client_ip: SocketAddr, creds: Json<Credentials>) -> status::Custom<content::RawJson<String>> {
+pub fn login(
+    client_ip: SocketAddr,
+    creds: Json<Credentials>,
+) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -301,66 +305,71 @@ pub fn login(client_ip: SocketAddr, creds: Json<Credentials>) -> status::Custom<
 
     let id = user.get::<usize, u32>(0).unwrap();
     let hash = user.get::<usize, String>(1).unwrap();
-    
-    let ips= user.get::<usize, String>(2).unwrap();
-    let ips = &mut ips.split("|").collect::<Vec<_>>();
 
-    if bcrypt::verify(&creds.password, &hash).is_ok_and(|f| f) {
-        let mut select = cur
-            .prepare("SELECT token FROM auth_tokens WHERE user = ?1")
-            .unwrap();
-        let mut first_row = select.query([id]).unwrap();
+    let ips = user.get::<usize, String>(2).unwrap();
+    let ips = &mut ips
+        .split("|")
+        .collect::<Vec<_>>();
 
-        let mut token = String::new();
-
-        if let Ok(first_token) = first_row.next() {
-            if let Some(_token) = first_token {
-                token = _token.get::<usize, String>(0).unwrap()
-            } else {
-                token = hex::encode(&rand::thread_rng().gen::<[u8; 16]>());
-                cur.flush_prepared_statement_cache();
-                cur.execute(
-                    "INSERT INTO auth_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
-                    (
-                        id,
-                        &token,
-                        format!(
-                            "{}",
-                            chrono::Utc::now()
-                                .checked_add_signed(
-                                    TimeDelta::from_std(Duration::from_secs(TOKEN_EXPIRY),)
-                                        .unwrap()
-                                )
-                                .unwrap()
-                                .timestamp()
-                        ),
-                    ),
-                )
-                .unwrap();
-            }
-        }
-
-        let ip = &client_ip.to_string();
-        ips.push(ip);
-        
-        cur.execute(
-            "UPDATE users SET ips = ?1 WHERE id = ?2",
-            (
-                ips.join("|"),
-                id
-            )
-        ).unwrap();
-
-        status::Custom(
-            Status::Ok,
-            content::RawJson(format!("{{\"token\": \"{token}\"}}")),
-        )
-    } else {
-        status::Custom(
+    if !bcrypt::verify(&creds.password, &hash).is_ok_and(|f| f) {
+        return status::Custom(
             Status::Unauthorized,
             content::RawJson("{\"message\": \"Unauthorized\"}".into()),
-        )
+        );
     }
+
+    let mut select = cur
+        .prepare("SELECT token FROM auth_tokens WHERE user = ?1")
+        .unwrap();
+    let mut first_row = select.query([id]).unwrap();
+
+    let mut token = String::new();
+
+    if let Ok(first_token) = first_row.next() {
+        if let Some(_token) = first_token {
+            token = _token.get::<usize, String>(0).unwrap()
+        } else {
+            token = hex::encode(&rand::thread_rng().gen::<[u8; 16]>());
+            cur.flush_prepared_statement_cache();
+            cur.execute(
+                "INSERT INTO auth_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
+                (
+                    id,
+                    &token,
+                    format!(
+                        "{}",
+                        chrono::Utc::now()
+                            .checked_add_signed(
+                                TimeDelta::from_std(Duration::from_secs(TOKEN_EXPIRY),).unwrap()
+                            )
+                            .unwrap()
+                            .timestamp()
+                    ),
+                ),
+            )
+            .unwrap();
+        }
+    }
+
+    let ip = &client_ip.to_string();
+    ips.push(ip);
+    
+    let ips = ips.iter()
+        .map(|s| s.to_owned())
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+
+    cur.execute(
+        "UPDATE users SET ips = ?1 WHERE id = ?2",
+        (ips.join("|"), id),
+    )
+    .unwrap();
+
+    status::Custom(
+        Status::Ok,
+        content::RawJson(format!("{{\"token\": \"{token}\"}}")),
+    )
 }
 
 #[get("/verify?<email_token>")]

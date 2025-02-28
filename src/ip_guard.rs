@@ -7,7 +7,6 @@ use rocket::{
 use crate::db::db;
 use crate::structs::AuthError;
 
-
 pub fn is_banned(ip: &str) -> bool {
     let cur = db().lock().unwrap();
     let mut select = cur
@@ -19,7 +18,7 @@ pub fn is_banned(ip: &str) -> bool {
 
 #[derive(Debug)]
 pub struct NotBanned<'r> {
-    _banned: &'r bool
+    _banned: &'r bool,
 }
 
 #[rocket::async_trait]
