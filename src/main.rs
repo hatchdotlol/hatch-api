@@ -135,6 +135,12 @@ fn rocket() -> Rocket<Build> {
             ],
         )
         .mount(
+            "/admin",
+            routes![
+                admin::banned
+            ]
+        )
+        .mount(
             "/",
             routes![
                 comments::user_comments,

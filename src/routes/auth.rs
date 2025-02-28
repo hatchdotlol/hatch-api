@@ -18,14 +18,13 @@ use rocket::serde::json::Json;
 use rocket::serde::Deserialize;
 use rustrict::{CensorStr, Type};
 
-use schemars::JsonSchema;
 use serde_json::Value;
 use std::net::SocketAddr;
 use std::sync::OnceLock;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
 
-#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct Credentials {
     pub username: String,
     pub password: String,

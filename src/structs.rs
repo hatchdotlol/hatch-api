@@ -1,7 +1,6 @@
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: usize,
@@ -33,7 +32,7 @@ pub enum AuthError {
     Invalid,
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize)]
 pub struct Author {
     pub username: String,
     pub profile_picture: String,
@@ -41,7 +40,7 @@ pub struct Author {
     pub display_name: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct Report {
     pub category: u32,
     pub reason: String,

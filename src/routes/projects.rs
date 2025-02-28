@@ -12,7 +12,6 @@ use rocket::{
 };
 // use rocket_governor::RocketGovernor;
 use rustrict::{CensorStr, Type};
-use schemars::JsonSchema;
 use serde::Serialize;
 use std::{fs::File, io::BufReader};
 use webhook::client::WebhookClient;
@@ -325,7 +324,7 @@ pub async fn update_project(
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize)]
 pub struct ProjectInfo {
     id: u32,
     author: Author,

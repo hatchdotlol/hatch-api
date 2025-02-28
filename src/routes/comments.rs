@@ -4,7 +4,6 @@ use rocket::{
     serde::json::Json,
 };
 use rocket_governor::RocketGovernor;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use webhook::client::WebhookClient;
 
@@ -16,14 +15,14 @@ use crate::{
     token_guard::Token,
 };
 
-#[derive(Clone, Copy, Debug, Serialize, JsonSchema)]
+#[derive(Clone, Copy, Debug, Serialize)]
 enum Location {
     Project = 0,
     // Gallery = 1,
     User = 2,
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
     id: u32,
@@ -33,7 +32,7 @@ pub struct Comment {
     reply_to: Option<u32>,
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize)]
 pub struct Comments {
     comments: Vec<Comment>,
 }
@@ -160,7 +159,7 @@ pub fn user_comments(
     Ok(Json(Comments { comments }))
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct PostComment {
     content: String,
     reply_to: Option<u32>,

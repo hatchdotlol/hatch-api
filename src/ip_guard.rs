@@ -8,7 +8,7 @@ use crate::db::db;
 use crate::structs::AuthError;
 
 
-fn is_banned(ip: &str) -> bool {
+pub fn is_banned(ip: &str) -> bool {
     let cur = db().lock().unwrap();
     let mut select = cur
         .prepare("SELECT address FROM ip_bans WHERE address = ?1")

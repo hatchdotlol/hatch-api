@@ -5,7 +5,6 @@ use rocket::{
 };
 use rocket_governor::RocketGovernor;
 use rusqlite::types::Null;
-use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use url::Url;
@@ -20,7 +19,7 @@ use crate::{
     token_guard::Token,
 };
 
-#[derive(Debug, PartialEq, Eq, Deserialize, JsonSchema)]
+#[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {
     bio: Option<&'r str>,
     country: String,
@@ -293,7 +292,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     (Status::Ok, Json(json!({"success": true})))
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize)]
 pub struct Followers {
     followers: Vec<User>,
 }
@@ -346,7 +345,7 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
     Ok(Json(Followers { followers }))
 }
 
-#[derive(Debug, Serialize, JsonSchema)]
+#[derive(Debug, Serialize)]
 pub struct Following {
     following: Vec<User>,
 }
