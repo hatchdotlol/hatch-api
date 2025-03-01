@@ -460,6 +460,12 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
 
     let verified: Option<bool> = Some(row.get(12).unwrap());
 
+    let mut select = cur
+        .prepare("SELECT COUNT(*) FROM projects WHERE author = ?1")
+        .unwrap();
+    let mut rows = select.query((user,)).unwrap();
+    let project_count = rows.next().unwrap();
+
     (
         Status::Ok,
         Json(User {
@@ -475,7 +481,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             following_count: Some(following_count),
             follower_count: Some(follower_count),
             verified,
-            project_count: None,
+            project_count: project_count.unwrap().get(0).unwrap(),
             hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
         }),
     )

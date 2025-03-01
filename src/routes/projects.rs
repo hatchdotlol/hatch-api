@@ -41,6 +41,7 @@ pub struct Update<'f> {
     description: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
 struct Project {
     user_id: u32,
     title: String,
@@ -159,9 +160,7 @@ pub async fn index(
                 .send(move |message| {
                     message.embed(|embed| {
                         embed
-                            .title(&format!(
-                                "{title} by {name} has been uploaded"
-                            ))
+                            .title(&format!("{title} by {name} has been uploaded"))
                             .description(&success)
                             .url(&format!("https://dev.hatch.lol/project?id={pid}"))
                     })
@@ -341,16 +340,16 @@ pub async fn update_project(
 
 #[derive(Debug, Serialize)]
 pub struct ProjectInfo {
-    id: u32,
-    author: Author,
-    upload_ts: i64,
-    title: String,
-    description: String,
-    version: Option<usize>,
-    rating: String,
+    pub id: u32,
+    pub author: Author,
+    pub upload_ts: i64,
+    pub title: String,
+    pub description: String,
+    pub version: Option<usize>,
+    pub rating: String,
 }
 
-fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
+pub fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
     let cur = db().lock().unwrap();
     let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();

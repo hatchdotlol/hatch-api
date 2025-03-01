@@ -140,7 +140,8 @@ fn rocket() -> Rocket<Build> {
                 users::follow,
                 users::unfollow,
                 users::followers,
-                users::following
+                users::following,
+                users::projects
             ],
         )
         .mount(

@@ -19,6 +19,8 @@ use crate::{
     token_guard::Token,
 };
 
+use super::projects::{get_project, ProjectInfo};
+
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {
     bio: Option<&'r str>,
@@ -160,6 +162,45 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         project_count: project_count.unwrap().get(0).unwrap(),
         hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
     }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct Projects {
+    projects: Vec<ProjectInfo>,
+}
+
+#[get("/<user>/projects")]
+pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
+    let cur = db().lock().unwrap();
+
+    let mut select = cur
+        .prepare("SELECT id FROM users WHERE name = ?1 COLLATE nocase")
+        .unwrap();
+
+    let mut row = select.query([&user]).unwrap();
+    let Some(row) = row.next().unwrap() else {
+        return Err(Status::NotFound);
+    };
+    let user_id = row.get::<usize, u32>(0).unwrap();
+
+    let mut select = cur
+        .prepare("SELECT * FROM projects WHERE author = ?1")
+        .unwrap();
+    
+    let projects: Vec<ProjectInfo> = select
+        .query_map([user_id], |row| {
+            let project = get_project(None, row.get::<usize, u32>(0).unwrap());
+            if let Ok(project) = project {
+                Ok(Some(project))
+            } else {
+                Ok(None)
+            }
+        })
+        .unwrap()
+        .filter_map(|x| x.unwrap())
+        .collect();
+
+    Ok(Json(Projects { projects }))
 }
 
 #[post("/<user>/follow")]
