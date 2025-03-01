@@ -419,7 +419,7 @@ pub async fn project(token: Option<Token<'_>>, id: u32) -> Result<Json<ProjectIn
                 .iter()
                 .rev()
                 .position(move |v| v == &latest_version)
-                .unwrap()
+                .unwrap_or(0)
                 + 1,
         ),
         ..project
