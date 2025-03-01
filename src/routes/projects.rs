@@ -134,7 +134,7 @@ pub async fn index(
     if let Some(webhook_url) = logging_webhook() {
         let title = form.title.clone().to_owned();
         let desc = form.description.clone().to_owned();
-        let success = format!("https://dev.hatch.lol/project?id={pid}\n```\n{desc}\n```\n")
+        let success = format!("```\n{desc}\n```\n")
             + if resp.is_ok() {
                 "✅ We stored it on the servers successfully."
             } else {
@@ -163,6 +163,7 @@ pub async fn index(
                                 "{title} by {name} has been uploaded"
                             ))
                             .description(&success)
+                            .url(&format!("https://dev.hatch.lol/project?id={pid}"))
                     })
                 })
                 .await
