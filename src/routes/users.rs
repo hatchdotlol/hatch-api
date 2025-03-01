@@ -15,7 +15,7 @@ use crate::{
     db::db,
     limit_guard::TenPerSecond,
     mods, report_webhook,
-    structs::{Report, User},
+    structs::{Author, Report, User},
     token_guard::Token,
 };
 
@@ -186,12 +186,34 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
     let mut select = cur
         .prepare("SELECT * FROM projects WHERE author = ?1")
         .unwrap();
-    
+
     let buh = select
-        .query_map([user_id], |row| {
-            let project = get_project(None, row.get::<usize, u32>(0).unwrap());
-            dbg!(project);
-            Ok(1)
+        .query_map([user_id], |project| {
+            let author_id: u32 = project.get(1).unwrap();
+
+            let mut select = cur.prepare("SELECT * FROM users WHERE id=?1").unwrap();
+            let mut query = select.query((author_id,)).unwrap();
+            let Some(author) = query.next().unwrap() else {
+                return Ok(None);
+            };
+
+            if !project.get::<usize, bool>(5).unwrap() {
+                return Ok(None);
+            }
+
+            Ok(Some(ProjectInfo {
+                id: project.get(1).unwrap(),
+                author: Author {
+                    username: author.get(1).unwrap(),
+                    profile_picture: author.get(7).unwrap(),
+                    display_name: Some(author.get(3).unwrap()),
+                },
+                upload_ts: project.get(2).unwrap(),
+                title: project.get(3).unwrap(),
+                description: project.get(4).unwrap(),
+                rating: project.get(6).unwrap(),
+                version: None,
+            }))
         }).unwrap();
     for g in buh {
         dbg!(g);
