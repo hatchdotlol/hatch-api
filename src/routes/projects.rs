@@ -390,7 +390,7 @@ pub async fn project(token: Option<Token<'_>>, id: u32) -> Result<Json<ProjectIn
         .send()
         .await
         .unwrap();
-    let latest_version = file.version_id.unwrap();
+    let latest_version = file.version_id.unwrap_or("1".into());
 
     let mut files = client
         .list_objects(&PROJECTS_BUCKET)
