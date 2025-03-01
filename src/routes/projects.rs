@@ -372,7 +372,7 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
     }
 
     return Ok(ProjectInfo {
-        id: project.get(0).unwrap(),
+        id: project.get(1).unwrap(),
         author: Author {
             username: author.get(1).unwrap(),
             profile_picture: author.get(7).unwrap(),
