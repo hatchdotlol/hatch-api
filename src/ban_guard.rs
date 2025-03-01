@@ -26,7 +26,8 @@ impl<'r> FromRequest<'r> for NotBanned<'r> {
     type Error = AuthError;
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let ip = &from_request(request).unwrap().get_ipv4_string().unwrap();
+        let ip = &from_request(request).unwrap();
+        let ip = &ip.get_ipv4_string().unwrap_or(ip.get_ipv6_string());
 
         if is_banned(ip) {
             Outcome::Error((Status::Unauthorized, AuthError::Invalid))

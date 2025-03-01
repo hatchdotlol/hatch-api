@@ -349,7 +349,10 @@ pub fn login(
         }
     }
 
-    let ip = &client_ip.get_ipv4_string().unwrap();
+    let ip = &client_ip
+        .get_ipv4_string()
+        .unwrap_or(client_ip.get_ipv6_string());
+
     ips.push(ip);
 
     let ips = ips

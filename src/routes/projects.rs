@@ -181,6 +181,8 @@ fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
         }
     }
 
+    // let rating
+
     None
 }
 

@@ -81,7 +81,7 @@ pub fn db() -> &'static Mutex<Connection> {
                 title TEXT,
                 description TEXT,
                 shared INTEGER NOT NULL,
-                rating TEXT,
+                rating TEXT NOT NULL,
                 score INTEGER NOT NULL
             )",
             (),
