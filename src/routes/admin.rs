@@ -1,9 +1,7 @@
-use crate::{admin_guard::AdminToken, ban_guard::is_banned, db::db};
-use rocket::{
-    // http::Status,
-    // response::{content, status},
-    serde::json::Json,
+use crate::{
+    admin_guard::AdminToken, ban_guard::is_banned, config::mods, db::db, token_guard::Token,
 };
+use rocket::{http::Status, serde::json::Json};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -17,15 +15,43 @@ pub struct Banned {
     banned: bool,
 }
 
+fn is_mod(user: u32) -> bool {
+    let cur = db().lock().unwrap();
+    let mut select = cur.prepare("SELECT name FROM users WHERE id = ?1").unwrap();
+
+    let mut rows = select.query([user]).unwrap();
+    let Some(row) = rows.next().unwrap() else {
+        return false;
+    };
+
+    !mods().contains(&row.get::<usize, String>(1).unwrap().as_str())
+}
+
 #[post("/banned", format = "application/json", data = "<ip_address>")]
-pub fn banned(_key: AdminToken<'_>, ip_address: Json<IP>) -> Json<Banned> {
-    Json(Banned {
+pub fn banned(
+    token: Token<'_>,
+    _key: AdminToken<'_>,
+    ip_address: Json<IP>,
+) -> Result<Json<Banned>, Status> {
+    if !is_mod(token.user) {
+        return Err(Status::Unauthorized);
+    }
+
+    Ok(Json(Banned {
         banned: is_banned(&ip_address.ip),
-    })
+    }))
 }
 
 #[post("/ip-ban/<username>")]
-pub fn ip_ban(_key: AdminToken<'_>, username: &str) -> Json<Banned> {
+pub fn ip_ban(
+    token: Token<'_>,
+    _key: AdminToken<'_>,
+    username: &str,
+) -> Result<Json<Banned>, Status> {
+    if !is_mod(token.user) {
+        return Err(Status::Unauthorized);
+    }
+
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -34,11 +60,11 @@ pub fn ip_ban(_key: AdminToken<'_>, username: &str) -> Json<Banned> {
     let mut first_row = select.query([username]).unwrap();
 
     let Ok(first_user) = first_row.next() else {
-        return Json(Banned { banned: false });
+        return Err(Status::Unauthorized);
     };
 
     let Some(user) = first_user else {
-        return Json(Banned { banned: false });
+        return Err(Status::Unauthorized);
     };
 
     let ips = user.get::<usize, String>(0).unwrap();
@@ -51,11 +77,19 @@ pub fn ip_ban(_key: AdminToken<'_>, username: &str) -> Json<Banned> {
         insert.execute((ip.to_string(),)).unwrap();
     }
 
-    Json(Banned { banned: true })
+    Ok(Json(Banned { banned: true }))
 }
 
 #[post("/ip-unban/<username>")]
-pub fn ip_unban(_key: AdminToken<'_>, username: &str) -> Json<Banned> {
+pub fn ip_unban(
+    token: Token<'_>,
+    _key: AdminToken<'_>,
+    username: &str,
+) -> Result<Json<Banned>, Status> {
+    if !is_mod(token.user) {
+        return Err(Status::Unauthorized);
+    }
+
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -64,11 +98,11 @@ pub fn ip_unban(_key: AdminToken<'_>, username: &str) -> Json<Banned> {
     let mut first_row = select.query([username]).unwrap();
 
     let Ok(first_user) = first_row.next() else {
-        return Json(Banned { banned: true });
+        return Err(Status::Unauthorized);
     };
 
     let Some(user) = first_user else {
-        return Json(Banned { banned: true });
+        return Err(Status::Unauthorized);
     };
 
     let ips = user.get::<usize, String>(0).unwrap();
@@ -81,7 +115,7 @@ pub fn ip_unban(_key: AdminToken<'_>, username: &str) -> Json<Banned> {
         delete.execute((ip.to_string(),)).unwrap();
     }
 
-    Json(Banned { banned: false })
+    Ok(Json(Banned { banned: false }))
 }
 
 #[derive(Debug, Deserialize)]
@@ -91,9 +125,17 @@ pub struct Rating {
 }
 
 #[post("/set-rating", format = "application/json", data = "<rating>")]
-pub fn set_rating(rating: Json<Rating>) -> Json<Value> {
+pub fn set_rating(
+    token: Token<'_>,
+    _key: AdminToken<'_>,
+    rating: Json<Rating>,
+) -> Result<Json<Value>, Status> {
+    if !is_mod(token.user) {
+        return Err(Status::Unauthorized);
+    }
+
     let ("N/A" | "E" | "7+" | "9+" | "13+") = rating.rating.as_ref() else {
-        return Json(json!({"message": "Not an age rating"}));
+        return Err(Status::BadRequest);
     };
 
     let cur = db().lock().unwrap();
@@ -104,5 +146,5 @@ pub fn set_rating(rating: Json<Rating>) -> Json<Value> {
     )
     .unwrap();
 
-    Json(json!({"message": "success"}))
+    Ok(Json(json!({"message": "success"})))
 }

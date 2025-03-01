@@ -214,17 +214,20 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 rating: project.get(6).unwrap(),
                 version: None,
             }))
-        }).unwrap();
+        })
+        .unwrap();
 
     let mut shared_projects = vec![];
-    
+
     for project in projects {
         if let Some(project) = project.unwrap() {
             shared_projects.push(project)
         }
     }
 
-    Ok(Json(Projects { projects: shared_projects }))
+    Ok(Json(Projects {
+        projects: shared_projects,
+    }))
 }
 
 #[post("/<user>/follow")]
