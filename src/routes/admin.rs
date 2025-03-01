@@ -30,7 +30,6 @@ fn is_mod(user: u32) -> bool {
 #[post("/banned", format = "application/json", data = "<ip_address>")]
 pub fn banned(
     token: Token<'_>,
-    _key: AdminToken<'_>,
     ip_address: Json<IP>,
 ) -> Result<Json<Banned>, Status> {
     if !is_mod(token.user) {
@@ -45,7 +44,6 @@ pub fn banned(
 #[post("/ip-ban/<username>")]
 pub fn ip_ban(
     token: Token<'_>,
-    _key: AdminToken<'_>,
     username: &str,
 ) -> Result<Json<Banned>, Status> {
     if !is_mod(token.user) {
@@ -83,7 +81,6 @@ pub fn ip_ban(
 #[post("/ip-unban/<username>")]
 pub fn ip_unban(
     token: Token<'_>,
-    _key: AdminToken<'_>,
     username: &str,
 ) -> Result<Json<Banned>, Status> {
     if !is_mod(token.user) {
@@ -127,7 +124,6 @@ pub struct Rating {
 #[post("/set-rating", format = "application/json", data = "<rating>")]
 pub fn set_rating(
     token: Token<'_>,
-    _key: AdminToken<'_>,
     rating: Json<Rating>,
 ) -> Result<Json<Value>, Status> {
     if !is_mod(token.user) {
