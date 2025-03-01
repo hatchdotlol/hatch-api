@@ -349,7 +349,7 @@ pub struct ProjectInfo {
     pub rating: String,
 }
 
-pub fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
+fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
     let cur = db().lock().unwrap();
     let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();

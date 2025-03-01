@@ -19,7 +19,7 @@ use crate::{
     token_guard::Token,
 };
 
-use super::projects::{get_project, ProjectInfo};
+use super::projects::ProjectInfo;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {
@@ -187,7 +187,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
         .prepare("SELECT * FROM projects WHERE author = ?1")
         .unwrap();
 
-    let buh = select
+    let projects = select
         .query_map([user_id], |project| {
             let author_id: u32 = project.get(1).unwrap();
 
@@ -215,12 +215,16 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 version: None,
             }))
         }).unwrap();
-    for g in buh {
-        dbg!(g);
-    }
-    let projects = vec![];
 
-    Ok(Json(Projects { projects }))
+    let mut shared_projects = vec![];
+    
+    for project in projects {
+        if let Some(project) = project.unwrap() {
+            shared_projects.push(project)
+        }
+    }
+
+    Ok(Json(Projects { projects: shared_projects }))
 }
 
 #[post("/<user>/follow")]
