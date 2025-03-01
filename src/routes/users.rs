@@ -187,18 +187,19 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
         .prepare("SELECT * FROM projects WHERE author = ?1")
         .unwrap();
     
-    let projects: Vec<ProjectInfo> = select
-        .query_map([user_id], |row| {
-            let project = get_project(None, row.get::<usize, u32>(0).unwrap());
-            if let Ok(project) = project {
-                Ok(Some(project))
-            } else {
-                Ok(None)
-            }
-        })
-        .unwrap()
-        .filter_map(|x| x.unwrap())
-        .collect();
+    let projects = vec![];
+    // let projects: Vec<ProjectInfo> = select
+    //     .query_map([user_id], |row| {
+    //         let project = get_project(None, row.get::<usize, u32>(0).unwrap());
+    //         if let Ok(project) = project {
+    //             Ok(Some(project))
+    //         } else {
+    //             Ok(None)
+    //         }
+    //     })
+    //     .unwrap()
+    //     .filter_map(|x| x.unwrap())
+    //     .collect();
 
     Ok(Json(Projects { projects }))
 }
