@@ -202,7 +202,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
             }
 
             Ok(Some(ProjectInfo {
-                id: project.get(1).unwrap(),
+                id: project.get(0).unwrap(),
                 author: Author {
                     username: author.get(1).unwrap(),
                     profile_picture: author.get(7).unwrap(),
