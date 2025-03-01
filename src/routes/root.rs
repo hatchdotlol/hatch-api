@@ -16,6 +16,11 @@ pub fn version() -> &'static str {
     VERSION.get_or_init(|| env::var("VERSION").expect("VERSION key not present"))
 }
 
+#[options("/<_..>")]
+pub fn all_options() {
+    // Intentionally left empty
+}
+
 #[get("/")]
 pub fn index(_banned: NotBanned) -> status::Custom<content::RawJson<String>> {
     let time = start_time();

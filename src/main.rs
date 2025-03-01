@@ -106,7 +106,7 @@ fn rocket() -> Rocket<Build> {
                 rocket_governor_catcher
             ],
         )
-        .mount("/", routes![root::comic_sans, root::index])
+        .mount("/", routes![root::comic_sans, root::index, root::all_options])
         .mount("/uploads", routes![uploads::update_pfp, uploads::user])
         .mount(
             "/auth",
