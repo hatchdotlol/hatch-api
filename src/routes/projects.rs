@@ -140,6 +140,18 @@ pub async fn index(
             } else {
                 "❌ We failed to store it, <@817057495503339600>".into()
             };
+
+        let cur = db().lock().unwrap();
+        let mut select = cur.prepare("SELECT name FROM users WHERE id = ?1").unwrap();
+        let name = select
+            .query((token.user,))
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .get::<usize, String>(0)
+            .unwrap();
+
         tokio::spawn(async move {
             let url: &str = &webhook_url;
             let client = WebhookClient::new(url);
@@ -148,8 +160,7 @@ pub async fn index(
                     message.embed(|embed| {
                         embed
                             .title(&format!(
-                                "\"{}\" by user #{} has been uploaded",
-                                title, token.user
+                                "[{title} by {name}](https://dev.hatch.lol/project?id={pid}) has been uploaded"
                             ))
                             .description(&success)
                     })
