@@ -50,9 +50,8 @@ pub async fn update_pfp(
 
     match form.file.content_type() {
         Some(_content_type) => {
-            // TODO: support webp
             content_type = Some(_content_type.clone());
-            if !(_content_type.0.is_png() || _content_type.0.is_jpeg() || _content_type.0.is_gif())
+            if !(_content_type.0.is_png() || _content_type.0.is_jpeg() || _content_type.0.is_gif() || _content_type.0.is_webp())
             {
                 return status::Custom(
                     Status::BadRequest,
