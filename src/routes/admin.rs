@@ -1,6 +1,4 @@
-use crate::{
-    admin_guard::AdminToken, ban_guard::is_banned, config::mods, db::db, token_guard::Token,
-};
+use crate::{ban_guard::is_banned, config::mods, db::db, token_guard::Token};
 use rocket::{http::Status, serde::json::Json};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -28,10 +26,7 @@ fn is_mod(user: u32) -> bool {
 }
 
 #[post("/banned", format = "application/json", data = "<ip_address>")]
-pub fn banned(
-    token: Token<'_>,
-    ip_address: Json<IP>,
-) -> Result<Json<Banned>, Status> {
+pub fn banned(token: Token<'_>, ip_address: Json<IP>) -> Result<Json<Banned>, Status> {
     if !is_mod(token.user) {
         return Err(Status::Unauthorized);
     }
@@ -42,10 +37,7 @@ pub fn banned(
 }
 
 #[post("/ip-ban/<username>")]
-pub fn ip_ban(
-    token: Token<'_>,
-    username: &str,
-) -> Result<Json<Banned>, Status> {
+pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> {
     if !is_mod(token.user) {
         return Err(Status::Unauthorized);
     }
@@ -79,10 +71,7 @@ pub fn ip_ban(
 }
 
 #[post("/ip-unban/<username>")]
-pub fn ip_unban(
-    token: Token<'_>,
-    username: &str,
-) -> Result<Json<Banned>, Status> {
+pub fn ip_unban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> {
     if !is_mod(token.user) {
         return Err(Status::Unauthorized);
     }
@@ -122,10 +111,7 @@ pub struct Rating {
 }
 
 #[post("/set-rating", format = "application/json", data = "<rating>")]
-pub fn set_rating(
-    token: Token<'_>,
-    rating: Json<Rating>,
-) -> Result<Json<Value>, Status> {
+pub fn set_rating(token: Token<'_>, rating: Json<Rating>) -> Result<Json<Value>, Status> {
     if !is_mod(token.user) {
         return Err(Status::Unauthorized);
     }

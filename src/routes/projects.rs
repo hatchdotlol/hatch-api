@@ -186,13 +186,19 @@ fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
 
     let author_id: u32 = project.get(1).unwrap();
 
+    let no_token = token.is_none();
+
     if !project.get::<usize, bool>(5).unwrap() {
-        if token.is_none() || token.is_some_and(|t| t.user != author_id) {
+        if no_token || token.is_some_and(|t| t.user != author_id) {
             return Some(Status::NotFound);
         }
     }
 
-    // let rating
+    let rating: String = project.get(6).unwrap();
+
+    if no_token && rating == "13+" {
+        return Some(Status::NotFound);
+    }
 
     None
 }
