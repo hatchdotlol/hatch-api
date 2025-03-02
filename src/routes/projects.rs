@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::rocket::futures::StreamExt;
+use crate::token_guard::is_valid;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
 use rocket::{
@@ -460,12 +461,27 @@ impl<'r, 'o: 'r, T: Responder<'r, 'o>> ContentResponder<T> {
     }
 }
 
-#[get("/<id>/content")]
+#[get("/<id>/content?<token>")]
 pub async fn project_content(
-    token: Option<Token<'_>>,
+    token: Option<&str>,
     id: u32,
 ) -> Result<ContentResponder<Vec<u8>>, Status> {
-    if let Some(c) = checks(token, id) {
+    let user_id = if let Some(token) = token {
+        is_valid(token)
+    } else {
+        None
+    };
+
+    let the_token = if let Some(user) = user_id {
+        Some(Token {
+            user,
+            token: token.unwrap()
+        })
+    } else {
+        None
+    };
+
+    if let Some(c) = checks(the_token, id) {
         return Err(c);
     }
 

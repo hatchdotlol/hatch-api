@@ -7,7 +7,7 @@ use rocket::{
 use crate::db::db;
 use crate::structs::AuthError;
 
-fn is_valid(token: &str) -> Option<u32> {
+pub fn is_valid(token: &str) -> Option<u32> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
