@@ -64,18 +64,7 @@ fn rocket() -> Rocket<Build> {
     // report_webhook();
     admin_key();
 
-    let allowed_origins = AllowedOrigins::some_exact(&[
-        "https://hatch.lol",
-        "https://dev.hatch.lol",
-        "https://turbowarp.org",
-        "http://localhost:8000",
-        "http://localhost:3000",
-        "https://hatchdotlol.github.io",
-        "https://warp.algebrahelp.org",
-        "https://forums.hatch.lol",
-        "https://jabin.is-a.dev",
-        "https://hatch.jab11n.tech",
-    ]);
+    let allowed_origins = AllowedOrigins::all();
 
     let cors = CorsOptions {
         allowed_origins,
