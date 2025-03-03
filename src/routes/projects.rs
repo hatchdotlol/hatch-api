@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::config::PFP_LIMIT;
+use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::rocket::futures::StreamExt;
 use crate::token_guard::is_valid;
 use minio::s3::builders::ObjectContent;
@@ -52,7 +52,7 @@ struct Project {
     description: String,
 }
 
-fn create_project(p: Project, thumbnail: String) -> i64 {
+fn create_project(p: Project, thumbnail: &str) -> i64 {
     let cur = db().lock().unwrap();
     cur.execute(
         "INSERT INTO projects (author, upload_ts, title, description, shared, thumbnail) VALUES (?1, ?2, ?3, ?4, TRUE, ?5)", 
@@ -139,14 +139,13 @@ pub async fn index(
         );
     }
 
-    let thumbnail = (&form.thumbnail)
+    let thumbnail_ext = (&form.thumbnail)
         .path()
         .unwrap()
         .extension()
         .map(|s| s.to_str())
         .unwrap_or(Some("png"))
-        .unwrap()
-        .to_string();
+        .unwrap();
 
     let client = projects().lock().await;
     let pid = create_project(
@@ -155,10 +154,11 @@ pub async fn index(
             title: form.title.clone(),
             description: form.description.clone(),
         },
-        thumbnail,
+        thumbnail_ext,
     );
 
     let project = format!("{}.sb3", pid);
+    let thumbnail = format!("{}.{}", pid, thumbnail_ext);
 
     let project_content = ObjectContent::from((&form.file).path().unwrap());
     let project_resp = client
@@ -168,7 +168,7 @@ pub async fn index(
 
     let thumbnail_content = ObjectContent::from((&form.thumbnail).path().unwrap());
     let thumbnail_resp = client
-        .put_object_content(&PROJECTS_BUCKET, &project, thumbnail_content)
+        .put_object_content(&THUMBNAILS_BUCKET, &thumbnail, thumbnail_content)
         .send()
         .await;
     
