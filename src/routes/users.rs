@@ -23,12 +23,12 @@ use super::projects::ProjectInfo;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {
-    bio: Option<&'r str>,
+    bio: Option<String>,
     country: String,
-    display_name: Option<&'r str>,
+    display_name: Option<String>,
     highlighted_projects: Option<Vec<&'r str>>,
-    banner_image: Option<&'r str>,
-    theme: Option<&'r str>,
+    banner_image: Option<String>,
+    theme: Option<String>,
 }
 
 #[post("/", format = "application/json", data = "<user_info>")]
