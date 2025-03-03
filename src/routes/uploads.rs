@@ -1,7 +1,7 @@
 use std::io::Cursor;
 use std::path::Path;
 
-use crate::config::{MAX_PFP_HEIGHT, MAX_PFP_WIDTH, PFPS_BUCKET, PFP_LIMIT};
+use crate::config::{MAX_PFP_HEIGHT, MAX_PFP_WIDTH, PFPS_BUCKET, PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::db::{db, projects};
 use crate::token_guard::Token;
 use image::{GenericImageView, ImageFormat, ImageReader};
@@ -139,7 +139,28 @@ pub async fn update_pfp(
 pub async fn user(user: &str) -> Result<Vec<u8>, Status> {
     let db = projects().lock().await;
 
-    let obj = db.get_object(&PFPS_BUCKET, &format!("{user}")).send().await;
+    let obj = db.get_object(&PFPS_BUCKET, user).send().await;
+
+    let Ok(obj) = obj else {
+        return Err(Status::NotFound);
+    };
+
+    let body = obj
+        .content
+        .to_segmented_bytes()
+        .await
+        .unwrap()
+        .to_bytes()
+        .to_vec();
+
+    Ok(body)
+}
+
+#[get("/thumb/<id>")]
+pub async fn thumb(id: &str) -> Result<Vec<u8>, Status> {
+    let db = projects().lock().await;
+
+    let obj = db.get_object(&THUMBNAILS_BUCKET, id).send().await;
 
     let Ok(obj) = obj else {
         return Err(Status::NotFound);
