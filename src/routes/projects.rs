@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::rocket::futures::StreamExt;
 use crate::token_guard::is_valid;
@@ -12,7 +10,6 @@ use rocket::{
     response::{content, status, Responder},
     serde::json::Json,
 };
-// use rocket_governor::RocketGovernor;
 use rustrict::{CensorStr, Type};
 use serde::Serialize;
 use std::{fs::File, io::BufReader};
@@ -22,7 +19,6 @@ use zip::ZipArchive;
 use crate::{
     config::{ASSET_LIMIT, PROJECTS_BUCKET},
     db::{db, projects},
-    // limit_guard::OnePerMinute,
     logging_webhook,
     report_webhook,
     structs::{Author, Report},
@@ -40,7 +36,7 @@ pub struct Upload<'f> {
 #[derive(FromForm)]
 pub struct Update<'f> {
     file: Option<TempFile<'f>>,
-    // thumbnail: Option<TempFile<'f>>,
+    thumbnail: Option<TempFile<'f>>,
     title: Option<String>,
     description: Option<String>,
 }
@@ -272,9 +268,7 @@ pub async fn update_project(
         );
     }
 
-    let mut project_put = 0;
-
-    if let Some(file) = &form.file {
+    let project_put = if let Some(file) = &form.file {
         match file.content_type() {
             Some(_content_type) => {
                 if !_content_type.0.is_zip() {
@@ -321,13 +315,57 @@ pub async fn update_project(
 
         let project = format!("{}.sb3", id);
 
-        let content = ObjectContent::from(Path::new(file.path().unwrap().to_str().unwrap()));
+        let content = ObjectContent::from(file.path().unwrap());
         let resp = client
             .put_object_content(&PROJECTS_BUCKET, &project, content)
             .send()
             .await;
-        project_put = if resp.is_ok() { 2 } else { 1 }
-    }
+        
+        if resp.is_ok() {
+            2
+        } else {
+            1
+        }
+    } else {
+        0
+    };
+
+    let thumbnail_put = if let Some(thumbnail_file) = &form.thumbnail {
+        if thumbnail_file
+            .content_type()
+            .is_none_or(|c| !(c.is_png() || c.is_jpeg() || c.is_gif() || c.is_webp()))
+        {
+            return status::Custom(
+                Status::BadRequest,
+                content::RawJson(r#"{"error": "Thumbnail is not an image"}"#.into()),
+            );
+        }
+
+        let thumbnail_ext = thumbnail_file
+            .path()
+            .unwrap()
+            .extension()
+            .map(|s| s.to_str())
+            .unwrap_or(Some("png"))
+            .unwrap();
+        let thumbnail = format!("{}.{}", id, thumbnail_ext);
+
+        let client = projects().lock().await;
+
+        let content = ObjectContent::from(thumbnail_file.path().unwrap());
+        let resp = client
+            .put_object_content(&THUMBNAILS_BUCKET, &thumbnail, content)
+            .send()
+            .await;
+        
+        if resp.is_ok() {
+            2
+        } else {
+            1
+        }
+    } else {
+        0
+    };
 
     if (&form.title).is_some() || (&form.description).is_some() {
         let cur = db().lock().unwrap();
@@ -359,11 +397,18 @@ pub async fn update_project(
             .clone()
             .unwrap_or("[Unchanged description]".into());
         let success = format!("```\n{title}\n---\n{desc}\n```\n") + match project_put {
-            0 => "The project file was not updated",
+            0 => "The project file was not updated. ",
             1 => {
-                "❌ The updated project file could not be put on the servers, <@817057495503339600>"
+                "❌ The updated project file could not be put on the servers. "
             }
-            2 => "✅ We stored the updated project file on the servers",
+            2 => "✅ We stored the updated project file on the servers.",
+            _ => unimplemented!(),
+        } + match thumbnail_put {
+            0 => "The thumbnail was not updated. ",
+            1 => {
+                "❌ The updated thumbnail could not be put on the servers. "
+            }
+            2 => "✅ We stored the updated thumbnail on the servers.",
             _ => unimplemented!(),
         };
         tokio::spawn(async move {
