@@ -19,7 +19,7 @@ use rocket::response::{content, status};
 use rocket::{Build, Rocket};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, CorsOptions};
 use rocket_governor::rocket_governor_catcher;
-use routes::root::{start_time, version};
+use routes::root::message;
 use routes::*;
 use routes::{auth, projects, root, uploads, users};
 
@@ -55,8 +55,7 @@ fn rocket() -> Rocket<Build> {
     db();
     projects();
 
-    start_time();
-    version();
+    message();
     postal_key();
     postal_url();
     base_url();
@@ -97,7 +96,7 @@ fn rocket() -> Rocket<Build> {
         )
         .mount(
             "/",
-            routes![root::comic_sans, root::index, root::all_options],
+            routes![root::index, root::all_options],
         )
         .mount("/uploads", routes![uploads::update_pfp, uploads::user, uploads::thumb])
         .mount(

@@ -6,28 +6,19 @@ use std::{env, sync::OnceLock};
 
 use crate::ban_guard::NotBanned;
 
-pub fn start_time() -> &'static str {
-    static START_TIME: OnceLock<String> = OnceLock::new();
-    START_TIME.get_or_init(|| format!("{}", chrono::Utc::now().timestamp()))
-}
-
-pub fn version() -> &'static str {
-    static VERSION: OnceLock<String> = OnceLock::new();
-    VERSION.get_or_init(|| env::var("VERSION").expect("VERSION key not present"))
-}
-
 #[options("/<_..>")]
 pub fn all_options() {
-    // Intentionally left empty
+    // ...
 }
 
-#[get("/")]
-pub fn index(_banned: NotBanned) -> status::Custom<content::RawJson<String>> {
-    let time = start_time();
-    let version = version();
-    status::Custom(
-        Status::Ok,
-        content::RawJson(format!(
+pub fn message() -> &'static str {
+    static MESSAGE: OnceLock<String> = OnceLock::new();
+
+    MESSAGE.get_or_init(|| {
+        let version = env::var("VERSION").expect("VERSION key not present");
+        let start_time = format!("{}", chrono::Utc::now().timestamp());
+
+        format!(
             "{{
             \"start_time\": \"{}\",
             \"website\": \"https://hatch.lol\",
@@ -35,17 +26,17 @@ pub fn index(_banned: NotBanned) -> status::Custom<content::RawJson<String>> {
             \"forums\": \"https://forums.hatch.lol\",
             \"email\": \"contact@hatch.lol\",
             \"version\": \"{}\"
-        }}",
-            time, version
-        )),
-    )
+}}",
+            start_time, version
+        )
+    })
 }
 
-#[get("/comic_sans")]
-pub fn comic_sans() -> status::Custom<content::RawHtml<String>> {
-    let time = start_time();
+#[get("/")]
+pub fn index(_banned: NotBanned) -> status::Custom<content::RawJson<&'static str>> {
+    let message = message();
     status::Custom(
         Status::Ok,
-        content::RawHtml(format!("<html><body><style>@import url('https://fonts.googleapis.com/css2?family=Comic+Neue:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap'); body {{ font-family: \"Comic Neue\"; }}</style><span>{{ \"start_time\": \"{}\", \"website\": \"http://hatch.lol\", \"api\": \"http://api.hatch.lol\", \"email\": \"contact@hatch.lol\" }}</span></body></html>", time)),
+        content::RawJson(message),
     )
 }
