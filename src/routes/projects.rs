@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::config::PFP_LIMIT;
 use crate::rocket::futures::StreamExt;
 use crate::token_guard::is_valid;
 use minio::s3::builders::ObjectContent;
@@ -31,6 +32,7 @@ use crate::{
 #[derive(FromForm)]
 pub struct Upload<'f> {
     file: TempFile<'f>,
+    thumbnail: TempFile<'f>,
     title: String,
     description: String,
 }
@@ -38,6 +40,7 @@ pub struct Upload<'f> {
 #[derive(FromForm)]
 pub struct Update<'f> {
     file: Option<TempFile<'f>>,
+    // thumbnail: Option<TempFile<'f>>,
     title: Option<String>,
     description: Option<String>,
 }
@@ -49,15 +52,16 @@ struct Project {
     description: String,
 }
 
-fn create_project(p: Project) -> i64 {
+fn create_project(p: Project, thumbnail: String) -> i64 {
     let cur = db().lock().unwrap();
     cur.execute(
-        "INSERT INTO projects (author, upload_ts, title, description, shared) VALUES (?1, ?2, ?3, ?4, TRUE)", 
+        "INSERT INTO projects (author, upload_ts, title, description, shared, thumbnail) VALUES (?1, ?2, ?3, ?4, TRUE, ?5)", 
         (
             p.user_id,
             chrono::Utc::now().timestamp(),
             p.title,
             p.description,
+            thumbnail
         )
     ).unwrap();
     cur.last_insert_rowid()
@@ -111,6 +115,23 @@ pub async fn index(
         }
     }
 
+    if (&form.thumbnail)
+        .content_type()
+        .is_none_or(|c| !(c.is_png() || c.is_jpeg() || c.is_gif() || c.is_webp()))
+    {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson(r#"{"error": "Thumbnail is not an image"}"#.into()),
+        );
+    }
+
+    if (&form.thumbnail).len() > PFP_LIMIT {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson(r#"{"error": "Thumbnail is too large"}"#.into()),
+        );
+    }
+
     if (&form.title).is(Type::EVASIVE) || (&form.title).is(Type::INAPPROPRIATE) {
         return status::Custom(
             Status::BadRequest,
@@ -118,29 +139,51 @@ pub async fn index(
         );
     }
 
+    let thumbnail = (&form.thumbnail)
+        .path()
+        .unwrap()
+        .extension()
+        .map(|s| s.to_str())
+        .unwrap_or(Some("png"))
+        .unwrap()
+        .to_string();
+
     let client = projects().lock().await;
-    let pid = create_project(Project {
-        user_id: token.user,
-        title: form.title.clone(),
-        description: form.description.clone(),
-    });
+    let pid = create_project(
+        Project {
+            user_id: token.user,
+            title: form.title.clone(),
+            description: form.description.clone(),
+        },
+        thumbnail,
+    );
 
     let project = format!("{}.sb3", pid);
 
-    let content = ObjectContent::from(Path::new(&form.file.path().unwrap().to_str().unwrap()));
-    let resp = client
-        .put_object_content(&PROJECTS_BUCKET, &project, content)
+    let project_content = ObjectContent::from((&form.file).path().unwrap());
+    let project_resp = client
+        .put_object_content(&PROJECTS_BUCKET, &project, project_content)
         .send()
         .await;
 
+    let thumbnail_content = ObjectContent::from((&form.thumbnail).path().unwrap());
+    let thumbnail_resp = client
+        .put_object_content(&PROJECTS_BUCKET, &project, thumbnail_content)
+        .send()
+        .await;
+    
     if let Some(webhook_url) = logging_webhook() {
         let title = form.title.clone().to_owned();
         let desc = form.description.clone().to_owned();
         let success = format!("```\n{desc}\n```\n")
-            + if resp.is_ok() {
-                "✅ We stored it on the servers successfully."
+            + if project_resp.is_ok() {
+                "✅ project "
             } else {
-                "❌ We failed to store it, <@817057495503339600>".into()
+                "❌ project "
+            } + if thumbnail_resp.is_ok() {
+                "✅ thumbnail"
+            } else {
+                "❌ thumbnail"
             };
 
         let cur = db().lock().unwrap();
@@ -475,7 +518,7 @@ pub async fn project_content(
     let the_token = if let Some(user) = user_id {
         Some(Token {
             user,
-            token: token.unwrap()
+            token: token.unwrap(),
         })
     } else {
         None

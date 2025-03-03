@@ -38,7 +38,8 @@ pub fn update_user_info(
     _l: RocketGovernor<TenPerSecond>,
 ) -> (Status, Json<Value>) {
     if user_info
-        .bio.clone()
+        .bio
+        .clone()
         .is_some_and(|bio| bio.chars().count() > BIO_LIMIT)
     {
         return (

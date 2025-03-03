@@ -12,6 +12,7 @@ pub static MAX_PFP_HEIGHT: u32 = 512;
 
 pub static PROJECTS_BUCKET: &str = "projects";
 pub static PFPS_BUCKET: &str = "pfps";
+pub static THUMBNAILS_BUCKET: &str = "thumbnails";
 
 // bytes
 pub static ASSET_LIMIT: u64 = 15_000_000;
