@@ -99,7 +99,7 @@ fn rocket() -> Rocket<Build> {
             "/",
             routes![root::comic_sans, root::index, root::all_options],
         )
-        .mount("/uploads", routes![uploads::update_pfp, uploads::user])
+        .mount("/uploads", routes![uploads::update_pfp, uploads::user, uploads::thumb])
         .mount(
             "/auth",
             routes![
