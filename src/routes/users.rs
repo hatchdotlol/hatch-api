@@ -23,11 +23,11 @@ use super::projects::ProjectInfo;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {
-    bio: Option<String>,
+    bio: Option<&'r str>,
     country: String,
-    display_name: Option<String>,
+    display_name: Option<&'r str>,
     highlighted_projects: Option<Vec<&'r str>>,
-    banner_image: Option<String>,
+    banner_image: Option<&'r str>,
     theme: Option<String>,
 }
 
@@ -78,7 +78,7 @@ pub fn update_user_info(
         }
     }
 
-    if (&user_info.theme).is_some_and(|theme| {
+    if (&user_info.theme.as_ref()).is_some_and(|theme| {
         let without_prefix = theme.trim_start_matches("#");
         let parser = i64::from_str_radix(without_prefix, 16);
         parser.is_err()
@@ -108,7 +108,7 @@ pub fn update_user_info(
             user_info.display_name,
             highlighted_projects,
             user_info.banner_image,
-            user_info.theme,
+            user_info.theme.as_ref(),
             token.user.to_string()
         ),
     ).unwrap();
