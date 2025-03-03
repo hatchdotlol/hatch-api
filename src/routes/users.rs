@@ -228,7 +228,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 description: project.get(4).unwrap(),
                 rating: project.get(6).unwrap(),
                 version: None,
-                thumbnail: project.get(8).unwrap(),
+                thumbnail: project.get(7).unwrap(),
             }))
         })
         .unwrap();
