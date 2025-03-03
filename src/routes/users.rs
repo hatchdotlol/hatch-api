@@ -216,8 +216,11 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 return Ok(None);
             }
 
+            let project_id: u32 = project.get(0).unwrap();
+            let thumbnail = format!("/uploads/thumb/{}.{}", project_id, project.get::<usize, String>(7).unwrap());
+
             Ok(Some(ProjectInfo {
-                id: project.get(0).unwrap(),
+                id: project_id,
                 author: Author {
                     username: author.get(1).unwrap(),
                     profile_picture: author.get(7).unwrap(),
@@ -228,7 +231,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 description: project.get(4).unwrap(),
                 rating: project.get(6).unwrap(),
                 version: None,
-                thumbnail: project.get(7).unwrap(),
+                thumbnail,
             }))
         })
         .unwrap();
