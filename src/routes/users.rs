@@ -23,7 +23,7 @@ use super::projects::ProjectInfo;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {
-    bio: Option<&'r str>,
+    bio: Option<String>,
     country: String,
     display_name: Option<&'r str>,
     highlighted_projects: Option<Vec<&'r str>>,
@@ -38,7 +38,7 @@ pub fn update_user_info(
     _l: RocketGovernor<TenPerSecond>,
 ) -> (Status, Json<Value>) {
     if user_info
-        .bio
+        .bio.clone()
         .is_some_and(|bio| bio.chars().count() > BIO_LIMIT)
     {
         return (
@@ -103,7 +103,7 @@ pub fn update_user_info(
     cur.execute(
         "UPDATE users SET bio = ?1, country = ?2, display_name = ?3, highlighted_projects = ?4, banner_image = ?5, theme = ?6 WHERE id = ?7",
         (
-            user_info.bio,
+            user_info.bio.clone(),
             &user_info.country,
             user_info.display_name,
             highlighted_projects,
