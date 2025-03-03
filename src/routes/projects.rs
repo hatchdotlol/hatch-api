@@ -397,6 +397,7 @@ pub struct ProjectInfo {
     pub description: String,
     pub version: Option<usize>,
     pub rating: String,
+    pub thumbnail: String,
 }
 
 fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
@@ -433,6 +434,7 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
         description: project.get(4).unwrap(),
         rating: project.get(6).unwrap(),
         version: None,
+        thumbnail: project.get(8).unwrap(),
     });
 }
 

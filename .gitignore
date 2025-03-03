@@ -31,3 +31,5 @@ assets
 .env
 minio.deb
 test.py
+*.png
+*.sb3
