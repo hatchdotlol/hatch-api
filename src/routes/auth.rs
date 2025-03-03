@@ -483,6 +483,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             verified,
             project_count: project_count.unwrap().get(0).unwrap(),
             hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
+            theme: Some(row.get(16).unwrap_or("#ffbd59".into())),
         }),
     )
 }

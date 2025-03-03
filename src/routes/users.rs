@@ -28,6 +28,7 @@ pub struct UserInfo<'r> {
     display_name: Option<&'r str>,
     highlighted_projects: Option<Vec<&'r str>>,
     banner_image: Option<&'r str>,
+    theme: Option<&'r str>,
 }
 
 #[post("/", format = "application/json", data = "<user_info>")]
@@ -77,6 +78,17 @@ pub fn update_user_info(
         }
     }
 
+    if (&user_info.theme).is_some_and(|theme| {
+        let without_prefix = theme.trim_start_matches("#");
+        let parser = i64::from_str_radix(without_prefix, 16);
+        parser.is_err()
+    }) {
+        return (
+            Status::BadRequest,
+            Json(json!({"error": "Invalid color theme"})),
+        );
+    }
+
     if !COUNTRIES.contains(&user_info.country.as_str()) {
         return (
             Status::BadRequest,
@@ -89,13 +101,14 @@ pub fn update_user_info(
     let highlighted_projects = user_info.highlighted_projects.as_ref().map(|f| f.join(","));
 
     cur.execute(
-        "UPDATE users SET bio = ?1, country = ?2, display_name = ?3, highlighted_projects = ?4, banner_image = ?5 WHERE id = ?6",
+        "UPDATE users SET bio = ?1, country = ?2, display_name = ?3, highlighted_projects = ?4, banner_image = ?5, theme = ?6 WHERE id = ?7",
         (
             user_info.bio,
             &user_info.country,
             user_info.display_name,
             highlighted_projects,
             user_info.banner_image,
+            user_info.theme,
             token.user.to_string()
         ),
     ).unwrap();
@@ -161,6 +174,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         verified: None,
         project_count: project_count.unwrap().get(0).unwrap(),
         hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
+        theme: None,
     }))
 }
 
@@ -404,6 +418,7 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
                 verified: None,
                 project_count: None,
                 hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
+                theme: None,
             })
         })
         .unwrap()
@@ -457,6 +472,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
                 verified: None,
                 project_count: None,
                 hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
+                theme: None,
             })
         })
         .unwrap()

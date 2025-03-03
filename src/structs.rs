@@ -25,6 +25,7 @@ pub struct User {
     pub project_count: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hatch_team: Option<bool>,
+    pub theme: Option<String>,
 }
 
 #[derive(Debug)]

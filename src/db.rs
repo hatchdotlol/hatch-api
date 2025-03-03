@@ -45,7 +45,8 @@ pub fn db() -> &'static Mutex<Connection> {
                 verified INTEGER NOT NULL,
                 email TEXT NOT NULL,
                 banned INTEGER NOT NULL,
-                ips TEXT NOT NULL
+                ips TEXT NOT NULL,
+                theme TEXT
             )",
             (),
         )
