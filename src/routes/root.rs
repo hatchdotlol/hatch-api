@@ -8,7 +8,7 @@ use crate::ban_guard::NotBanned;
 
 pub fn start_time() -> &'static str {
     static START_TIME: OnceLock<String> = OnceLock::new();
-    START_TIME.get_or_init(|| format!("{}", chrono::Utc::now()))
+    START_TIME.get_or_init(|| format!("{}", chrono::Utc::now().timestamp()))
 }
 
 pub fn version() -> &'static str {
