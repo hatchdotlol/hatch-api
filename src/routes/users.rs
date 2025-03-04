@@ -39,7 +39,7 @@ pub fn update_user_info(
 ) -> (Status, Json<Value>) {
     if user_info
         .bio
-        .clone()
+        .as_ref()
         .is_some_and(|bio| bio.chars().count() > BIO_LIMIT)
     {
         return (
@@ -104,7 +104,7 @@ pub fn update_user_info(
     cur.execute(
         "UPDATE users SET bio = ?1, country = ?2, display_name = ?3, highlighted_projects = ?4, banner_image = ?5, theme = ?6 WHERE id = ?7",
         (
-            user_info.bio.clone(),
+            user_info.bio.as_ref(),
             &user_info.country,
             user_info.display_name,
             highlighted_projects,

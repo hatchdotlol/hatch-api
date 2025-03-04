@@ -89,7 +89,7 @@ pub fn register(
         );
     }
 
-    if !email_regex().is_match(&creds.email.clone().unwrap()) {
+    if !email_regex().is_match(&creds.email.as_ref().unwrap()) {
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"Invalid email address\"}".into()),
