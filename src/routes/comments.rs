@@ -11,16 +11,9 @@ use crate::{
     db::db,
     limit_guard::TenPerSecond,
     logging_webhook, report_webhook,
-    structs::{Author, Report},
+    data::{Author, Location, Report},
     token_guard::Token,
 };
-
-#[derive(Clone, Copy, Debug, Serialize)]
-pub enum Location {
-    Project = 0,
-    // Gallery = 1,
-    User = 2,
-}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]

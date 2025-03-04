@@ -9,7 +9,7 @@ pub mod entropy;
 pub mod ip_guard;
 pub mod limit_guard;
 pub mod routes;
-pub mod structs;
+pub mod data;
 pub mod token_guard;
 
 use config::*;

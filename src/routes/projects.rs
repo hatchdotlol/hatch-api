@@ -1,5 +1,6 @@
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::rocket::futures::StreamExt;
+use crate::data::ProjectInfo;
 use crate::token_guard::is_valid;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
@@ -11,7 +12,6 @@ use rocket::{
     serde::json::Json,
 };
 use rustrict::{CensorStr, Type};
-use serde::Serialize;
 use std::{fs::File, io::BufReader};
 use webhook::client::WebhookClient;
 use zip::ZipArchive;
@@ -20,11 +20,9 @@ use crate::{
     config::{ASSET_LIMIT, PROJECTS_BUCKET},
     db::{db, projects},
     logging_webhook, report_webhook,
-    structs::{Author, Report},
+    data::{Author, Report, Location},
     token_guard::Token,
 };
-
-use super::comments::Location;
 
 #[derive(FromForm)]
 pub struct Upload<'f> {
@@ -42,7 +40,7 @@ pub struct Update<'f> {
     description: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
 struct Project {
     user_id: u32,
     title: String,
@@ -435,19 +433,6 @@ pub async fn update_project(
     }
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
-}
-
-#[derive(Debug, Serialize)]
-pub struct ProjectInfo {
-    pub id: u32,
-    pub author: Author,
-    pub upload_ts: i64,
-    pub title: String,
-    pub description: String,
-    pub version: Option<usize>,
-    pub rating: String,
-    pub thumbnail: String,
-    pub comment_count: u32,
 }
 
 fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {

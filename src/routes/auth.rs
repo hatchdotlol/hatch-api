@@ -6,7 +6,7 @@ use crate::config::{
 use crate::db::db;
 use crate::entropy::calculate_entropy;
 use crate::ip_guard::ClientRealAddr;
-use crate::structs::User;
+use crate::data::User;
 use crate::token_guard::Token;
 use crate::{backup_resend_key, mods};
 

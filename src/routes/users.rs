@@ -11,15 +11,8 @@ use url::Url;
 use webhook::client::WebhookClient;
 
 use crate::{
-    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
-    db::db,
-    limit_guard::TenPerSecond,
-    mods, report_webhook,
-    structs::{Author, Report, User},
-    token_guard::Token,
+    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT}, data::{Author, Location, ProjectInfo, Report, User}, db::db, limit_guard::TenPerSecond, mods, report_webhook, token_guard::Token
 };
-
-use super::{comments::Location, projects::ProjectInfo};
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {

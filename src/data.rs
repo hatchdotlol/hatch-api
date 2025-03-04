@@ -34,6 +34,7 @@ pub enum AuthError {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Author {
     pub username: String,
     pub profile_picture: String,
@@ -45,4 +46,25 @@ pub struct Author {
 pub struct Report {
     pub category: u32,
     pub reason: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectInfo {
+    pub id: u32,
+    pub author: Author,
+    pub upload_ts: i64,
+    pub title: String,
+    pub description: String,
+    pub version: Option<usize>,
+    pub rating: String,
+    pub thumbnail: String,
+    pub comment_count: u32,
+}
+
+#[derive(Clone, Copy, Debug, Serialize)]
+pub enum Location {
+    Project = 0,
+    // Gallery = 1,
+    User = 2,
 }
