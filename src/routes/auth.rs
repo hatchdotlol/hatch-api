@@ -11,8 +11,8 @@ use crate::token_guard::Token;
 use crate::{backup_resend_key, mods};
 
 use chrono::TimeDelta;
+use email_address::EmailAddress;
 use rand::Rng;
-use regex::Regex;
 use rocket::http::Status;
 use rocket::response::{content, status, Redirect};
 use rocket::serde::json::Json;
@@ -21,7 +21,6 @@ use rustrict::{CensorStr, Type};
 
 use serde_json::Value;
 use std::collections::HashSet;
-use std::sync::OnceLock;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
 
@@ -30,16 +29,6 @@ pub struct Credentials {
     pub username: String,
     pub password: String,
     pub email: Option<String>,
-}
-
-pub fn email_regex() -> &'static Regex {
-    static EMAIL_REGEX: OnceLock<Regex> = OnceLock::new();
-    EMAIL_REGEX.get_or_init(|| {
-        Regex::new(
-            r"^([a-z0-9_+]([a-z0-9_+.]*[a-z0-9_+])?)@([a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,6})",
-        )
-        .unwrap()
-    })
 }
 
 #[post("/register", format = "application/json", data = "<creds>")]
@@ -89,7 +78,7 @@ pub fn register(
         );
     }
 
-    if !email_regex().is_match(&creds.email.as_ref().unwrap()) {
+    if creds.email.as_ref().is_none_or(|e| !EmailAddress::is_valid(&e)) {
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"Invalid email address\"}".into()),
