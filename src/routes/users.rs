@@ -19,7 +19,7 @@ use crate::{
     token_guard::Token,
 };
 
-use super::projects::ProjectInfo;
+use super::{comments::Location, projects::ProjectInfo};
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct UserInfo<'r> {
@@ -206,7 +206,9 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
         .query_map([user_id], |project| {
             let author_id: u32 = project.get(1).unwrap();
 
-            let mut select = cur.prepare_cached("SELECT * FROM users WHERE id=?1").unwrap();
+            let mut select = cur
+                .prepare_cached("SELECT * FROM users WHERE id=?1")
+                .unwrap();
             let mut query = select.query((author_id,)).unwrap();
             let Some(author) = query.next().unwrap() else {
                 return Ok(None);
@@ -217,7 +219,17 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
             }
 
             let project_id: u32 = project.get(0).unwrap();
-            let thumbnail = format!("/uploads/thumb/{}.{}", project_id, project.get::<usize, String>(7).unwrap());
+            let thumbnail = format!(
+                "/uploads/thumb/{}.{}",
+                project_id,
+                project.get::<usize, String>(7).unwrap()
+            );
+
+            let mut select_comment_count = cur.prepare_cached("SELECT COUNT(*) FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE").unwrap();
+            let mut query = select_comment_count
+                .query((Location::Project as u8, project_id))
+                .unwrap();
+            let comment_count = query.next().unwrap().unwrap().get(0).unwrap_or(0 as u32);        
 
             Ok(Some(ProjectInfo {
                 id: project_id,
@@ -232,6 +244,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 rating: project.get(6).unwrap(),
                 version: None,
                 thumbnail,
+                comment_count
             }))
         })
         .unwrap();
@@ -285,7 +298,9 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     )
     .unwrap();
 
-    let mut select = cur.prepare_cached("SELECT * FROM users WHERE id = ?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT * FROM users WHERE id = ?1")
+        .unwrap();
     let mut query = select.query([token.user]).unwrap();
     let row = query.next().unwrap().unwrap();
 
@@ -349,7 +364,9 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     }
     .unwrap();
 
-    let mut select = cur.prepare_cached("SELECT * FROM users WHERE id = ?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT * FROM users WHERE id = ?1")
+        .unwrap();
     let mut query = select.query([token.user]).unwrap();
     let row = query.next().unwrap().unwrap();
 
@@ -422,7 +439,9 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
                 following_count: None,
                 verified: None,
                 project_count: None,
-                hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
+                hatch_team: Some(
+                    mods().contains_key(row.get::<usize, String>(1).unwrap().as_str()),
+                ),
                 theme: None,
             })
         })
@@ -476,7 +495,9 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
                 following_count: None,
                 verified: None,
                 project_count: None,
-                hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
+                hatch_team: Some(
+                    mods().contains_key(row.get::<usize, String>(1).unwrap().as_str()),
+                ),
                 theme: None,
             })
         })
@@ -494,7 +515,9 @@ pub async fn report_user(
     report: Json<Report>,
 ) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare_cached("SELECT * FROM users WHERE name=?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT * FROM users WHERE name=?1")
+        .unwrap();
     let mut query = select.query((user,)).unwrap();
     if query.next().unwrap().is_none() {
         return status::Custom(

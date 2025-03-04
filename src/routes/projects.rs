@@ -19,11 +19,12 @@ use zip::ZipArchive;
 use crate::{
     config::{ASSET_LIMIT, PROJECTS_BUCKET},
     db::{db, projects},
-    logging_webhook,
-    report_webhook,
+    logging_webhook, report_webhook,
     structs::{Author, Report},
     token_guard::Token,
 };
+
+use super::comments::Location;
 
 #[derive(FromForm)]
 pub struct Upload<'f> {
@@ -167,7 +168,7 @@ pub async fn index(
         .put_object_content(&THUMBNAILS_BUCKET, &thumbnail, thumbnail_content)
         .send()
         .await;
-    
+
     if let Some(webhook_url) = logging_webhook() {
         let title = form.title.clone().to_owned();
         let desc = form.description.clone().to_owned();
@@ -176,14 +177,17 @@ pub async fn index(
                 "✅ project "
             } else {
                 "❌ project "
-            } + if thumbnail_resp.is_ok() {
+            }
+            + if thumbnail_resp.is_ok() {
                 "✅ thumbnail"
             } else {
                 "❌ thumbnail"
             };
 
         let cur = db().lock().unwrap();
-        let mut select = cur.prepare_cached("SELECT name FROM users WHERE id = ?1").unwrap();
+        let mut select = cur
+            .prepare_cached("SELECT name FROM users WHERE id = ?1")
+            .unwrap();
         let name = select
             .query((token.user,))
             .unwrap()
@@ -218,7 +222,9 @@ pub async fn index(
 
 fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare_cached("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT * FROM projects WHERE id=?1")
+        .unwrap();
     let mut query = select.query((id,)).unwrap();
     let Some(project) = query.next().unwrap() else {
         return Some(Status::NotFound);
@@ -320,7 +326,7 @@ pub async fn update_project(
             .put_object_content(&PROJECTS_BUCKET, &project, content)
             .send()
             .await;
-        
+
         if resp.is_ok() {
             2
         } else {
@@ -357,7 +363,7 @@ pub async fn update_project(
             .put_object_content(&THUMBNAILS_BUCKET, &thumbnail, content)
             .send()
             .await;
-        
+
         if resp.is_ok() {
             2
         } else {
@@ -396,21 +402,19 @@ pub async fn update_project(
             .description
             .clone()
             .unwrap_or("[Unchanged description]".into());
-        let success = format!("```\n{title}\n---\n{desc}\n```\n") + match project_put {
-            0 => "The project file was not updated. ",
-            1 => {
-                "❌ The updated project file could not be put on the servers. "
+        let success = format!("```\n{title}\n---\n{desc}\n```\n")
+            + match project_put {
+                0 => "The project file was not updated. ",
+                1 => "❌ The updated project file could not be put on the servers. ",
+                2 => "✅ We stored the updated project file on the servers.",
+                _ => unimplemented!(),
             }
-            2 => "✅ We stored the updated project file on the servers.",
-            _ => unimplemented!(),
-        } + match thumbnail_put {
-            0 => "The thumbnail was not updated. ",
-            1 => {
-                "❌ The updated thumbnail could not be put on the servers. "
-            }
-            2 => "✅ We stored the updated thumbnail on the servers.",
-            _ => unimplemented!(),
-        };
+            + match thumbnail_put {
+                0 => "The thumbnail was not updated. ",
+                1 => "❌ The updated thumbnail could not be put on the servers. ",
+                2 => "✅ We stored the updated thumbnail on the servers.",
+                _ => unimplemented!(),
+            };
         tokio::spawn(async move {
             let url: &str = &webhook_url;
             let client = WebhookClient::new(url);
@@ -443,11 +447,14 @@ pub struct ProjectInfo {
     pub version: Option<usize>,
     pub rating: String,
     pub thumbnail: String,
+    pub comment_count: u32,
 }
 
 fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare_cached("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT * FROM projects WHERE id=?1")
+        .unwrap();
     let mut query = select.query((id,)).unwrap();
     let Some(project) = query.next().unwrap() else {
         return Err(Status::NotFound);
@@ -455,7 +462,9 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
 
     let author_id: u32 = project.get(1).unwrap();
 
-    let mut select = cur.prepare_cached("SELECT * FROM users WHERE id=?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT * FROM users WHERE id=?1")
+        .unwrap();
     let mut query = select.query((author_id,)).unwrap();
     let Some(author) = query.next().unwrap() else {
         return Err(Status::NotFound);
@@ -468,7 +477,17 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
     }
 
     let project_id: u32 = project.get(0).unwrap();
-    let thumbnail = format!("/uploads/thumb/{}.{}", project_id, project.get::<usize, String>(7).unwrap());
+    let thumbnail = format!(
+        "/uploads/thumb/{}.{}",
+        project_id,
+        project.get::<usize, String>(7).unwrap()
+    );
+
+    let mut select_comment_count = cur.prepare_cached("SELECT COUNT(*) FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE").unwrap();
+    let mut query = select_comment_count
+        .query((Location::Project as u8, project_id))
+        .unwrap();
+    let comment_count = query.next().unwrap().unwrap().get(0).unwrap_or(0 as u32);
 
     return Ok(ProjectInfo {
         id: project_id,
@@ -483,6 +502,7 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
         rating: project.get(6).unwrap(),
         version: None,
         thumbnail,
+        comment_count,
     });
 }
 
@@ -609,7 +629,9 @@ pub async fn report_project(
     report: Json<Report>,
 ) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare_cached("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT * FROM projects WHERE id=?1")
+        .unwrap();
     let mut query = select.query((id,)).unwrap();
     if query.next().unwrap().is_none() {
         return status::Custom(

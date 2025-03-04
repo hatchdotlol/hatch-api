@@ -35,8 +35,5 @@ pub fn message() -> &'static str {
 #[get("/")]
 pub fn index(_banned: NotBanned) -> status::Custom<content::RawJson<&'static str>> {
     let message = message();
-    status::Custom(
-        Status::Ok,
-        content::RawJson(message),
-    )
+    status::Custom(Status::Ok, content::RawJson(message))
 }

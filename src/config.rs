@@ -306,11 +306,11 @@ pub fn mods() -> &'static BTreeMap<String, bool> {
     MODS.get_or_init(|| {
         let mut mods = BTreeMap::new();
         let mod_str = env::var("MODS").expect("MODS not present");
-        
+
         for moderator in mod_str.split(",") {
             mods.insert(moderator.into(), true);
-        };
-        
+        }
+
         mods
     })
 }

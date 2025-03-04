@@ -94,11 +94,11 @@ fn rocket() -> Rocket<Build> {
                 rocket_governor_catcher
             ],
         )
+        .mount("/", routes![root::index, root::all_options])
         .mount(
-            "/",
-            routes![root::index, root::all_options],
+            "/uploads",
+            routes![uploads::update_pfp, uploads::user, uploads::thumb],
         )
-        .mount("/uploads", routes![uploads::update_pfp, uploads::user, uploads::thumb])
         .mount(
             "/auth",
             routes![

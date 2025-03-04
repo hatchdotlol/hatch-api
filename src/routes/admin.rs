@@ -15,7 +15,9 @@ pub struct Banned {
 
 fn is_mod(user: u32) -> bool {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare_cached("SELECT name FROM users WHERE id = ?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT name FROM users WHERE id = ?1")
+        .unwrap();
 
     let mut rows = select.query([user]).unwrap();
     let Some(row) = rows.next().unwrap() else {

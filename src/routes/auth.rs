@@ -430,7 +430,9 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let token = row.next().unwrap().unwrap();
 
     let user = token.get::<usize, u32>(0).unwrap();
-    let mut select = cur.prepare_cached("SELECT * FROM users WHERE id = ?1").unwrap();
+    let mut select = cur
+        .prepare_cached("SELECT * FROM users WHERE id = ?1")
+        .unwrap();
     let mut row = select.query([user]).unwrap();
     let row = row.next().unwrap().unwrap();
 
