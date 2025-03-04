@@ -22,7 +22,7 @@ fn is_mod(user: u32) -> bool {
         return false;
     };
 
-    mods().contains(&row.get::<usize, String>(0).unwrap().as_str())
+    mods().contains_key(row.get::<usize, String>(0).unwrap().as_str())
 }
 
 #[post("/banned", format = "application/json", data = "<ip_address>")]

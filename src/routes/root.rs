@@ -15,7 +15,7 @@ pub fn message() -> &'static str {
     static MESSAGE: OnceLock<String> = OnceLock::new();
 
     MESSAGE.get_or_init(|| {
-        let version = env::var("VERSION").expect("VERSION key not present");
+        let version = env::var("VERSION").unwrap_or("none".into());
         let start_time = format!("{}", chrono::Utc::now().timestamp());
 
         format!(

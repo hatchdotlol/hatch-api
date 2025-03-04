@@ -174,7 +174,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         follower_count: Some(follower_count),
         verified: None,
         project_count: project_count.unwrap().get(0).unwrap(),
-        hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
+        hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
         theme: Some(row.get(16).unwrap_or("#ffbd59".into())),
     }))
 }
@@ -422,7 +422,7 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
                 following_count: None,
                 verified: None,
                 project_count: None,
-                hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
+                hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
                 theme: None,
             })
         })
@@ -476,7 +476,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
                 following_count: None,
                 verified: None,
                 project_count: None,
-                hatch_team: Some(mods().contains(&row.get::<usize, String>(1).unwrap().as_str())),
+                hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
                 theme: None,
             })
         })

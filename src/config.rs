@@ -1,4 +1,4 @@
-use std::{env, sync::OnceLock};
+use std::{collections::BTreeMap, env, sync::OnceLock};
 
 pub static TOKEN_EXPIRY: u64 = 604800; // secs
 pub static EMAIL_TOKEN_EXPIRY: u64 = 900; // secs
@@ -301,11 +301,18 @@ pub static VERIFICATION_TEMPLATE: &str = r#"
 </body>
 "#;
 
-pub fn mods() -> Vec<&'static str> {
-    static MODS: OnceLock<String> = OnceLock::new();
-    MODS.get_or_init(|| env::var("MODS").expect("MODS not present"))
-        .split(",")
-        .collect::<Vec<_>>()
+pub fn mods() -> &'static BTreeMap<String, bool> {
+    static MODS: OnceLock<BTreeMap<String, bool>> = OnceLock::new();
+    MODS.get_or_init(|| {
+        let mut mods = BTreeMap::new();
+        let mod_str = env::var("MODS").expect("MODS not present");
+        
+        for moderator in mod_str.split(",") {
+            mods.insert(moderator.into(), true);
+        };
+        
+        mods
+    })
 }
 
 pub fn postal_url() -> &'static str {
