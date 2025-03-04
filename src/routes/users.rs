@@ -122,7 +122,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([user]).unwrap();
     let Some(row) = row.next().unwrap() else {
@@ -155,7 +155,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
     };
 
     let mut select = cur
-        .prepare("SELECT COUNT(*) FROM projects WHERE author = ?1")
+        .prepare_cached("SELECT COUNT(*) FROM projects WHERE author = ?1")
         .unwrap();
     let mut rows = select.query((id,)).unwrap();
     let project_count = rows.next().unwrap();
@@ -189,7 +189,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT id FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT id FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
 
     let mut row = select.query([&user]).unwrap();
@@ -199,14 +199,14 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
     let user_id = row.get::<usize, u32>(0).unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM projects WHERE author = ?1")
+        .prepare_cached("SELECT * FROM projects WHERE author = ?1")
         .unwrap();
 
     let projects = select
         .query_map([user_id], |project| {
             let author_id: u32 = project.get(1).unwrap();
 
-            let mut select = cur.prepare("SELECT * FROM users WHERE id=?1").unwrap();
+            let mut select = cur.prepare_cached("SELECT * FROM users WHERE id=?1").unwrap();
             let mut query = select.query((author_id,)).unwrap();
             let Some(author) = query.next().unwrap() else {
                 return Ok(None);
@@ -254,7 +254,7 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
@@ -285,7 +285,7 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     )
     .unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM users WHERE id = ?1").unwrap();
     let mut query = select.query([token.user]).unwrap();
     let row = query.next().unwrap().unwrap();
 
@@ -308,7 +308,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
@@ -349,7 +349,7 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     }
     .unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM users WHERE id = ?1").unwrap();
     let mut query = select.query([token.user]).unwrap();
     let row = query.next().unwrap().unwrap();
 
@@ -389,7 +389,7 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT followers FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT followers FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
@@ -402,7 +402,7 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
 
     let followers = &followers[..followers.len() - 1].replace(",", ", ");
 
-    let mut select = cur.prepare(&format!(
+    let mut select = cur.prepare_cached(&format!(
         "SELECT id, name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", followers
     )).unwrap();
 
@@ -443,7 +443,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT following FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT following FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
     let Some(row) = row.next().unwrap() else {
@@ -456,7 +456,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
 
     let following = &following[..following.len() - 1].replace(",", ", ");
 
-    let mut select = cur.prepare(&format!(
+    let mut select = cur.prepare_cached(&format!(
         "SELECT id, name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", following
     )).unwrap();
 
@@ -494,7 +494,7 @@ pub async fn report_user(
     report: Json<Report>,
 ) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare("SELECT * FROM users WHERE name=?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM users WHERE name=?1").unwrap();
     let mut query = select.query((user,)).unwrap();
     if query.next().unwrap().is_none() {
         return status::Custom(
@@ -504,7 +504,7 @@ pub async fn report_user(
     };
 
     let mut select = cur
-        .prepare("SELECT id FROM reports WHERE type = \"user\" AND resource_id = ?1")
+        .prepare_cached("SELECT id FROM reports WHERE type = \"user\" AND resource_id = ?1")
         .unwrap();
     let mut rows = select.query((user,)).unwrap();
 

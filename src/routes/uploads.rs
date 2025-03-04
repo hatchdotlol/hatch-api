@@ -22,7 +22,7 @@ fn get_user_pfp(user: u32) -> String {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT profile_picture from users WHERE id = ?1")
+        .prepare_cached("SELECT profile_picture from users WHERE id = ?1")
         .unwrap();
 
     let mut query = select.query([user]).unwrap();

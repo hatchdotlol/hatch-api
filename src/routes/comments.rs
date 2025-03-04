@@ -42,13 +42,13 @@ pub fn project_comments(id: u32) -> Json<Comments> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare(
+        .prepare_cached(
             "SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE",
         )
         .unwrap();
 
     let mut _hidden_threads = cur
-        .prepare("SELECT id FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = FALSE AND reply_to = NULL")
+        .prepare_cached("SELECT id FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = FALSE AND reply_to = NULL")
         .unwrap();
 
     let hidden_threads: Vec<_> = _hidden_threads
@@ -62,7 +62,7 @@ pub fn project_comments(id: u32) -> Json<Comments> {
     let comments: Vec<_> = select
         .query_map((Location::Project as u8, id), |row| {
             let author_id = row.get::<usize, u32>(2).unwrap();
-            let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
+            let mut select = cur.prepare_cached("SELECT * FROM users WHERE id = ?1").unwrap();
             let mut _row = select.query([author_id]).unwrap();
             let author_row = _row.next().unwrap().unwrap();
             let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
@@ -100,7 +100,7 @@ pub fn user_comments(
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([user]).unwrap();
     let Some(row) = row.next().unwrap() else {
@@ -109,13 +109,13 @@ pub fn user_comments(
     let id: usize = row.get(0).unwrap();
 
     let mut select = cur
-        .prepare(
+        .prepare_cached(
             "SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE",
         )
         .unwrap();
 
     let mut _hidden_threads = cur
-        .prepare("SELECT id FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = FALSE AND reply_to = NULL")
+        .prepare_cached("SELECT id FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = FALSE AND reply_to = NULL")
         .unwrap();
 
     let hidden_threads: Vec<_> = _hidden_threads
@@ -129,7 +129,7 @@ pub fn user_comments(
     let comments: Vec<_> = select
         .query_map((Location::User as u8, id), |row| {
             let author_id = row.get::<usize, u32>(2).unwrap();
-            let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
+            let mut select = cur.prepare_cached("SELECT * FROM users WHERE id = ?1").unwrap();
             let mut _row = select.query([author_id]).unwrap();
             let author_row = _row.next().unwrap().unwrap();
             let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
@@ -178,7 +178,7 @@ pub fn post_project_comment(
 ) -> status::Custom<content::RawJson<String>> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();
     if query.next().unwrap().is_none() {
         return status::Custom(
@@ -195,7 +195,7 @@ pub fn post_project_comment(
     }
 
     if let Some(reply_to) = comment.reply_to {
-        let mut select = cur.prepare("SELECT * FROM comments WHERE id=?1").unwrap();
+        let mut select = cur.prepare_cached("SELECT * FROM comments WHERE id=?1").unwrap();
         let mut query = select.query((reply_to,)).unwrap();
         let Some(row) = query.next().unwrap() else {
             return status::Custom(
@@ -265,7 +265,7 @@ pub fn delete_project_comment(
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT author FROM comments WHERE id = ?1")
+        .prepare_cached("SELECT author FROM comments WHERE id = ?1")
         .unwrap();
     let mut rows = select.query((id,)).unwrap();
 
@@ -324,7 +324,7 @@ pub fn report_project_comment(
 ) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM comments WHERE id = ?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM comments WHERE id = ?1").unwrap();
     let mut rows = select.query((comment_id,)).unwrap();
 
     let Some(comment) = rows.next().unwrap() else {
@@ -335,7 +335,7 @@ pub fn report_project_comment(
     };
 
     let mut select = cur
-        .prepare("SELECT id FROM reports WHERE type = \"comment\" AND resource_id = ?1")
+        .prepare_cached("SELECT id FROM reports WHERE type = \"comment\" AND resource_id = ?1")
         .unwrap();
     let mut rows = select.query((comment_id,)).unwrap();
 
@@ -374,7 +374,7 @@ pub fn report_project_comment(
         let reportee_comment = comment.get::<usize, String>(1).unwrap();
         let reporee_author = comment.get::<usize, u32>(2).unwrap();
 
-        let mut select = cur.prepare("SELECT name FROM users WHERE id = ?1").unwrap();
+        let mut select = cur.prepare_cached("SELECT name FROM users WHERE id = ?1").unwrap();
         let mut rows = select.query((reporee_author,)).unwrap();
         let reportee_author = rows
             .next()

@@ -15,7 +15,7 @@ pub struct Banned {
 
 fn is_mod(user: u32) -> bool {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare("SELECT name FROM users WHERE id = ?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT name FROM users WHERE id = ?1").unwrap();
 
     let mut rows = select.query([user]).unwrap();
     let Some(row) = rows.next().unwrap() else {
@@ -45,7 +45,7 @@ pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> 
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT ips FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT ips FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut first_row = select.query([username]).unwrap();
 
@@ -61,7 +61,7 @@ pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> 
     let ips = &mut ips.split("|").filter(|ip| *ip != "").collect::<Vec<_>>();
 
     let mut insert = cur
-        .prepare("INSERT INTO ip_bans (address) VALUES (?1)")
+        .prepare_cached("INSERT INTO ip_bans (address) VALUES (?1)")
         .unwrap();
     for ip in ips {
         insert.execute((ip.to_string(),)).unwrap();
@@ -79,7 +79,7 @@ pub fn ip_unban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT ips FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT ips FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut first_row = select.query([username]).unwrap();
 
@@ -95,7 +95,7 @@ pub fn ip_unban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status
     let ips = &mut ips.split("|").filter(|ip| *ip != "").collect::<Vec<_>>();
 
     let mut delete = cur
-        .prepare("DELETE FROM ip_bans WHERE address = ?1")
+        .prepare_cached("DELETE FROM ip_bans WHERE address = ?1")
         .unwrap();
     for ip in ips {
         delete.execute((ip.to_string(),)).unwrap();

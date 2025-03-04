@@ -183,7 +183,7 @@ pub async fn index(
             };
 
         let cur = db().lock().unwrap();
-        let mut select = cur.prepare("SELECT name FROM users WHERE id = ?1").unwrap();
+        let mut select = cur.prepare_cached("SELECT name FROM users WHERE id = ?1").unwrap();
         let name = select
             .query((token.user,))
             .unwrap()
@@ -218,7 +218,7 @@ pub async fn index(
 
 fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();
     let Some(project) = query.next().unwrap() else {
         return Some(Status::NotFound);
@@ -447,7 +447,7 @@ pub struct ProjectInfo {
 
 fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();
     let Some(project) = query.next().unwrap() else {
         return Err(Status::NotFound);
@@ -455,7 +455,7 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
 
     let author_id: u32 = project.get(1).unwrap();
 
-    let mut select = cur.prepare("SELECT * FROM users WHERE id=?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM users WHERE id=?1").unwrap();
     let mut query = select.query((author_id,)).unwrap();
     let Some(author) = query.next().unwrap() else {
         return Err(Status::NotFound);
@@ -609,7 +609,7 @@ pub async fn report_project(
     report: Json<Report>,
 ) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
-    let mut select = cur.prepare("SELECT * FROM projects WHERE id=?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM projects WHERE id=?1").unwrap();
     let mut query = select.query((id,)).unwrap();
     if query.next().unwrap().is_none() {
         return status::Custom(
@@ -619,7 +619,7 @@ pub async fn report_project(
     };
 
     let mut select = cur
-        .prepare("SELECT id FROM reports WHERE type = \"project\" AND resource_id = ?1")
+        .prepare_cached("SELECT id FROM reports WHERE type = \"project\" AND resource_id = ?1")
         .unwrap();
     let mut rows = select.query((id,)).unwrap();
 

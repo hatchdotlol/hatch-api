@@ -106,7 +106,7 @@ pub fn register(
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT * from users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT * from users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut query = select.query((&creds.username,)).unwrap();
     let first = query.next().unwrap();
@@ -285,7 +285,7 @@ pub fn login(
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT id, pw, ips FROM users WHERE name = ?1 COLLATE nocase")
+        .prepare_cached("SELECT id, pw, ips FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut first_row = select.query([&creds.username]).unwrap();
 
@@ -317,7 +317,7 @@ pub fn login(
     }
 
     let mut select = cur
-        .prepare("SELECT token FROM auth_tokens WHERE user = ?1")
+        .prepare_cached("SELECT token FROM auth_tokens WHERE user = ?1")
         .unwrap();
     let mut first_row = select.query([id]).unwrap();
 
@@ -379,7 +379,7 @@ pub fn verify(email_token: &str) -> Redirect {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT * from email_tokens WHERE token=?1")
+        .prepare_cached("SELECT * from email_tokens WHERE token=?1")
         .unwrap();
     let mut rows = select.query((email_token,)).unwrap();
 
@@ -424,13 +424,13 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT user FROM auth_tokens WHERE token = ?1")
+        .prepare_cached("SELECT user FROM auth_tokens WHERE token = ?1")
         .unwrap();
     let mut row = select.query([token.token]).unwrap();
     let token = row.next().unwrap().unwrap();
 
     let user = token.get::<usize, u32>(0).unwrap();
-    let mut select = cur.prepare("SELECT * FROM users WHERE id = ?1").unwrap();
+    let mut select = cur.prepare_cached("SELECT * FROM users WHERE id = ?1").unwrap();
     let mut row = select.query([user]).unwrap();
     let row = row.next().unwrap().unwrap();
 
@@ -461,7 +461,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let verified: Option<bool> = Some(row.get(12).unwrap());
 
     let mut select = cur
-        .prepare("SELECT COUNT(*) FROM projects WHERE author = ?1")
+        .prepare_cached("SELECT COUNT(*) FROM projects WHERE author = ?1")
         .unwrap();
     let mut rows = select.query((user,)).unwrap();
     let project_count = rows.next().unwrap();

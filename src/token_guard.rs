@@ -11,7 +11,7 @@ pub fn is_valid(token: &str) -> Option<u32> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare("SELECT user, expiration_ts FROM auth_tokens WHERE token = ?1")
+        .prepare_cached("SELECT user, expiration_ts FROM auth_tokens WHERE token = ?1")
         .unwrap();
     let mut query = select.query([token]).unwrap();
     let user = query.next().unwrap();
