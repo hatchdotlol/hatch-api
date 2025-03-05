@@ -60,6 +60,7 @@ impl SqliteBackend {
         };
 
         let ips: String = first_row.get(0).unwrap();
+
         let ips = ips
             .split("|")
             .filter(|ip| *ip != "")
