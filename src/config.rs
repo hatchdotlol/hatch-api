@@ -29,7 +29,7 @@ pub static ALLOWED_IMAGE_HOSTS: [&str; 5] = [
 ];
 
 pub static COUNTRIES: [&str; 252] = [
-    "United States",
+    "Location Not Given",
     "Afghanistan",
     "Åland Islands",
     "Algeria",
@@ -230,7 +230,7 @@ pub static COUNTRIES: [&str; 252] = [
     "Solomon Islands",
     "Somalia",
     "South Africa",
-    "South Georgia and the South Sandwish Islands",
+    "South Georgia and the South Sandwich Islands",
     "South Korea",
     "South Sudan",
     "Spain",
