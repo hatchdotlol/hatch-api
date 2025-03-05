@@ -429,8 +429,8 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
         .client
         .prepare_cached("SELECT user FROM auth_tokens WHERE token = ?1")
         .unwrap();
-    let mut row = select.query([token.token]).unwrap();
-    let token = row.next().unwrap().unwrap();
+    let mut rows = select.query([token.token]).unwrap();
+    let token = rows.next().unwrap().unwrap();
 
     let user = token.get::<usize, u32>(0).unwrap();
     let mut select = cur
