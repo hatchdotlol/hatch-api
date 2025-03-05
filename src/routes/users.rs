@@ -497,7 +497,7 @@ pub async fn report_user(
     let mut rows = select.query((user,)).unwrap();
 
     if rows.next().unwrap().is_some() {
-        return Err(Status::AlreadyReported);
+        return Err(Status::Conflict);
     }
 
     let report_category = match report.category {

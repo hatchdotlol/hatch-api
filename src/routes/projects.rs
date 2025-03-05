@@ -613,7 +613,7 @@ pub async fn report_project(
     let mut rows = select.query((id,)).unwrap();
 
     if rows.next().unwrap().is_some() {
-        return Err(Status::AlreadyReported);
+        return Err(Status::Conflict);
     }
 
     let report_category = match report.category {

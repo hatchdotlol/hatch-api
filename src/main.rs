@@ -24,26 +24,34 @@ use routes::*;
 use routes::{auth, projects, root, uploads, users};
 
 #[catch(404)]
-fn not_found() -> status::Custom<content::RawJson<String>> {
+fn not_found() -> status::Custom<content::RawJson<&'static str>> {
     status::Custom(
         Status::NotFound,
-        content::RawJson(String::from("{\"message\": \"Not Found\"}")),
+        content::RawJson("{\"message\": \"Not Found\"}"),
     )
 }
 
 #[catch(400)]
-fn bad_request() -> status::Custom<content::RawJson<String>> {
+fn bad_request() -> status::Custom<content::RawJson<&'static str>> {
     status::Custom(
         Status::BadRequest,
-        content::RawJson(String::from("{\"message\": \"Bad Request\"}")),
+        content::RawJson("{\"message\": \"Bad Request\"}"),
     )
 }
 
 #[catch(401)]
-fn unauthorized() -> status::Custom<content::RawJson<String>> {
+fn unauthorized() -> status::Custom<content::RawJson<&'static str>> {
     status::Custom(
         Status::Unauthorized,
-        content::RawJson(String::from("{\"message\": \"Unauthorized\"}")),
+        content::RawJson("{\"message\": \"Unauthorized\"}"),
+    )
+}
+
+#[catch(409)]
+fn conflict() -> status::Custom<content::RawJson<&'static str>> {
+    status::Custom(
+        Status::Unauthorized,
+        content::RawJson("{\"message\": \"Already reported\"}"),
     )
 }
 
@@ -60,7 +68,7 @@ fn rocket() -> Rocket<Build> {
     postal_url();
     base_url();
     logging_webhook();
-    // report_webhook();
+    report_webhook();
     admin_key();
 
     let allowed_origins = AllowedOrigins::all();
@@ -91,7 +99,8 @@ fn rocket() -> Rocket<Build> {
                 not_found,
                 bad_request,
                 unauthorized,
-                rocket_governor_catcher
+                conflict,
+                rocket_governor_catcher,
             ],
         )
         .mount("/", routes![root::index, root::all_options])
