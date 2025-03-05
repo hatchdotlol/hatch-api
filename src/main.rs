@@ -116,7 +116,8 @@ fn rocket() -> Rocket<Build> {
                 projects::index,
                 projects::project,
                 projects::project_content,
-                projects::update_project
+                projects::update_project,
+                projects::report_project
             ],
         )
         .mount(
