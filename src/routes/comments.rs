@@ -8,22 +8,12 @@ use serde::{Deserialize, Serialize};
 use webhook::client::WebhookClient;
 
 use crate::{
+    data::{Comment, Location, Report},
     db::db,
     limit_guard::TenPerSecond,
     logging_webhook, report_webhook,
-    data::{Author, Location, Report},
     token_guard::Token,
 };
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Comment {
-    id: u32,
-    content: String,
-    author: Author,
-    post_date: u32,
-    reply_to: Option<u32>,
-}
 
 #[derive(Debug, Serialize)]
 pub struct Comments {
@@ -34,55 +24,7 @@ pub struct Comments {
 pub fn project_comments(id: u32) -> Json<Comments> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
-        .prepare_cached(
-            "SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE",
-        )
-        .unwrap();
-
-    let mut _hidden_threads = cur
-        .prepare_cached("SELECT id FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = FALSE AND reply_to = NULL")
-        .unwrap();
-
-    let hidden_threads: Vec<_> = _hidden_threads
-        .query_map((Location::Project as u8, id), |row| {
-            Ok(row.get::<usize, u32>(0).unwrap())
-        })
-        .unwrap()
-        .map(|x| x.unwrap())
-        .collect();
-
-    let comments: Vec<_> = select
-        .query_map((Location::Project as u8, id), |row| {
-            let author_id = row.get::<usize, u32>(2).unwrap();
-            let mut select = cur
-                .prepare_cached("SELECT * FROM users WHERE id = ?1")
-                .unwrap();
-            let mut _row = select.query([author_id]).unwrap();
-            let author_row = _row.next().unwrap().unwrap();
-            let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
-
-            if let Some(reply_to) = reply_to {
-                if hidden_threads.contains(&reply_to) {
-                    return Ok(None);
-                }
-            }
-
-            Ok(Some(Comment {
-                id: row.get(0).unwrap(),
-                content: row.get(1).unwrap(),
-                author: Author {
-                    username: author_row.get(1).unwrap(),
-                    profile_picture: author_row.get(7).unwrap(),
-                    display_name: Some(author_row.get(3).unwrap()),
-                },
-                post_date: row.get(3).unwrap(),
-                reply_to,
-            }))
-        })
-        .unwrap()
-        .filter_map(|x| x.unwrap())
-        .collect();
+    let comments = cur.comments(Location::Project, id);
 
     Json(Comments { comments })
 }
@@ -94,64 +36,11 @@ pub fn user_comments(
 ) -> Result<Json<Comments>, Status> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
-        .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
-        .unwrap();
-    let mut row = select.query([user]).unwrap();
-    let Some(row) = row.next().unwrap() else {
+    let Some(user) = cur.user_by_name(user, true) else {
         return Err(Status::NotFound);
     };
-    let id: usize = row.get(0).unwrap();
 
-    let mut select = cur
-        .prepare_cached(
-            "SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE",
-        )
-        .unwrap();
-
-    let mut _hidden_threads = cur
-        .prepare_cached("SELECT id FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = FALSE AND reply_to = NULL")
-        .unwrap();
-
-    let hidden_threads: Vec<_> = _hidden_threads
-        .query_map((Location::User as u8, id), |row| {
-            Ok(row.get::<usize, u32>(0).unwrap())
-        })
-        .unwrap()
-        .map(|x| x.unwrap())
-        .collect();
-
-    let comments: Vec<_> = select
-        .query_map((Location::User as u8, id), |row| {
-            let author_id = row.get::<usize, u32>(2).unwrap();
-            let mut select = cur
-                .prepare_cached("SELECT * FROM users WHERE id = ?1")
-                .unwrap();
-            let mut _row = select.query([author_id]).unwrap();
-            let author_row = _row.next().unwrap().unwrap();
-            let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
-
-            if let Some(reply_to) = reply_to {
-                if hidden_threads.contains(&reply_to) {
-                    return Ok(None);
-                }
-            }
-
-            Ok(Some(Comment {
-                id: row.get(0).unwrap(),
-                content: row.get(1).unwrap(),
-                author: Author {
-                    username: author_row.get(1).unwrap(),
-                    profile_picture: author_row.get(7).unwrap(),
-                    display_name: Some(author_row.get(3).unwrap()),
-                },
-                post_date: row.get(3).unwrap(),
-                reply_to,
-            }))
-        })
-        .unwrap()
-        .filter_map(|x| x.unwrap())
-        .collect();
+    let comments = cur.comments(Location::User, user.id);
 
     Ok(Json(Comments { comments }))
 }
@@ -172,54 +61,44 @@ pub fn post_project_comment(
     id: u32,
     comment: Json<PostComment>,
     _l: RocketGovernor<TenPerSecond>,
-) -> status::Custom<content::RawJson<String>> {
+) -> Result<content::RawJson<String>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare_cached("SELECT * FROM projects WHERE id=?1")
+        .client
+        .prepare_cached("SELECT * FROM projects WHERE id= ?1")
         .unwrap();
-    let mut query = select.query((id,)).unwrap();
-    if query.next().unwrap().is_none() {
-        return status::Custom(
-            Status::NotFound,
-            content::RawJson("{\"message\": \"Not Found\"}".into()),
-        );
+
+    let mut rows = select.query((id,)).unwrap();
+
+    if rows.next().unwrap().is_none() {
+        return Err(Status::NotFound);
     };
 
     if (&comment.content).is_empty() {
-        return status::Custom(
-            Status::BadRequest,
-            content::RawJson("{\"message\": \"Empty comment\"}".into()),
-        );
+        return Err(Status::BadRequest);
     }
 
     if let Some(reply_to) = comment.reply_to {
         let mut select = cur
-            .prepare_cached("SELECT * FROM comments WHERE id=?1")
+            .client
+            .prepare_cached("SELECT * FROM comments WHERE id= ?1")
             .unwrap();
-        let mut query = select.query((reply_to,)).unwrap();
-        let Some(row) = query.next().unwrap() else {
-            return status::Custom(
-                Status::NotFound,
-                content::RawJson("{\"message\": \"Reply not found\"}".into()),
-            );
+        let mut rows = select.query((reply_to,)).unwrap();
+        let Some(row) = rows.next().unwrap() else {
+            return Err(Status::NotFound);
         };
         if row.get::<usize, u32>(6).unwrap() != id {
-            return status::Custom(
-                Status::NotFound,
-                content::RawJson("{\"message\": \"Reply not found\"}".into()),
-            );
+            return Err(Status::NotFound);
         }
         if !row.get::<usize, bool>(7).unwrap() {
-            return status::Custom(
-                Status::NotFound,
-                content::RawJson("{\"message\": \"Reply not found\"}".into()),
-            );
+            return Err(Status::NotFound);
         }
     }
 
-    cur.execute(
-        "INSERT INTO comments (
+    cur.client
+        .execute(
+            "INSERT INTO comments (
             content,
             author,
             post_ts,
@@ -236,24 +115,21 @@ pub fn post_project_comment(
             ?6,
             TRUE
         )",
-        (
-            &comment.content,
-            token.user,
-            chrono::Utc::now().timestamp(),
-            comment.reply_to,
-            Location::Project as u32,
-            id,
-        ),
-    )
-    .unwrap();
+            (
+                &comment.content,
+                token.user,
+                chrono::Utc::now().timestamp(),
+                comment.reply_to,
+                Location::Project as u32,
+                id,
+            ),
+        )
+        .unwrap();
 
-    status::Custom(
-        Status::Ok,
-        content::RawJson(format!(
-            "{{\"success\": true, \"id\": {}}}",
-            cur.last_insert_rowid()
-        )),
-    )
+    Ok(content::RawJson(format!(
+        "{{\"success\": true, \"id\": {}}}",
+        cur.client.last_insert_rowid()
+    )))
 }
 
 #[delete("/projects/<id>/comments/<comment_id>")]
@@ -262,29 +138,24 @@ pub fn delete_project_comment(
     id: u32,
     comment_id: u32,
     _l: RocketGovernor<TenPerSecond>,
-) -> status::Custom<content::RawJson<&'static str>> {
+) -> Result<content::RawJson<&'static str>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
+        .client
         .prepare_cached("SELECT author FROM comments WHERE id = ?1")
         .unwrap();
     let mut rows = select.query((id,)).unwrap();
 
     if let Some(first) = rows.next().unwrap() {
         if first.get::<usize, u32>(0).unwrap() != token.user {
-            return status::Custom(
-                Status::Unauthorized,
-                content::RawJson("{\"message\": \"Unauthorized to delete this comment\"}".into()),
-            );
+            return Err(Status::Unauthorized);
         }
     } else {
-        return status::Custom(
-            Status::NotFound,
-            content::RawJson("{\"message\": \"Not Found\"}".into()),
-        );
+        return Err(Status::NotFound);
     }
 
-    cur.execute(
+    cur.client.execute(
         "UPDATE comments SET visible = FALSE WHERE location = ?1 AND resource_id = ?2 AND id = ?3",
         (Location::Project as u8, id, comment_id),
     )
@@ -308,7 +179,7 @@ pub fn delete_project_comment(
         });
     }
 
-    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
+    Ok(content::RawJson("{\"success\": true}"))
 }
 
 #[post(
@@ -326,6 +197,7 @@ pub fn report_project_comment(
     let cur = db().lock().unwrap();
 
     let mut select = cur
+        .client
         .prepare_cached("SELECT * FROM comments WHERE id = ?1")
         .unwrap();
     let mut rows = select.query((comment_id,)).unwrap();
@@ -338,6 +210,7 @@ pub fn report_project_comment(
     };
 
     let mut select = cur
+        .client
         .prepare_cached("SELECT id FROM reports WHERE type = \"comment\" AND resource_id = ?1")
         .unwrap();
     let mut rows = select.query((comment_id,)).unwrap();
@@ -363,30 +236,20 @@ pub fn report_project_comment(
         }
     };
 
-    cur.execute(
-        "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"comment\")",
-        (
-            token.user,
-            format!("{}|{}", &report.category, &report.reason),
-            comment_id,
-        ),
-    )
-    .unwrap();
+    cur.client
+        .execute(
+            "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"comment\")",
+            (
+                token.user,
+                format!("{}|{}", &report.category, &report.reason),
+                comment_id,
+            ),
+        )
+        .unwrap();
 
     if let Some(webhook_url) = report_webhook() {
-        let reportee_comment = comment.get::<usize, String>(1).unwrap();
-        let reporee_author = comment.get::<usize, u32>(2).unwrap();
-
-        let mut select = cur
-            .prepare_cached("SELECT name FROM users WHERE id = ?1")
-            .unwrap();
-        let mut rows = select.query((reporee_author,)).unwrap();
-        let reportee_author = rows
-            .next()
-            .unwrap()
-            .unwrap()
-            .get::<usize, String>(0)
-            .unwrap();
+        let reportee_comment: String = comment.get(1).unwrap();
+        let reportee_author: u32 = comment.get(2).unwrap();
 
         tokio::spawn(async move {
             let url: &str = &webhook_url;

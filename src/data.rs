@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-    pub id: usize,
+    pub id: u32,
     pub name: String,
     pub display_name: Option<String>,
     pub country: String,
@@ -22,7 +22,7 @@ pub struct User {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub verified: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub project_count: Option<usize>,
+    pub project_count: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hatch_team: Option<bool>,
     pub theme: Option<String>,
@@ -36,6 +36,8 @@ pub enum AuthError {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Author {
+    #[serde(skip)]
+    pub id: u32,
     pub username: String,
     pub profile_picture: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -67,4 +69,14 @@ pub enum Location {
     Project = 0,
     // Gallery = 1,
     User = 2,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Comment {
+    pub id: u32,
+    pub content: String,
+    pub author: Author,
+    pub post_date: u32,
+    pub reply_to: Option<u32>,
 }

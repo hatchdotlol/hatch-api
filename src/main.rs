@@ -4,12 +4,12 @@ extern crate rocket;
 pub mod admin_guard;
 pub mod ban_guard;
 pub mod config;
+pub mod data;
 pub mod db;
 pub mod entropy;
 pub mod ip_guard;
 pub mod limit_guard;
 pub mod routes;
-pub mod data;
 pub mod token_guard;
 
 use config::*;

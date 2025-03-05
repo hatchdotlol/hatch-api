@@ -7,11 +7,12 @@ use rusqlite::Connection;
 use std::sync::{Mutex, OnceLock};
 use tokio::sync::Mutex as TokioMutex;
 
+use super::wrapper::SqliteBackend;
 use crate::config::{minio_access_key, minio_secret_key, minio_url};
 
 /// Fetches a database connection (only one connection is made in lifetime)
-pub fn db() -> &'static Mutex<Connection> {
-    static DB: OnceLock<Mutex<Connection>> = OnceLock::new();
+pub fn db() -> &'static Mutex<SqliteBackend> {
+    static DB: OnceLock<Mutex<SqliteBackend>> = OnceLock::new();
 
     DB.get_or_init(|| {
         let conn = Connection::open("hatch.db").unwrap();
@@ -116,7 +117,7 @@ pub fn db() -> &'static Mutex<Connection> {
 
         conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 
-        Mutex::new(conn)
+        Mutex::new(SqliteBackend { client: conn })
     })
 }
 

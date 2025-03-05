@@ -9,11 +9,11 @@ use crate::{db::db, ip_guard::from_request};
 
 pub fn is_banned(ip: &str) -> bool {
     let cur = db().lock().unwrap();
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT address FROM ip_bans WHERE address = ?1")
         .unwrap();
-    let mut query = select.query([ip]).unwrap();
-    query.next().unwrap().is_some()
+    let mut rows = select.query([ip]).unwrap();
+    rows.next().unwrap().is_some()
 }
 
 #[derive(Debug)]

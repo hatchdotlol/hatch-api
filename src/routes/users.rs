@@ -11,7 +11,12 @@ use url::Url;
 use webhook::client::WebhookClient;
 
 use crate::{
-    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT}, data::{Author, Location, ProjectInfo, Report, User}, db::db, limit_guard::TenPerSecond, mods, report_webhook, token_guard::Token
+    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
+    data::{ProjectInfo, Report, User},
+    db::db,
+    limit_guard::TenPerSecond,
+    mods, report_webhook,
+    token_guard::Token,
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -29,46 +34,40 @@ pub fn update_user_info(
     token: Token<'_>,
     user_info: Json<UserInfo>,
     _l: RocketGovernor<TenPerSecond>,
-) -> (Status, Json<Value>) {
+) -> Result<content::RawJson<&'static str>, status::BadRequest<Json<Value>>> {
     if user_info
         .bio
         .as_ref()
         .is_some_and(|bio| bio.chars().count() > BIO_LIMIT)
     {
-        return (
-            Status::BadRequest,
-            Json(json!({
-                "error": format!("Bio is over {BIO_LIMIT} characters")
-            })),
-        );
+        return Err(status::BadRequest(Json(json!({
+            "error": format!("Bio is over {BIO_LIMIT} characters")
+        }))));
     };
 
     if user_info
         .display_name
         .is_some_and(|name| name.chars().count() > DISPLAY_NAME_LIMIT)
     {
-        return (
-            Status::BadRequest,
-            Json(json!({"error": format!("Bio is over {BIO_LIMIT} characters")})),
-        );
+        return Err(status::BadRequest(Json(json!({
+            "error": format!("Display name is over {DISPLAY_NAME_LIMIT} characters")
+        }))));
     };
 
     if user_info.banner_image.is_some() {
         let Ok(banner) = Url::parse(user_info.banner_image.unwrap()) else {
-            return (
-                Status::BadRequest,
-                Json(json!({"error": "Invalid banner URL"})),
-            );
+            return Err(status::BadRequest(Json(json!({
+                "error": "Invalid banner URL"
+            }))));
         };
         if banner.cannot_be_a_base()
             || banner
                 .host_str()
                 .is_some_and(|h| !ALLOWED_IMAGE_HOSTS.contains(&h))
         {
-            return (
-                Status::BadRequest,
-                Json(json!({"error": "Banner URL not in whitelist"})),
-            );
+            return Err(status::BadRequest(Json(json!({
+                "error": "Banner URL not in whitelist"
+            }))));
         }
     }
 
@@ -77,24 +76,22 @@ pub fn update_user_info(
         let parser = i64::from_str_radix(without_prefix, 16);
         parser.is_err()
     }) {
-        return (
-            Status::BadRequest,
-            Json(json!({"error": "Invalid color theme"})),
-        );
+        return Err(status::BadRequest(Json(json!({
+            "error": "Invalid Color"
+        }))));
     }
 
     if !COUNTRIES.contains(&user_info.country.as_str()) {
-        return (
-            Status::BadRequest,
-            Json(json!({"error": "Invalid country"})),
-        );
+        return Err(status::BadRequest(Json(json!({
+            "error": "Invalid country"
+        }))));
     }
 
     let cur = db().lock().unwrap();
 
     let highlighted_projects = user_info.highlighted_projects.as_ref().map(|f| f.join(","));
 
-    cur.execute(
+    cur.client.execute(
         "UPDATE users SET bio = ?1, country = ?2, display_name = ?3, highlighted_projects = ?4, banner_image = ?5, theme = ?6 WHERE id = ?7",
         (
             user_info.bio.as_ref(),
@@ -107,7 +104,7 @@ pub fn update_user_info(
         ),
     ).unwrap();
 
-    (Status::Ok, Json(json!({"success": true})))
+    Ok(content::RawJson("{\"success\": true}"))
 }
 
 #[get("/<user>")]
@@ -115,6 +112,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
     let cur = db().lock().unwrap();
 
     let mut select = cur
+        .client
         .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([user]).unwrap();
@@ -122,7 +120,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         return Err(Status::NotFound);
     };
 
-    let id: usize = row.get(0).unwrap();
+    let id: u32 = row.get(0).unwrap();
     let display_name: Option<String> = row.get(3).unwrap();
     let bio: Option<String> = row.get(5).unwrap();
 
@@ -147,11 +145,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         None => 0,
     };
 
-    let mut select = cur
-        .prepare_cached("SELECT COUNT(*) FROM projects WHERE author = ?1")
-        .unwrap();
-    let mut rows = select.query((id,)).unwrap();
-    let project_count = rows.next().unwrap();
+    let project_count = cur.project_count(id);
 
     Ok(Json(User {
         id,
@@ -166,7 +160,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         following_count: Some(following_count),
         follower_count: Some(follower_count),
         verified: None,
-        project_count: project_count.unwrap().get(0).unwrap(),
+        project_count: Some(project_count),
         hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
         theme: Some(row.get(16).unwrap_or("#ffbd59".into())),
     }))
@@ -181,17 +175,13 @@ pub struct Projects {
 pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
-        .prepare_cached("SELECT id FROM users WHERE name = ?1 COLLATE nocase")
-        .unwrap();
-
-    let mut row = select.query([&user]).unwrap();
-    let Some(row) = row.next().unwrap() else {
+    let Some(user) = cur.user_by_name(user, true) else {
         return Err(Status::NotFound);
     };
-    let user_id = row.get::<usize, u32>(0).unwrap();
 
-    let mut select = cur
+    let user_id = user.id;
+
+    let mut select = cur.client
         .prepare_cached("SELECT * FROM projects WHERE author = ?1")
         .unwrap();
 
@@ -199,11 +189,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
         .query_map([user_id], |project| {
             let author_id: u32 = project.get(1).unwrap();
 
-            let mut select = cur
-                .prepare_cached("SELECT * FROM users WHERE id=?1")
-                .unwrap();
-            let mut query = select.query((author_id,)).unwrap();
-            let Some(author) = query.next().unwrap() else {
+            let Some(author) = cur.user_by_id(author_id) else {
                 return Ok(None);
             };
 
@@ -218,26 +204,18 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 project.get::<usize, String>(7).unwrap()
             );
 
-            let mut select_comment_count = cur.prepare_cached("SELECT COUNT(*) FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE").unwrap();
-            let mut query = select_comment_count
-                .query((Location::Project as u8, project_id))
-                .unwrap();
-            let comment_count = query.next().unwrap().unwrap().get(0).unwrap_or(0 as u32);        
+            let comment_count = cur.comment_count(project_id);
 
             Ok(Some(ProjectInfo {
                 id: project_id,
-                author: Author {
-                    username: author.get(1).unwrap(),
-                    profile_picture: author.get(7).unwrap(),
-                    display_name: Some(author.get(3).unwrap()),
-                },
+                author,
                 upload_ts: project.get(2).unwrap(),
                 title: project.get(3).unwrap(),
                 description: project.get(4).unwrap(),
                 rating: project.get(6).unwrap(),
                 version: None,
                 thumbnail,
-                comment_count
+                comment_count,
             }))
         })
         .unwrap();
@@ -259,7 +237,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
 pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
@@ -285,24 +263,24 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     }
 
     followers += &format!("{},", token.user);
-    cur.execute(
+    cur.client.execute(
         "UPDATE users SET followers = ?1 WHERE id = ?2",
         (followers, followee),
     )
     .unwrap();
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT * FROM users WHERE id = ?1")
         .unwrap();
-    let mut query = select.query([token.user]).unwrap();
-    let row = query.next().unwrap().unwrap();
+    let mut rows = select.query([token.user]).unwrap();
+    let row = rows.next().unwrap().unwrap();
 
     let mut following = row
         .get::<usize, Option<String>>(11)
         .unwrap()
         .unwrap_or("".into());
     following += &format!("{},", followee);
-    cur.execute(
+    cur.client.execute(
         "UPDATE users SET following = ?1 WHERE id = ?2",
         (following, &token.user),
     )
@@ -315,7 +293,7 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
@@ -345,23 +323,23 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
         .join(",");
 
     if followers == "" {
-        cur.execute(
+        cur.client.execute(
             "UPDATE users SET followers = ?1 WHERE id = ?2",
             (Null, unfollowee),
         )
     } else {
-        cur.execute(
+        cur.client.execute(
             "UPDATE users SET followers = ?1 WHERE id = ?2",
             (followers, unfollowee),
         )
     }
     .unwrap();
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT * FROM users WHERE id = ?1")
         .unwrap();
-    let mut query = select.query([token.user]).unwrap();
-    let row = query.next().unwrap().unwrap();
+    let mut rows = select.query([token.user]).unwrap();
+    let row = rows.next().unwrap().unwrap();
 
     let following = row
         .get::<usize, Option<String>>(11)
@@ -374,12 +352,12 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
         .join(",");
 
     if following == "" {
-        cur.execute(
+        cur.client.execute(
             "UPDATE users SET following = ?1 WHERE id = ?2",
             (Null, token.user),
         )
     } else {
-        cur.execute(
+        cur.client.execute(
             "UPDATE users SET following = ?1 WHERE id = ?2",
             (following, token.user),
         )
@@ -398,7 +376,7 @@ pub struct Followers {
 pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT followers FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
@@ -412,7 +390,7 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
 
     let followers = &followers[..followers.len() - 1].replace(",", ", ");
 
-    let mut select = cur.prepare_cached(&format!(
+    let mut select = cur.client.prepare_cached(&format!(
         "SELECT id, name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", followers
     )).unwrap();
 
@@ -454,7 +432,7 @@ pub struct Following {
 pub fn following(user: &str) -> Result<Json<Following>, Status> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT following FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
@@ -468,7 +446,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
 
     let following = &following[..following.len() - 1].replace(",", ", ");
 
-    let mut select = cur.prepare_cached(&format!(
+    let mut select = cur.client.prepare_cached(&format!(
         "SELECT id, name, display_name, country, bio, highlighted_projects, profile_picture, join_date, banner_image FROM users WHERE id in ({})", following
     )).unwrap();
 
@@ -506,29 +484,20 @@ pub async fn report_user(
     token: Token<'_>,
     user: &str,
     report: Json<Report>,
-) -> status::Custom<content::RawJson<&'static str>> {
+) -> Result<content::RawJson<&'static str>, Status> {
     let cur = db().lock().unwrap();
-    let mut select = cur
-        .prepare_cached("SELECT * FROM users WHERE name=?1")
-        .unwrap();
-    let mut query = select.query((user,)).unwrap();
-    if query.next().unwrap().is_none() {
-        return status::Custom(
-            Status::NotFound,
-            content::RawJson("{\"message\": \"Not Found\"}".into()),
-        );
+    
+    let Some(_) = cur.user_by_name(user, true) else {
+        return Err(Status::NotFound);
     };
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT id FROM reports WHERE type = \"user\" AND resource_id = ?1")
         .unwrap();
     let mut rows = select.query((user,)).unwrap();
 
     if rows.next().unwrap().is_some() {
-        return status::Custom(
-            Status::BadRequest,
-            content::RawJson("{\"message\": \"User already reported\"}"),
-        );
+        return Err(Status::AlreadyReported);
     }
 
     let report_category = match report.category {
@@ -538,14 +507,11 @@ pub async fn report_user(
         3 => "Spam",
         4 => "Malicious links (such as malware)",
         _ => {
-            return status::Custom(
-                Status::BadRequest,
-                content::RawJson("{\"message\": \"Invalid category\"}"),
-            );
+            return Err(Status::BadRequest);
         }
     };
 
-    cur.execute(
+    cur.client.execute(
         "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"user\")",
         (
             token.user,
@@ -581,5 +547,5 @@ pub async fn report_user(
         });
     }
 
-    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
+    Ok(content::RawJson("{\"success\": true}"))
 }

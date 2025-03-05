@@ -21,12 +21,12 @@ pub struct Upload<'f> {
 fn get_user_pfp(user: u32) -> String {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT profile_picture from users WHERE id = ?1")
         .unwrap();
 
-    let mut query = select.query([user]).unwrap();
-    let row = query.next().unwrap().unwrap();
+    let mut rows = select.query([user]).unwrap();
+    let row = rows.next().unwrap().unwrap();
     row.get::<usize, String>(0).unwrap()
 }
 
@@ -125,7 +125,7 @@ pub async fn update_pfp(
             .await
             .unwrap();
         let cur = db().lock().unwrap();
-        cur.execute(
+        cur.client.execute(
             "UPDATE users SET profile_picture = ?1 WHERE id = ?2",
             [new_pfp, token.user.to_string()],
         )

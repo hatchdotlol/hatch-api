@@ -4,24 +4,24 @@ use rocket::{
     Request,
 };
 
-use crate::db::db;
 use crate::data::AuthError;
+use crate::db::db;
 
 pub fn is_valid(token: &str) -> Option<u32> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
+    let mut select = cur.client
         .prepare_cached("SELECT user, expiration_ts FROM auth_tokens WHERE token = ?1")
         .unwrap();
-    let mut query = select.query([token]).unwrap();
-    let user = query.next().unwrap();
+    let mut rows = select.query([token]).unwrap();
+    let user = rows.next().unwrap();
 
     if let Some(account) = user {
         let user = account.get::<usize, u32>(0).unwrap();
         let expiration_date = account.get::<usize, i64>(1).unwrap();
 
         if expiration_date < chrono::Utc::now().timestamp() {
-            cur.execute("DELETE FROM auth_tokens WHERE user=?1", [user])
+            cur.client.execute("DELETE FROM auth_tokens WHERE user=?1", [user])
                 .unwrap();
             None
         } else {

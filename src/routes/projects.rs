@@ -1,6 +1,6 @@
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
-use crate::rocket::futures::StreamExt;
 use crate::data::ProjectInfo;
+use crate::rocket::futures::StreamExt;
 use crate::token_guard::is_valid;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
@@ -18,9 +18,9 @@ use zip::ZipArchive;
 
 use crate::{
     config::{ASSET_LIMIT, PROJECTS_BUCKET},
+    data::Report,
     db::{db, projects},
     logging_webhook, report_webhook,
-    data::{Author, Report, Location},
     token_guard::Token,
 };
 
@@ -49,7 +49,7 @@ struct Project {
 
 fn create_project(p: Project, thumbnail: &str) -> i64 {
     let cur = db().lock().unwrap();
-    cur.execute(
+    cur.client.execute(
         "INSERT INTO projects (author, upload_ts, title, description, shared, thumbnail) VALUES (?1, ?2, ?3, ?4, TRUE, ?5)", 
         (
             p.user_id,
@@ -59,7 +59,7 @@ fn create_project(p: Project, thumbnail: &str) -> i64 {
             thumbnail
         )
     ).unwrap();
-    cur.last_insert_rowid()
+    cur.client.last_insert_rowid()
 }
 
 #[post("/", format = "multipart/form-data", data = "<form>")]
@@ -183,17 +183,7 @@ pub async fn index(
             };
 
         let cur = db().lock().unwrap();
-        let mut select = cur
-            .prepare_cached("SELECT name FROM users WHERE id = ?1")
-            .unwrap();
-        let name = select
-            .query((token.user,))
-            .unwrap()
-            .next()
-            .unwrap()
-            .unwrap()
-            .get::<usize, String>(0)
-            .unwrap();
+        let name = cur.user_by_id(token.user).unwrap().username;
 
         tokio::spawn(async move {
             let url: &str = &webhook_url;
@@ -221,10 +211,11 @@ pub async fn index(
 fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
     let cur = db().lock().unwrap();
     let mut select = cur
-        .prepare_cached("SELECT * FROM projects WHERE id=?1")
+        .client
+        .prepare_cached("SELECT * FROM projects WHERE id= ?1")
         .unwrap();
-    let mut query = select.query((id,)).unwrap();
-    let Some(project) = query.next().unwrap() else {
+    let mut rows = select.query((id,)).unwrap();
+    let Some(project) = rows.next().unwrap() else {
         return Some(Status::NotFound);
     };
 
@@ -374,23 +365,26 @@ pub async fn update_project(
     if (&form.title).is_some() || (&form.description).is_some() {
         let cur = db().lock().unwrap();
         if (&form.title).is_some() && (&form.description).is_none() {
-            cur.execute(
-                "UPDATE projects SET title = ?1 WHERE id = ?2",
-                (&form.title, id),
-            )
-            .unwrap();
+            cur.client
+                .execute(
+                    "UPDATE projects SET title = ?1 WHERE id = ?2",
+                    (&form.title, id),
+                )
+                .unwrap();
         } else if (&form.title).is_none() && (&form.description).is_some() {
-            cur.execute(
-                "UPDATE projects SET description = ?1 WHERE id = ?2",
-                (&form.description, id),
-            )
-            .unwrap();
+            cur.client
+                .execute(
+                    "UPDATE projects SET description = ?1 WHERE id = ?2",
+                    (&form.description, id),
+                )
+                .unwrap();
         } else {
-            cur.execute(
-                "UPDATE projects SET title = ?1, description = ?2 WHERE id = ?3",
-                (&form.title, &form.description, id),
-            )
-            .unwrap();
+            cur.client
+                .execute(
+                    "UPDATE projects SET title = ?1, description = ?2 WHERE id = ?3",
+                    (&form.title, &form.description, id),
+                )
+                .unwrap();
         }
     }
 
@@ -438,20 +432,17 @@ pub async fn update_project(
 fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
     let cur = db().lock().unwrap();
     let mut select = cur
-        .prepare_cached("SELECT * FROM projects WHERE id=?1")
+        .client
+        .prepare_cached("SELECT * FROM projects WHERE id= ?1")
         .unwrap();
-    let mut query = select.query((id,)).unwrap();
-    let Some(project) = query.next().unwrap() else {
+    let mut rows = select.query((id,)).unwrap();
+    let Some(project) = rows.next().unwrap() else {
         return Err(Status::NotFound);
     };
 
     let author_id: u32 = project.get(1).unwrap();
 
-    let mut select = cur
-        .prepare_cached("SELECT * FROM users WHERE id=?1")
-        .unwrap();
-    let mut query = select.query((author_id,)).unwrap();
-    let Some(author) = query.next().unwrap() else {
+    let Some(author) = cur.user_by_id(author_id) else {
         return Err(Status::NotFound);
     };
 
@@ -468,19 +459,11 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
         project.get::<usize, String>(7).unwrap()
     );
 
-    let mut select_comment_count = cur.prepare_cached("SELECT COUNT(*) FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE").unwrap();
-    let mut query = select_comment_count
-        .query((Location::Project as u8, project_id))
-        .unwrap();
-    let comment_count = query.next().unwrap().unwrap().get(0).unwrap_or(0 as u32);
+    let comment_count = cur.comment_count(project_id);
 
     return Ok(ProjectInfo {
         id: project_id,
-        author: Author {
-            username: author.get(1).unwrap(),
-            profile_picture: author.get(7).unwrap(),
-            display_name: Some(author.get(3).unwrap()),
-        },
+        author,
         upload_ts: project.get(2).unwrap(),
         title: project.get(3).unwrap(),
         description: project.get(4).unwrap(),
@@ -612,29 +595,25 @@ pub async fn report_project(
     token: Token<'_>,
     id: u32,
     report: Json<Report>,
-) -> status::Custom<content::RawJson<&'static str>> {
+) -> Result<content::RawJson<&'static str>, Status> {
     let cur = db().lock().unwrap();
     let mut select = cur
-        .prepare_cached("SELECT * FROM projects WHERE id=?1")
+        .client
+        .prepare_cached("SELECT * FROM projects WHERE id= ?1")
         .unwrap();
-    let mut query = select.query((id,)).unwrap();
-    if query.next().unwrap().is_none() {
-        return status::Custom(
-            Status::NotFound,
-            content::RawJson("{\"message\": \"Not Found\"}".into()),
-        );
+    let mut rows = select.query((id,)).unwrap();
+    if rows.next().unwrap().is_none() {
+        return Err(Status::NotFound);
     };
 
     let mut select = cur
+        .client
         .prepare_cached("SELECT id FROM reports WHERE type = \"project\" AND resource_id = ?1")
         .unwrap();
     let mut rows = select.query((id,)).unwrap();
 
     if rows.next().unwrap().is_some() {
-        return status::Custom(
-            Status::BadRequest,
-            content::RawJson("{\"message\": \"Project already reported\"}"),
-        );
+        return Err(Status::AlreadyReported);
     }
 
     let report_category = match report.category {
@@ -644,22 +623,20 @@ pub async fn report_project(
         3 => "Spam",
         4 => "Malicious links (such as malware)",
         _ => {
-            return status::Custom(
-                Status::BadRequest,
-                content::RawJson("{\"message\": \"Invalid category\"}"),
-            );
+            return Err(Status::BadRequest);
         }
     };
 
-    cur.execute(
-        "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"project\")",
-        (
-            token.user,
-            format!("{}|{}", &report.category, &report.reason),
-            id,
-        ),
-    )
-    .unwrap();
+    cur.client
+        .execute(
+            "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"project\")",
+            (
+                token.user,
+                format!("{}|{}", &report.category, &report.reason),
+                id,
+            ),
+        )
+        .unwrap();
 
     if let Some(webhook_url) = report_webhook() {
         tokio::spawn(async move {
@@ -686,5 +663,5 @@ pub async fn report_project(
         });
     }
 
-    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
+    Ok(content::RawJson("{\"success\": true}"))
 }

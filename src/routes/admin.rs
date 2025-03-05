@@ -15,16 +15,11 @@ pub struct Banned {
 
 fn is_mod(user: u32) -> bool {
     let cur = db().lock().unwrap();
-    let mut select = cur
-        .prepare_cached("SELECT name FROM users WHERE id = ?1")
-        .unwrap();
-
-    let mut rows = select.query([user]).unwrap();
-    let Some(row) = rows.next().unwrap() else {
+    let Some(author) = cur.user_by_id(user) else {
         return false;
     };
 
-    mods().contains_key(row.get::<usize, String>(0).unwrap().as_str())
+    mods().contains_key(&author.username)
 }
 
 #[post("/banned", format = "application/json", data = "<ip_address>")]
@@ -46,28 +41,11 @@ pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> 
 
     let cur = db().lock().unwrap();
 
-    let mut select = cur
-        .prepare_cached("SELECT ips FROM users WHERE name = ?1 COLLATE nocase")
-        .unwrap();
-    let mut first_row = select.query([username]).unwrap();
-
-    let Ok(first_user) = first_row.next() else {
+    let Some(ips) = cur.user_ips(username) else {
         return Err(Status::Unauthorized);
     };
 
-    let Some(user) = first_user else {
-        return Err(Status::Unauthorized);
-    };
-
-    let ips = user.get::<usize, String>(0).unwrap();
-    let ips = &mut ips.split("|").filter(|ip| *ip != "").collect::<Vec<_>>();
-
-    let mut insert = cur
-        .prepare_cached("INSERT INTO ip_bans (address) VALUES (?1)")
-        .unwrap();
-    for ip in ips {
-        insert.execute((ip.to_string(),)).unwrap();
-    }
+    cur.ban_ips(ips);
 
     Ok(Json(Banned { banned: true }))
 }
@@ -80,28 +58,11 @@ pub fn ip_unban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status
 
     let cur = db().lock().unwrap();
 
-    let mut select = cur
-        .prepare_cached("SELECT ips FROM users WHERE name = ?1 COLLATE nocase")
-        .unwrap();
-    let mut first_row = select.query([username]).unwrap();
-
-    let Ok(first_user) = first_row.next() else {
+    let Some(ips) = cur.user_ips(username) else {
         return Err(Status::Unauthorized);
     };
 
-    let Some(user) = first_user else {
-        return Err(Status::Unauthorized);
-    };
-
-    let ips = user.get::<usize, String>(0).unwrap();
-    let ips = &mut ips.split("|").filter(|ip| *ip != "").collect::<Vec<_>>();
-
-    let mut delete = cur
-        .prepare_cached("DELETE FROM ip_bans WHERE address = ?1")
-        .unwrap();
-    for ip in ips {
-        delete.execute((ip.to_string(),)).unwrap();
-    }
+    cur.unban_ips(ips);
 
     Ok(Json(Banned { banned: false }))
 }
@@ -124,11 +85,12 @@ pub fn set_rating(token: Token<'_>, rating: Json<Rating>) -> Result<Json<Value>,
 
     let cur = db().lock().unwrap();
 
-    cur.execute(
-        "UPDATE projects SET rating = ?1 WHERE id = ?2",
-        (rating.rating.to_string(), rating.project_id),
-    )
-    .unwrap();
+    cur.client
+        .execute(
+            "UPDATE projects SET rating = ?1 WHERE id = ?2",
+            (rating.rating.to_string(), rating.project_id),
+        )
+        .unwrap();
 
     Ok(Json(json!({"message": "success"})))
 }

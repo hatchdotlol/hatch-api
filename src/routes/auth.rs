@@ -3,10 +3,10 @@ use crate::config::{
     base_url, logging_webhook, postal_key, postal_url, EMAIL_TOKEN_EXPIRY, TOKEN_EXPIRY,
     USERNAME_LIMIT, VERIFICATION_TEMPLATE,
 };
+use crate::data::User;
 use crate::db::db;
 use crate::entropy::calculate_entropy;
 use crate::ip_guard::ClientRealAddr;
-use crate::data::User;
 use crate::token_guard::Token;
 use crate::{backup_resend_key, mods};
 
@@ -78,7 +78,11 @@ pub fn register(
         );
     }
 
-    if creds.email.as_ref().is_none_or(|e| !EmailAddress::is_valid(&e)) {
+    if creds
+        .email
+        .as_ref()
+        .is_none_or(|e| !EmailAddress::is_valid(&e))
+    {
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"Invalid email address\"}".into()),
@@ -94,21 +98,18 @@ pub fn register(
 
     let cur = db().lock().unwrap();
 
-    let mut select = cur
-        .prepare_cached("SELECT * from users WHERE name = ?1 COLLATE nocase")
-        .unwrap();
-    let mut query = select.query((&creds.username,)).unwrap();
-    let first = query.next().unwrap();
+    let user = cur.user_by_name(&creds.username, true);
 
-    if first.is_some() {
+    if user.is_some() {
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"That username already exists\"}".into()),
         );
     }
 
-    cur.execute(
-        "INSERT INTO users (
+    cur.client
+        .execute(
+            "INSERT INTO users (
             name,
             pw,
             display_name,
@@ -137,34 +138,35 @@ pub fn register(
             FALSE,
             ?5
         )",
-        (
-            &creds.username,
-            bcrypt::hash(&creds.password, 10).unwrap(),
-            &creds.username,
-            format!("{}", chrono::Utc::now()),
-            &creds.email,
-        ),
-    )
-    .unwrap();
+            (
+                &creds.username,
+                bcrypt::hash(&creds.password, 10).unwrap(),
+                &creds.username,
+                format!("{}", chrono::Utc::now()),
+                &creds.email,
+            ),
+        )
+        .unwrap();
 
     let token = hex::encode(&rand::thread_rng().gen::<[u8; 16]>());
-    cur.execute(
-        "INSERT INTO email_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
-        (
-            &creds.username,
-            &token,
-            format!(
-                "{}",
-                chrono::Utc::now()
-                    .checked_add_signed(
-                        TimeDelta::from_std(Duration::from_secs(EMAIL_TOKEN_EXPIRY),).unwrap()
-                    )
-                    .unwrap()
-                    .timestamp()
+    cur.client
+        .execute(
+            "INSERT INTO email_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
+            (
+                &creds.username,
+                &token,
+                format!(
+                    "{}",
+                    chrono::Utc::now()
+                        .checked_add_signed(
+                            TimeDelta::from_std(Duration::from_secs(EMAIL_TOKEN_EXPIRY),).unwrap()
+                        )
+                        .unwrap()
+                        .timestamp()
+                ),
             ),
-        ),
-    )
-    .unwrap();
+        )
+        .unwrap();
 
     let link = format!("{}/auth/verify?email_token={}", base_url(), &token);
     let username = creds.username.clone();
@@ -274,6 +276,7 @@ pub fn login(
     let cur = db().lock().unwrap();
 
     let mut select = cur
+        .client
         .prepare_cached("SELECT id, pw, ips FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut first_row = select.query([&creds.username]).unwrap();
@@ -306,6 +309,7 @@ pub fn login(
     }
 
     let mut select = cur
+        .client
         .prepare_cached("SELECT token FROM auth_tokens WHERE user = ?1")
         .unwrap();
     let mut first_row = select.query([id]).unwrap();
@@ -317,24 +321,26 @@ pub fn login(
             token = _token.get::<usize, String>(0).unwrap()
         } else {
             token = hex::encode(&rand::thread_rng().gen::<[u8; 16]>());
-            cur.flush_prepared_statement_cache();
-            cur.execute(
-                "INSERT INTO auth_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
-                (
-                    id,
-                    &token,
-                    format!(
-                        "{}",
-                        chrono::Utc::now()
-                            .checked_add_signed(
-                                TimeDelta::from_std(Duration::from_secs(TOKEN_EXPIRY),).unwrap()
-                            )
-                            .unwrap()
-                            .timestamp()
+            cur.client.flush_prepared_statement_cache();
+            cur.client
+                .execute(
+                    "INSERT INTO auth_tokens (user, token, expiration_ts) VALUES (?1, ?2, ?3)",
+                    (
+                        id,
+                        &token,
+                        format!(
+                            "{}",
+                            chrono::Utc::now()
+                                .checked_add_signed(
+                                    TimeDelta::from_std(Duration::from_secs(TOKEN_EXPIRY),)
+                                        .unwrap()
+                                )
+                                .unwrap()
+                                .timestamp()
+                        ),
                     ),
-                ),
-            )
-            .unwrap();
+                )
+                .unwrap();
         }
     }
 
@@ -351,11 +357,12 @@ pub fn login(
         .into_iter()
         .collect::<Vec<_>>();
 
-    cur.execute(
-        "UPDATE users SET ips = ?1 WHERE id = ?2",
-        (ips.join("|"), id),
-    )
-    .unwrap();
+    cur.client
+        .execute(
+            "UPDATE users SET ips = ?1 WHERE id = ?2",
+            (ips.join("|"), id),
+        )
+        .unwrap();
 
     status::Custom(
         Status::Ok,
@@ -368,17 +375,20 @@ pub fn verify(email_token: &str) -> Redirect {
     let cur = db().lock().unwrap();
 
     let mut select = cur
-        .prepare_cached("SELECT * from email_tokens WHERE token=?1")
+        .client
+        .prepare_cached("SELECT * from email_tokens WHERE token= ?1")
         .unwrap();
     let mut rows = select.query((email_token,)).unwrap();
 
     if let Some(row) = rows.next().unwrap() {
         let user = row.get::<usize, String>(1).unwrap();
         if row.get::<usize, i64>(3).unwrap() >= chrono::Utc::now().timestamp() {
-            cur.execute("UPDATE users SET verified=TRUE WHERE name=?1", (&user,))
+            cur.client
+                .execute("UPDATE users SET verified=TRUE WHERE name= ?1", (&user,))
                 .unwrap();
         }
-        cur.execute("DELETE FROM email_tokens WHERE user=?1", [user])
+        cur.client
+            .execute("DELETE FROM email_tokens WHERE user= ?1", [user])
             .unwrap();
     }
 
@@ -389,7 +399,8 @@ pub fn verify(email_token: &str) -> Redirect {
 pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
 
-    cur.execute("DELETE FROM auth_tokens WHERE token = ?1", [token.token])
+    cur.client
+        .execute("DELETE FROM auth_tokens WHERE token = ?1", [token.token])
         .unwrap();
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
@@ -399,10 +410,12 @@ pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
 pub fn delete(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
     let cur = db().lock().unwrap();
 
-    cur.execute("DELETE FROM auth_tokens WHERE token = ?1", [token.token])
+    cur.client
+        .execute("DELETE FROM auth_tokens WHERE token = ?1", [token.token])
         .unwrap();
 
-    cur.execute("DELETE FROM users WHERE id = ?1", [token.user])
+    cur.client
+        .execute("DELETE FROM users WHERE id = ?1", [token.user])
         .unwrap();
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
@@ -413,6 +426,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let cur = db().lock().unwrap();
 
     let mut select = cur
+        .client
         .prepare_cached("SELECT user FROM auth_tokens WHERE token = ?1")
         .unwrap();
     let mut row = select.query([token.token]).unwrap();
@@ -420,6 +434,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
 
     let user = token.get::<usize, u32>(0).unwrap();
     let mut select = cur
+        .client
         .prepare_cached("SELECT * FROM users WHERE id = ?1")
         .unwrap();
     let mut row = select.query([user]).unwrap();
@@ -451,16 +466,12 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
 
     let verified: Option<bool> = Some(row.get(12).unwrap());
 
-    let mut select = cur
-        .prepare_cached("SELECT COUNT(*) FROM projects WHERE author = ?1")
-        .unwrap();
-    let mut rows = select.query((user,)).unwrap();
-    let project_count = rows.next().unwrap();
+    let project_count = cur.project_count(user);
 
     (
         Status::Ok,
         Json(User {
-            id: user as usize,
+            id: user,
             name: row.get(1).unwrap(),
             display_name,
             country: row.get(4).unwrap(),
@@ -472,7 +483,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             following_count: Some(following_count),
             follower_count: Some(follower_count),
             verified,
-            project_count: project_count.unwrap().get(0).unwrap(),
+            project_count: Some(project_count),
             hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
             theme: Some(row.get(16).unwrap_or("#ffbd59".into())),
         }),
