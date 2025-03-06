@@ -10,7 +10,8 @@ use crate::db::db;
 pub fn is_valid(token: &str) -> Option<u32> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT user, expiration_ts FROM auth_tokens WHERE token = ?1")
         .unwrap();
     let mut rows = select.query([token]).unwrap();
@@ -21,7 +22,8 @@ pub fn is_valid(token: &str) -> Option<u32> {
         let expiration_date = account.get::<usize, i64>(1).unwrap();
 
         if expiration_date < chrono::Utc::now().timestamp() {
-            cur.client.execute("DELETE FROM auth_tokens WHERE user = ?1", [user])
+            cur.client
+                .execute("DELETE FROM auth_tokens WHERE user = ?1", [user])
                 .unwrap();
             None
         } else {

@@ -21,7 +21,8 @@ pub struct Upload<'f> {
 fn get_user_pfp(user: u32) -> String {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT profile_picture from users WHERE id = ?1")
         .unwrap();
 
@@ -125,11 +126,12 @@ pub async fn update_pfp(
             .await
             .unwrap();
         let cur = db().lock().unwrap();
-        cur.client.execute(
-            "UPDATE users SET profile_picture = ?1 WHERE id = ?2",
-            [new_pfp, token.user.to_string()],
-        )
-        .unwrap();
+        cur.client
+            .execute(
+                "UPDATE users SET profile_picture = ?1 WHERE id = ?2",
+                [new_pfp, token.user.to_string()],
+            )
+            .unwrap();
     }
 
     status::Custom(Status::Ok, content::RawJson(String::from("asfdsfd")))

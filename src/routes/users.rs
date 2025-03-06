@@ -181,7 +181,8 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
 
     let user_id = user.id;
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT * FROM projects WHERE author = ?1")
         .unwrap();
 
@@ -237,7 +238,8 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
 pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
@@ -263,13 +265,15 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     }
 
     followers += &format!("{},", token.user);
-    cur.client.execute(
-        "UPDATE users SET followers = ?1 WHERE id = ?2",
-        (followers, followee),
-    )
-    .unwrap();
+    cur.client
+        .execute(
+            "UPDATE users SET followers = ?1 WHERE id = ?2",
+            (followers, followee),
+        )
+        .unwrap();
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT * FROM users WHERE id = ?1")
         .unwrap();
     let mut rows = select.query([token.user]).unwrap();
@@ -280,11 +284,12 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
         .unwrap()
         .unwrap_or("".into());
     following += &format!("{},", followee);
-    cur.client.execute(
-        "UPDATE users SET following = ?1 WHERE id = ?2",
-        (following, &token.user),
-    )
-    .unwrap();
+    cur.client
+        .execute(
+            "UPDATE users SET following = ?1 WHERE id = ?2",
+            (following, &token.user),
+        )
+        .unwrap();
 
     (Status::Ok, Json(json!({"success": true})))
 }
@@ -293,7 +298,8 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT * FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
@@ -335,7 +341,8 @@ pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
     }
     .unwrap();
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT * FROM users WHERE id = ?1")
         .unwrap();
     let mut rows = select.query([token.user]).unwrap();
@@ -376,7 +383,8 @@ pub struct Followers {
 pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT followers FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
@@ -432,7 +440,8 @@ pub struct Following {
 pub fn following(user: &str) -> Result<Json<Following>, Status> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT following FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
     let mut row = select.query([&user]).unwrap();
@@ -486,12 +495,13 @@ pub async fn report_user(
     report: Json<Report>,
 ) -> Result<content::RawJson<&'static str>, Status> {
     let cur = db().lock().unwrap();
-    
+
     let Some(_) = cur.user_by_name(user, true) else {
         return Err(Status::NotFound);
     };
 
-    let mut select = cur.client
+    let mut select = cur
+        .client
         .prepare_cached("SELECT id FROM reports WHERE type = \"user\" AND resource_id = ?1")
         .unwrap();
     let mut rows = select.query((user,)).unwrap();
@@ -511,15 +521,16 @@ pub async fn report_user(
         }
     };
 
-    cur.client.execute(
-        "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"user\")",
-        (
-            token.user,
-            format!("{}|{}", &report.category, &report.reason),
-            user,
-        ),
-    )
-    .unwrap();
+    cur.client
+        .execute(
+            "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"user\")",
+            (
+                token.user,
+                format!("{}|{}", &report.category, &report.reason),
+                user,
+            ),
+        )
+        .unwrap();
 
     if let Some(webhook_url) = report_webhook() {
         let user = user.to_owned();

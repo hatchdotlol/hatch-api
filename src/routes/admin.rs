@@ -108,23 +108,28 @@ pub fn project_reports(token: Token<'_>) -> Result<Json<Reports>, Status> {
 
     let cur = db().lock().unwrap();
 
-    let mut select_reports = cur.client.prepare("SELECT * FROM reports WHERE type = \"project\"").unwrap();
+    let mut select_reports = cur
+        .client
+        .prepare("SELECT * FROM reports WHERE type = \"project\"")
+        .unwrap();
 
-    let reports = select_reports.query_map((), |row| {
-        let report: String = row.get(2)?;
-        
-        let report_str: (&str, &str) = report.split_at(1);
-        let reason = report_str.0[1..].to_string();
-        let category = report_str.0.parse::<u32>().unwrap();
+    let reports = select_reports
+        .query_map((), |row| {
+            let report: String = row.get(2)?;
 
-        let resource_id: u32 = row.get(3)?;
+            let report_str: (&str, &str) = report.split_at(1);
+            let reason: String = report_str.1.strip_prefix("|").unwrap().into();
+            let category = report_str.0.parse::<u32>().unwrap();
 
-        Ok(Report {
-            category,
-            reason,
-            resource_id: Some(resource_id)
+            let resource_id: u32 = row.get(3)?;
+
+            Ok(Report {
+                category,
+                reason,
+                resource_id: Some(resource_id),
+            })
         })
-    }).unwrap();
+        .unwrap();
 
     let reports = reports.map(|r| r.unwrap()).collect();
 
