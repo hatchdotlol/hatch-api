@@ -1,4 +1,4 @@
-use crate::{ban_guard::is_banned, config::mods, db::db, token_guard::Token};
+use crate::{ban_guard::is_banned, config::mods, data::Report, db::db, token_guard::Token};
 use rocket::{http::Status, serde::json::Json};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -93,4 +93,35 @@ pub fn set_rating(token: Token<'_>, rating: Json<Rating>) -> Result<Json<Value>,
         .unwrap();
 
     Ok(Json(json!({"message": "success"})))
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Reports {
+    reports: Vec<Report>,
+}
+
+#[get("/project_reports")]
+pub fn project_reports(token: Token<'_>) -> Result<Json<Reports>, Status> {
+    if !is_mod(token.user) {
+        return Err(Status::Unauthorized);
+    }
+
+    let cur = db().lock().unwrap();
+
+    let mut select_reports = cur.client.prepare("SELECT * FROM reports WHERE type = \"project\"").unwrap();
+
+    let reports = select_reports.query_map((), |row| {
+        let report: String = row.get(2)?;
+        let report_str: (&str, &str) = report.split_at(1);
+        let category = report_str.0.parse::<u32>().unwrap();
+
+        Ok(Report {
+            category,
+            reason: report_str.1.to_string()
+        })
+    }).unwrap();
+
+    let reports = reports.map(|r| r.unwrap()).collect();
+
+    Ok(Json(Reports { reports }))
 }

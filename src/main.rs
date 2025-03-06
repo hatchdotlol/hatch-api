@@ -148,7 +148,8 @@ fn rocket() -> Rocket<Build> {
                 admin::banned,
                 admin::ip_ban,
                 admin::ip_unban,
-                admin::set_rating
+                admin::set_rating,
+                admin::project_reports,
             ],
         )
         .mount(

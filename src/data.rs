@@ -44,7 +44,7 @@ pub struct Author {
     pub display_name: Option<String>,
 }
 
-#[derive(Debug, PartialEq, Eq, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Report {
     pub category: u32,
     pub reason: String,

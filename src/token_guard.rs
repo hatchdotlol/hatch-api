@@ -21,7 +21,7 @@ pub fn is_valid(token: &str) -> Option<u32> {
         let expiration_date = account.get::<usize, i64>(1).unwrap();
 
         if expiration_date < chrono::Utc::now().timestamp() {
-            cur.client.execute("DELETE FROM auth_tokens WHERE user=?1", [user])
+            cur.client.execute("DELETE FROM auth_tokens WHERE user = ?1", [user])
                 .unwrap();
             None
         } else {
