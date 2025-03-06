@@ -100,7 +100,7 @@ pub struct Reports {
     reports: Vec<Report>,
 }
 
-#[get("/project_reports")]
+#[get("/project-reports")]
 pub fn project_reports(token: Token<'_>) -> Result<Json<Reports>, Status> {
     if !is_mod(token.user) {
         return Err(Status::Unauthorized);
