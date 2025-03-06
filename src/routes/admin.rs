@@ -112,12 +112,17 @@ pub fn project_reports(token: Token<'_>) -> Result<Json<Reports>, Status> {
 
     let reports = select_reports.query_map((), |row| {
         let report: String = row.get(2)?;
+        
         let report_str: (&str, &str) = report.split_at(1);
+        let reason = report_str.0[1..].to_string();
         let category = report_str.0.parse::<u32>().unwrap();
+
+        let resource_id: u32 = row.get(3)?;
 
         Ok(Report {
             category,
-            reason: report_str.1.to_string()
+            reason,
+            resource_id: Some(resource_id)
         })
     }).unwrap();
 

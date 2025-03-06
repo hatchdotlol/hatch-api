@@ -48,6 +48,8 @@ pub struct Author {
 pub struct Report {
     pub category: u32,
     pub reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub resource_id: Option<u32>,
 }
 
 #[derive(Debug, Serialize)]
