@@ -108,30 +108,20 @@ pub fn project_reports(token: Token<'_>) -> Result<Json<Reports>, Status> {
 
     let cur = db().lock().unwrap();
 
-    let mut select_reports = cur
-        .client
-        .prepare("SELECT * FROM reports WHERE type = \"project\"")
-        .unwrap();
+    let reports = cur.reports("project");
 
-    let reports = select_reports
-        .query_map((), |row| {
-            let report: String = row.get(2)?;
+    Ok(Json(Reports { reports }))
+}
 
-            let report_str: (&str, &str) = report.split_at(1);
-            let reason: String = report_str.1.strip_prefix("|").unwrap().into();
-            let category = report_str.0.parse::<u32>().unwrap();
+#[get("/user-reports")]
+pub fn user_reports(token: Token<'_>) -> Result<Json<Reports>, Status> {
+    if !is_mod(token.user) {
+        return Err(Status::Unauthorized);
+    }
 
-            let resource_id: u32 = row.get(3)?;
+    let cur = db().lock().unwrap();
 
-            Ok(Report {
-                category,
-                reason,
-                resource_id: Some(resource_id),
-            })
-        })
-        .unwrap();
-
-    let reports = reports.map(|r| r.unwrap()).collect();
+    let reports = cur.reports("user");
 
     Ok(Json(Reports { reports }))
 }

@@ -1,6 +1,6 @@
 use rusqlite::{Connection, Rows};
 
-use crate::data::{Author, Comment, Location};
+use crate::data::{Author, Comment, Location, Report};
 
 pub struct SqliteBackend {
     pub(crate) client: Connection,
@@ -166,5 +166,34 @@ impl SqliteBackend {
             .collect();
 
         comments
+    }
+
+    pub fn reports(&self, typ: &str) -> Vec<Report> {
+        let mut select_reports = self
+            .client
+            .prepare("SELECT * FROM reports WHERE type = ?1")
+            .unwrap();
+
+        let reports = select_reports
+            .query_map((typ,), |row| {
+                let report: String = row.get(2)?;
+
+                let report_str: (&str, &str) = report.split_at(1);
+                let reason: String = report_str.1.strip_prefix("|").unwrap().into();
+                let category = report_str.0.parse::<u32>().unwrap();
+
+                let resource_id: u32 = row.get(3)?;
+
+                Ok(Report {
+                    category,
+                    reason,
+                    resource_id: Some(resource_id),
+                })
+            })
+            .unwrap();
+
+        let reports = reports.map(|r| r.unwrap()).collect();
+
+        reports
     }
 }
