@@ -45,11 +45,17 @@ pub struct Author {
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NumOrStr {
+    Num(u32),
+    Str(String)
+}
+
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Report {
     pub category: u32,
     pub reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub resource_id: Option<u32>,
+    pub resource_id: Option<NumOrStr>,
 }
 
 #[derive(Debug, Serialize)]

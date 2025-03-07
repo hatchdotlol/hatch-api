@@ -1,6 +1,6 @@
 use rusqlite::{Connection, Rows};
 
-use crate::data::{Author, Comment, Location, Report};
+use crate::data::{Author, Comment, Location, NumOrStr, Report};
 
 pub struct SqliteBackend {
     pub(crate) client: Connection,
@@ -182,12 +182,17 @@ impl SqliteBackend {
                 let reason: String = report_str.1.strip_prefix("|").unwrap().into();
                 let category = report_str.0.parse::<u32>().unwrap();
 
-                let resource_id: u32 = row.get(3)?;
+                let resource_id: String = row.get(3)?;
+                let parsed = if let Ok(id) = resource_id.parse::<u32>() {
+                    NumOrStr::Num(id)
+                } else {
+                    NumOrStr::Str(resource_id)
+                };
 
                 Ok(Report {
                     category,
                     reason,
-                    resource_id: Some(resource_id),
+                    resource_id: Some(parsed),
                 })
             })
             .unwrap();
