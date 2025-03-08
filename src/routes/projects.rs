@@ -113,7 +113,7 @@ pub async fn index(
 
     if (&form.thumbnail)
         .content_type()
-        .is_none_or(|c| !(c.is_png() || c.is_jpeg() || c.is_gif() || c.is_webp()))
+        .is_none_or(|c| !(c.is_png() || c.is_jpeg() || c.is_gif() || c.is_webp()) || c.is_zip())
     {
         return status::Custom(
             Status::BadRequest,
