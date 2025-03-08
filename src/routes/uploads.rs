@@ -143,8 +143,11 @@ pub async fn user(user: &str) -> Result<Vec<u8>, Status> {
 
     let obj = db.get_object(&PFPS_BUCKET, user).send().await;
 
-    let Ok(obj) = obj else {
-        return Err(Status::NotFound);
+    let obj = if let Ok(obj) = obj {
+        obj
+    } else {
+        let obj = db.get_object(&PFPS_BUCKET, "default.png").send().await;
+        obj.unwrap()
     };
 
     let body = obj
