@@ -51,7 +51,7 @@ struct Project {
 fn create_project(p: Project, thumbnail: &str) -> i64 {
     let cur = db().lock().unwrap();
     cur.client.execute(
-        "INSERT INTO projects (author, upload_ts, title, description, shared, thumbnail) VALUES (?1, ?2, ?3, ?4, TRUE, ?5)", 
+        "INSERT INTO projects (author, upload_ts, title, description, shared, rating, score, thumbnail) VALUES (?1, ?2, ?3, ?4, TRUE, \"N/A\", 0, ?5)", 
         (
             p.user_id,
             chrono::Utc::now().timestamp(),
