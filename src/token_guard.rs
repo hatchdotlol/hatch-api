@@ -4,7 +4,6 @@ use rocket::{
     Request,
 };
 
-use crate::data::AuthError;
 use crate::db::db;
 
 pub fn is_valid(token: &str) -> Option<u32> {
@@ -42,7 +41,7 @@ pub struct Token<'r> {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for Token<'r> {
-    type Error = AuthError;
+    type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
         let token = request.headers().get_one("Token");
@@ -58,7 +57,7 @@ impl<'r> FromRequest<'r> for Token<'r> {
                 user: user_id,
                 token: token.unwrap(),
             }),
-            None => Outcome::Error((Status::Unauthorized, AuthError::Invalid)),
+            None => Outcome::Forward(Status::Unauthorized),
         }
     }
 }

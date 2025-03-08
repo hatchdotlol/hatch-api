@@ -28,11 +28,6 @@ pub struct User {
     pub theme: Option<String>,
 }
 
-#[derive(Debug)]
-pub enum AuthError {
-    Invalid,
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Author {
@@ -44,6 +39,8 @@ pub struct Author {
     pub display_name: Option<String>,
 }
 
+// sqlite doesnt seem to take integer schema types seriously
+// hence this enum which parses usernames and project ids from resource ids
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum NumOrStr {

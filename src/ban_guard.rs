@@ -4,7 +4,6 @@ use rocket::{
     Request,
 };
 
-use crate::data::AuthError;
 use crate::{db::db, ip_guard::from_request};
 
 pub fn is_banned(ip: &str) -> bool {
@@ -24,14 +23,18 @@ pub struct NotBanned<'r> {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for NotBanned<'r> {
-    type Error = AuthError;
+    type Error = ();
 
     async fn from_request(request: &'r Request<'_>) -> Outcome<Self, Self::Error> {
-        let ip = &from_request(request).unwrap();
+        let ip = request.local_cache(|| from_request(request));
+        let Some(ip) = ip else {
+            return Outcome::Forward(Status::BadRequest);
+        };
+
         let ip = &ip.get_ipv4_string().unwrap_or(ip.get_ipv6_string());
 
         if is_banned(ip) {
-            Outcome::Error((Status::Unauthorized, AuthError::Invalid))
+            Outcome::Forward(Status::BadRequest)
         } else {
             Outcome::Success(NotBanned { _banned: &true })
         }
