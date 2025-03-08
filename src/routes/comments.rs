@@ -12,7 +12,7 @@ use crate::{
     db::db,
     limit_guard::TenPerSecond,
     logging_webhook, report_webhook,
-    token_guard::Token,
+    verify_guard::TokenVerified,
 };
 
 #[derive(Debug, Serialize)]
@@ -57,7 +57,7 @@ pub struct PostComment {
     data = "<comment>"
 )]
 pub fn post_project_comment(
-    token: Token<'_>,
+    token: &TokenVerified,
     id: u32,
     comment: Json<PostComment>,
     _l: RocketGovernor<TenPerSecond>,
@@ -134,7 +134,7 @@ pub fn post_project_comment(
 
 #[delete("/projects/<id>/comments/<comment_id>")]
 pub fn delete_project_comment(
-    token: Token<'_>,
+    token: &TokenVerified,
     id: u32,
     comment_id: u32,
     _l: RocketGovernor<TenPerSecond>,
@@ -188,7 +188,7 @@ pub fn delete_project_comment(
     data = "<report>"
 )]
 pub fn report_project_comment(
-    token: Token<'_>,
+    token: &TokenVerified,
     id: u32,
     comment_id: u32,
     report: Json<Report>,

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::config::{MAX_PFP_HEIGHT, MAX_PFP_WIDTH, PFPS_BUCKET, PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::db::{db, projects};
-use crate::token_guard::Token;
+use crate::verify_guard::TokenVerified;
 use image::{GenericImageView, ImageFormat, ImageReader};
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::S3Api;
@@ -33,7 +33,7 @@ fn get_user_pfp(user: u32) -> String {
 
 #[post("/pfp", format = "multipart/form-data", data = "<form>")]
 pub async fn update_pfp(
-    token: Token<'_>,
+    token: &TokenVerified,
     form: Form<Upload<'_>>,
 ) -> status::Custom<content::RawJson<String>> {
     if form.file.len() > PFP_LIMIT {

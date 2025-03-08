@@ -16,7 +16,7 @@ use crate::{
     db::db,
     limit_guard::TenPerSecond,
     mods, report_webhook,
-    token_guard::Token,
+    verify_guard::TokenVerified,
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -31,7 +31,7 @@ pub struct UserInfo<'r> {
 
 #[post("/", format = "application/json", data = "<user_info>")]
 pub fn update_user_info(
-    token: Token<'_>,
+    token: &TokenVerified,
     user_info: Json<UserInfo>,
     _l: RocketGovernor<TenPerSecond>,
 ) -> Result<content::RawJson<&'static str>, status::BadRequest<Json<Value>>> {
@@ -235,7 +235,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
 }
 
 #[post("/<user>/follow")]
-pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
+pub fn follow(token: &TokenVerified, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -295,7 +295,7 @@ pub fn follow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
 }
 
 #[post("/<user>/unfollow")]
-pub fn unfollow(token: Token<'_>, user: &str) -> (Status, Json<Value>) {
+pub fn unfollow(token: &TokenVerified, user: &str) -> (Status, Json<Value>) {
     let cur = db().lock().unwrap();
 
     let mut select = cur
@@ -490,7 +490,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
 
 #[post("/<user>/report", format = "application/json", data = "<report>")]
 pub async fn report_user(
-    token: Token<'_>,
+    token: &TokenVerified,
     user: &str,
     report: Json<Report>,
 ) -> Result<content::RawJson<&'static str>, Status> {

@@ -2,6 +2,7 @@ use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::data::ProjectInfo;
 use crate::rocket::futures::StreamExt;
 use crate::token_guard::is_valid;
+use crate::verify_guard::TokenVerified;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
 use rocket::{
@@ -64,7 +65,7 @@ fn create_project(p: Project, thumbnail: &str) -> i64 {
 
 #[post("/", format = "multipart/form-data", data = "<form>")]
 pub async fn index(
-    token: Token<'_>,
+    token: &TokenVerified,
     form: Form<Upload<'_>>,
     // _l: RocketGovernor<'_, OnePerMinute>,
 ) -> status::Custom<content::RawJson<String>> {
@@ -208,7 +209,7 @@ pub async fn index(
     )
 }
 
-fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
+fn checks(token: Option<Token>, id: u32) -> Option<Status> {
     let cur = db().lock().unwrap();
     let mut select = cur
         .client
@@ -240,12 +241,16 @@ fn checks(token: Option<Token<'_>>, id: u32) -> Option<Status> {
 
 #[post("/<id>/update", format = "multipart/form-data", data = "<form>")]
 pub async fn update_project(
-    token: Token<'_>,
+    token: &TokenVerified,
     // _l: RocketGovernor<'_, OnePerMinute>,
     id: u32,
     form: Form<Update<'_>>,
 ) -> status::Custom<content::RawJson<&'static str>> {
-    if checks(Some(token), id).is_some() {
+    // convert verified token into regular token; safe to use at this point
+    // i would use an enum but im lazy
+    let mapped_token = Token { token: &token.token, user: token.user };
+
+    if checks(Some(mapped_token), id).is_some() {
         return status::Custom(
             Status::NotFound,
             content::RawJson("{\"message\": \"Not Found\"}".into()),

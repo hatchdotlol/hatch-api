@@ -296,6 +296,7 @@ pub static VERIFICATION_TEMPLATE: &str = r#"
     <a href="{{link}}" target="_blank" style="background:linear-gradient(#FFBD59, #FDD18F);color:black;text-decoration:none;padding:10px 35px;font-weight:bold;">Verify</a>
 </center>
 <p style="color:grey"><small>Or use this link if that doesn't work: <a href="{{link}}" style="color:#D99E44">{{link}}</a></small></p>
+<p>If you didn't create this account, please ignore this email.</p>
 </div>
 </div>
 </body>

@@ -11,6 +11,7 @@ pub mod ip_guard;
 pub mod limit_guard;
 pub mod routes;
 pub mod token_guard;
+pub mod verify_guard;
 
 use config::*;
 use db::{db, projects};
