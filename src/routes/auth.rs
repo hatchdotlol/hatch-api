@@ -122,7 +122,10 @@ pub fn register(
             followers,
             following,
             verified,
-            email
+            email,
+            banned,
+            ips,
+            theme
         ) VALUES (
             ?1,
             ?2,
@@ -136,7 +139,10 @@ pub fn register(
             NULL,
             NULL,
             FALSE,
-            ?5
+            ?5,
+            FALSE,
+            \"\",
+            \"#ffbd59\"
         )",
             (
                 &creds.username,
