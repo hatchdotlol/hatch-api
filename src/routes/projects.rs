@@ -461,7 +461,7 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
     let thumbnail = format!(
         "/uploads/thumb/{}.{}",
         project_id,
-        project.get::<usize, String>(7).unwrap()
+        project.get::<usize, String>(8).unwrap()
     );
 
     let comment_count = cur.comment_count(project_id);
