@@ -1,10 +1,10 @@
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::data::ProjectInfo;
-use crate::db::redis;
+use crate::guards::limit_guard::OnePerSecond;
+use crate::queues::report_queue::send_report;
 use crate::rocket::futures::StreamExt;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
-use redis::AsyncCommands;
 use rocket::{
     form::Form,
     fs::TempFile,
@@ -12,6 +12,7 @@ use rocket::{
     response::{content, status, Responder},
     serde::json::Json,
 };
+use rocket_governor::RocketGovernor;
 use rustrict::{CensorStr, Type};
 use std::{fs::File, io::BufReader};
 use webhook::client::WebhookClient;
@@ -70,7 +71,7 @@ fn create_project(p: Project, thumbnail: &str) -> i64 {
 pub async fn index(
     token: &TokenVerified,
     form: Form<Upload<'_>>,
-    // _l: RocketGovernor<'_, OnePerMinute>,
+    _l: RocketGovernor<'_, OnePerSecond>,
 ) -> status::Custom<content::RawJson<String>> {
     match form.file.content_type() {
         Some(_content_type) => {
@@ -650,11 +651,7 @@ pub async fn report_project(
         )
         .unwrap();
 
-    tokio::spawn(async move {
-        let redis = redis().await;
-        let mut redis = redis.lock().await;
-        let _: () = redis.publish("reports", "hi").await.unwrap();
-    });
-    
+    send_report("hello world".into());
+
     Ok(content::RawJson("{\"success\": true}"))
 }

@@ -6,7 +6,7 @@ use minio::s3::{
 use redis::{aio::MultiplexedConnection, Client as RedisClient};
 use rusqlite::Connection as SqliteConn;
 use std::sync::{Mutex, OnceLock};
-use tokio::sync::Mutex as TokioMutex;
+use tokio::sync::{Mutex as TokioMutex, OnceCell};
 
 use super::wrapper::SqliteBackend;
 use crate::config::{minio_access_key, minio_secret_key, minio_url};
@@ -138,9 +138,12 @@ pub fn projects() -> &'static TokioMutex<MinIOClient> {
     })
 }
 
-pub async fn redis() -> TokioMutex<MultiplexedConnection> {
+pub static REDIS: OnceCell<TokioMutex<MultiplexedConnection>> = OnceCell::const_new();
+
+pub async fn redis() {
     let client = RedisClient::open("redis://127.0.0.1/").unwrap();
     let con = client.get_multiplexed_async_connection().await;
+    let wrapped = TokioMutex::new(con.unwrap());
 
-    TokioMutex::new(con.unwrap())
+    REDIS.set(wrapped).unwrap();
 }

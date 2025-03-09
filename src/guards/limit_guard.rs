@@ -1,10 +1,10 @@
 use rocket_governor::{Method, Quota, RocketGovernable};
 
-pub struct OnePerMinute;
+pub struct OnePerSecond;
 
-impl<'r> RocketGovernable<'r> for OnePerMinute {
+impl<'r> RocketGovernable<'r> for OnePerSecond {
     fn quota(_method: Method, _route_name: &str) -> Quota {
-        Quota::per_minute(Self::nonzero(1))
+        Quota::per_second(Self::nonzero(1))
     }
 }
 pub struct TenPerSecond;

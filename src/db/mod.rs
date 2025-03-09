@@ -1,4 +1,4 @@
 mod instances;
 pub mod wrapper;
 
-pub use instances::{db, projects, redis};
+pub use instances::{db, projects, redis, REDIS};
