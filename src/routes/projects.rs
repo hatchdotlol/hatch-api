@@ -1,7 +1,7 @@
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
-use crate::data::ProjectInfo;
+use crate::data::{Location, ProjectInfo};
 use crate::guards::limit_guard::OnePerSecond;
-use crate::queues::report_queue::send_report;
+use crate::queues::report_queue::{send_report, ReportLog};
 use crate::rocket::futures::StreamExt;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
@@ -640,18 +640,12 @@ pub async fn report_project(
         }
     };
 
-    cur.client
-        .execute(
-            "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"project\")",
-            (
-                token.user,
-                format!("{}|{}", &report.category, &report.reason),
-                id,
-            ),
-        )
-        .unwrap();
-
-    send_report("hello world".into());
+    send_report(ReportLog {
+        reportee: token.user,
+        reason: format!("{}|{}", &report.category, &report.reason),
+        resource_id: id,
+        location: Location::Project as u8
+    });
 
     Ok(content::RawJson("{\"success\": true}"))
 }

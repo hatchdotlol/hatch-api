@@ -10,7 +10,7 @@ pub mod queues;
 pub mod routes;
 
 use config::*;
-use db::{db, projects, redis};
+use db::{db, projects, set_redis};
 use queues::report_queue::report_queue;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
@@ -67,7 +67,7 @@ async fn rocket() -> Rocket<Build> {
     logging_webhook();
     report_webhook();
     admin_key();
-    redis().await;
+    set_redis().await;
 
     let allowed_origins = AllowedOrigins::all();
 

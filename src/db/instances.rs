@@ -140,7 +140,7 @@ pub fn projects() -> &'static TokioMutex<MinIOClient> {
 
 pub static REDIS: OnceCell<TokioMutex<MultiplexedConnection>> = OnceCell::const_new();
 
-pub async fn redis() {
+pub async fn set_redis() {
     let client = RedisClient::open("redis://127.0.0.1/").unwrap();
     let con = client.get_multiplexed_async_connection().await;
     let wrapped = TokioMutex::new(con.unwrap());
