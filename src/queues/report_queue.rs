@@ -9,6 +9,7 @@ pub async fn report_queue() -> Result<(), RedisError> {
     pubsub.subscribe("reports")?;
 
     loop {
+        println!("ping");
         let msg = pubsub.get_message().unwrap();
         let payload: String = msg.get_payload().unwrap();
 
