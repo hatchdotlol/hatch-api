@@ -54,8 +54,7 @@ fn conflict() -> status::Custom<content::RawJson<&'static str>> {
 }
 
 #[launch]
-#[tokio::main]
-async fn rocket() -> Rocket<Build> {
+fn rocket() -> Rocket<Build> {
     dotenv::dotenv().ok();
 
     db();
@@ -89,8 +88,8 @@ async fn rocket() -> Rocket<Build> {
     .to_cors()
     .unwrap();
 
-    tokio::spawn(async move {
-        report_queue().await.unwrap();
+    std::thread::spawn(|| {
+        report_queue().unwrap();
     });
 
     rocket::build()
