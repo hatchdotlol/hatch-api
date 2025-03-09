@@ -6,7 +6,7 @@ pub fn report_queue() -> Result<(), RedisError> {
     let mut client = redis().lock().unwrap();
     let mut pubsub = client.as_pubsub();
 
-    pubsub.subscribe("reports")?;
+    let _ = pubsub.subscribe("reports")?;
 
     loop {
         println!("ping");
