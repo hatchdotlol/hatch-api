@@ -4,7 +4,7 @@ use crate::db::redis;
 use crate::rocket::futures::StreamExt;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
-use redis::Commands;
+use redis::AsyncCommands;
 use rocket::{
     form::Form,
     fs::TempFile,
@@ -25,7 +25,7 @@ use crate::{
         token_guard::{is_valid, Token},
         verify_guard::TokenVerified,
     },
-    logging_webhook, report_webhook,
+    logging_webhook,
 };
 
 #[derive(FromForm)]
@@ -628,7 +628,7 @@ pub async fn report_project(
         return Err(Status::Conflict);
     }
 
-    let report_category = match report.category {
+    let _report_category = match report.category {
         0 => "Inappropriate or graphic",
         1 => "Copyrighted or stolen material",
         2 => "Harassment or bullying",
@@ -638,10 +638,6 @@ pub async fn report_project(
             return Err(Status::BadRequest);
         }
     };
-
-    let mut channel = redis().lock().unwrap();
-    
-    let _: () = channel.publish("reports", "hi").unwrap();
 
     cur.client
         .execute(
@@ -654,30 +650,11 @@ pub async fn report_project(
         )
         .unwrap();
 
-    if let Some(webhook_url) = report_webhook() {
-        tokio::spawn(async move {
-            let url: &str = &webhook_url;
-            let client = WebhookClient::new(url);
-
-            client
-                .send(move |message| {
-                    message.embed(|embed| {
-                        embed
-                            .title(&format!(
-                            "🛡️ https://dev.hatch.lol/project/?id={} has been reported. Check the DB for more info",
-                            id
-                        ))
-                            .description(&format!(
-                                "**Reason**\n```\n{}\n\n{}\n```",
-                                report_category,
-                                report.reason
-                            ))
-                    })
-                })
-                .await
-                .unwrap();
-        });
-    }
-
+    tokio::spawn(async move {
+        let redis = redis().await;
+        let mut redis = redis.lock().await;
+        let _: () = redis.publish("reports", "hi").await.unwrap();
+    });
+    
     Ok(content::RawJson("{\"success\": true}"))
 }

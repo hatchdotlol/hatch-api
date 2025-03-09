@@ -10,9 +10,8 @@ pub mod queues;
 pub mod routes;
 
 use config::*;
-use db::{db, projects, redis};
+use db::{db, projects};
 use queues::report_queue::report_queue;
-use redis::Commands;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket::{Build, Rocket};
@@ -89,12 +88,9 @@ fn rocket() -> Rocket<Build> {
     .to_cors()
     .unwrap();
 
-    std::thread::spawn(|| {
-        report_queue().unwrap();
+    tokio::spawn(async {
+        report_queue().await.unwrap();
     });
-
-    let mut redis = redis().lock().unwrap();
-    let _: () = redis.publish("reports", "hi").unwrap();
 
     rocket::build()
         .register(

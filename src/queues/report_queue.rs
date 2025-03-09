@@ -1,18 +1,16 @@
 use redis::RedisError;
+use rocket::futures::StreamExt;
 
-use crate::db::redis;
+pub async fn report_queue() -> Result<(), RedisError> {
+    let client = redis::Client::open("redis://127.0.0.1/").unwrap();
+    let mut pubsub_conn = client.get_async_pubsub().await?;
 
-pub fn report_queue() -> Result<(), RedisError> {
-    let mut client = redis().lock().unwrap();
-    let mut pubsub = client.as_pubsub();
-
-    let _ = pubsub.subscribe("reports")?;
+    let _ = pubsub_conn.subscribe("reports").await?;
+    let mut msgs = pubsub_conn.on_message();
 
     loop {
-        println!("ping");
-        let msg = pubsub.get_message().unwrap();
-        let payload: String = msg.get_payload().unwrap();
-
-        println!("{}", payload)
+        while let Some(msg) = msgs.next().await {
+            println!("{}", msg.get_payload::<String>().unwrap());
+        }
     }
 }
