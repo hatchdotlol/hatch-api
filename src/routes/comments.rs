@@ -10,9 +10,8 @@ use webhook::client::WebhookClient;
 use crate::{
     data::{Comment, Location, Report},
     db::db,
-    limit_guard::TenPerSecond,
+    guards::{limit_guard::TenPerSecond, verify_guard::TokenVerified},
     logging_webhook, report_webhook,
-    verify_guard::TokenVerified,
 };
 
 #[derive(Debug, Serialize)]

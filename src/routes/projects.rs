@@ -1,8 +1,6 @@
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::data::ProjectInfo;
 use crate::rocket::futures::StreamExt;
-use crate::token_guard::is_valid;
-use crate::verify_guard::TokenVerified;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
 use rocket::{
@@ -21,8 +19,11 @@ use crate::{
     config::{ASSET_LIMIT, PROJECTS_BUCKET},
     data::Report,
     db::{db, projects},
+    guards::{
+        token_guard::{is_valid, Token},
+        verify_guard::TokenVerified,
+    },
     logging_webhook, report_webhook,
-    token_guard::Token,
 };
 
 #[derive(FromForm)]
@@ -248,7 +249,10 @@ pub async fn update_project(
 ) -> status::Custom<content::RawJson<&'static str>> {
     // convert verified token into regular token; safe to use at this point
     // i would use an enum but im lazy
-    let mapped_token = Token { token: &token.token, user: token.user };
+    let mapped_token = Token {
+        token: &token.token,
+        user: token.user,
+    };
 
     if checks(Some(mapped_token), id).is_some() {
         return status::Custom(

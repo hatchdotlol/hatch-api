@@ -4,17 +4,17 @@ use rocket::{
     Request,
 };
 
-use crate::{db::db, token_guard::is_valid};
+use crate::{db::db, guards::token_guard::is_valid};
 
 pub fn is_verified(user: u32) -> bool {
     let cur = db().lock().unwrap();
-    
+
     let mut select = cur
         .client
         .prepare_cached("SELECT verified FROM users WHERE id = ?1")
         .unwrap();
     let mut rows = select.query([user]).unwrap();
-    
+
     let Some(row) = rows.next().unwrap() else {
         return false;
     };
@@ -60,7 +60,7 @@ impl<'r> FromRequest<'r> for &'r TokenVerified {
 
         match cache {
             Some(token) => Outcome::Success(token),
-            None => Outcome::Forward(Status::Unauthorized)
+            None => Outcome::Forward(Status::Unauthorized),
         }
     }
 }

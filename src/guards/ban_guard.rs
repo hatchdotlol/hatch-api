@@ -4,7 +4,7 @@ use rocket::{
     Request,
 };
 
-use crate::{db::db, ip_guard::from_request};
+use crate::{db::db, guards::ip_guard::from_request};
 
 pub fn is_banned(ip: &str) -> bool {
     let cur = db().lock().unwrap();

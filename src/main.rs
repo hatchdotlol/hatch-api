@@ -1,20 +1,17 @@
 #[macro_use]
 extern crate rocket;
 
-pub mod admin_guard;
-pub mod ban_guard;
 pub mod config;
 pub mod data;
 pub mod db;
 pub mod entropy;
-pub mod ip_guard;
-pub mod limit_guard;
+pub mod guards;
+pub mod queues;
 pub mod routes;
-pub mod token_guard;
-pub mod verify_guard;
 
 use config::*;
 use db::{db, projects};
+use queues::report_queue::report_queue;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
 use rocket::{Build, Rocket};
@@ -60,10 +57,8 @@ fn conflict() -> status::Custom<content::RawJson<&'static str>> {
 fn rocket() -> Rocket<Build> {
     dotenv::dotenv().ok();
 
-    // pre initialize to save headache
     db();
     projects();
-
     message();
     postal_key();
     postal_url();
@@ -92,6 +87,10 @@ fn rocket() -> Rocket<Build> {
     }
     .to_cors()
     .unwrap();
+
+    tokio::spawn(async move {
+        report_queue().await.unwrap();
+    });
 
     rocket::build()
         .register(

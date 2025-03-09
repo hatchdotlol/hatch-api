@@ -14,9 +14,8 @@ use crate::{
     config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
     data::{ProjectInfo, Report, User},
     db::db,
-    limit_guard::TenPerSecond,
+    guards::{limit_guard::TenPerSecond, verify_guard::TokenVerified},
     mods, report_webhook,
-    verify_guard::TokenVerified,
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]

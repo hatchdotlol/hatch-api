@@ -1,4 +1,6 @@
-use crate::{ban_guard::is_banned, config::mods, data::Report, db::db, token_guard::Token};
+use crate::{
+    config::mods, data::Report, db::db, guards::ban_guard::is_banned, guards::token_guard::Token,
+};
 use rocket::{http::Status, serde::json::Json};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};

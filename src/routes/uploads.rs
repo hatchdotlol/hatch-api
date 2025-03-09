@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::config::{MAX_PFP_HEIGHT, MAX_PFP_WIDTH, PFPS_BUCKET, PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::db::{db, projects};
-use crate::verify_guard::TokenVerified;
+use crate::guards::verify_guard::TokenVerified;
 use image::{GenericImageView, ImageFormat, ImageReader};
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::S3Api;

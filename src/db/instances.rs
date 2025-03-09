@@ -1,9 +1,10 @@
 use minio::s3::{
-    client::{Client, ClientBuilder},
+    client::{Client as MinIOClient, ClientBuilder},
     creds::StaticProvider,
     http::BaseUrl,
 };
-use rusqlite::Connection;
+use redis::{Client as RedisClient, Connection as RedisConn};
+use rusqlite::Connection as SqliteConn;
 use std::sync::{Mutex, OnceLock};
 use tokio::sync::Mutex as TokioMutex;
 
@@ -15,7 +16,7 @@ pub fn db() -> &'static Mutex<SqliteBackend> {
     static DB: OnceLock<Mutex<SqliteBackend>> = OnceLock::new();
 
     DB.get_or_init(|| {
-        let conn = Connection::open("hatch.db").unwrap();
+        let conn = SqliteConn::open("hatch.db").unwrap();
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS reports (
@@ -121,8 +122,8 @@ pub fn db() -> &'static Mutex<SqliteBackend> {
     })
 }
 
-pub fn projects() -> &'static TokioMutex<Client> {
-    static PROJECTS: OnceLock<TokioMutex<Client>> = OnceLock::new();
+pub fn projects() -> &'static TokioMutex<MinIOClient> {
+    static PROJECTS: OnceLock<TokioMutex<MinIOClient>> = OnceLock::new();
 
     PROJECTS.get_or_init(|| {
         let base_url = minio_url().parse::<BaseUrl>().unwrap();
@@ -134,5 +135,16 @@ pub fn projects() -> &'static TokioMutex<Client> {
             .unwrap();
 
         TokioMutex::new(client)
+    })
+}
+
+pub fn redis() -> &'static Mutex<RedisConn> {
+    static REDIS: OnceLock<Mutex<RedisConn>> = OnceLock::new();
+
+    REDIS.get_or_init(|| {
+        let client = RedisClient::open("redis://127.0.0.1/").unwrap();
+        let con = client.get_connection().unwrap();
+
+        Mutex::new(con)
     })
 }

@@ -4,7 +4,7 @@ use rocket::{
 };
 use std::{env, sync::OnceLock};
 
-use crate::ban_guard::NotBanned;
+use crate::guards::ban_guard::NotBanned;
 
 #[options("/<_..>")]
 pub fn all_options() {

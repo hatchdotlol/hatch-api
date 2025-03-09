@@ -45,7 +45,7 @@ pub struct Author {
 #[serde(untagged)]
 pub enum NumOrStr {
     Num(u32),
-    Str(String)
+    Str(String),
 }
 
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]

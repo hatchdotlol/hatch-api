@@ -2,7 +2,7 @@ use rocket::http::Status;
 use rocket::request::{FromRequest, Outcome};
 use rocket::Request;
 
-use super::config::admin_key;
+use crate::config::admin_key;
 
 #[allow(dead_code)]
 pub struct AdminToken<'r>(&'r str);

@@ -1,4 +1,3 @@
-use crate::admin_guard::AdminToken;
 use crate::config::{
     base_url, logging_webhook, postal_key, postal_url, EMAIL_TOKEN_EXPIRY, TOKEN_EXPIRY,
     USERNAME_LIMIT, VERIFICATION_TEMPLATE,
@@ -6,8 +5,7 @@ use crate::config::{
 use crate::data::User;
 use crate::db::db;
 use crate::entropy::calculate_entropy;
-use crate::ip_guard::ClientRealAddr;
-use crate::token_guard::Token;
+use crate::guards::{admin_guard::AdminToken, ip_guard::ClientRealAddr, token_guard::Token};
 use crate::{backup_resend_key, mods};
 
 use chrono::TimeDelta;
