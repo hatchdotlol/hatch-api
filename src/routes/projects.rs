@@ -1,8 +1,10 @@
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::data::ProjectInfo;
+use crate::db::redis;
 use crate::rocket::futures::StreamExt;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
+use redis::Commands;
 use rocket::{
     form::Form,
     fs::TempFile,
@@ -606,6 +608,7 @@ pub async fn report_project(
     report: Json<Report>,
 ) -> Result<content::RawJson<&'static str>, Status> {
     let cur = db().lock().unwrap();
+
     let mut select = cur
         .client
         .prepare_cached("SELECT * FROM projects WHERE id= ?1")
@@ -635,6 +638,10 @@ pub async fn report_project(
             return Err(Status::BadRequest);
         }
     };
+
+    let mut channel = redis().lock().unwrap();
+    
+    let _: () = channel.publish("reports", "hi").unwrap();
 
     cur.client
         .execute(
