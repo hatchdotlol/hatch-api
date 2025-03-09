@@ -54,7 +54,8 @@ fn conflict() -> status::Custom<content::RawJson<&'static str>> {
 }
 
 #[launch]
-fn rocket() -> Rocket<Build> {
+#[tokio::main]
+async fn rocket() -> Rocket<Build> {
     dotenv::dotenv().ok();
 
     db();
