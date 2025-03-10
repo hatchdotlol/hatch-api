@@ -154,7 +154,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         banner_image,
         following_count: Some(following_count),
         follower_count: Some(follower_count),
-        verified: None,
+        verified: Some(row.get(12).unwrap()),
         project_count: Some(project_count),
         hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
         theme: Some(row.get(16).unwrap_or("#ffbd59".into())),
