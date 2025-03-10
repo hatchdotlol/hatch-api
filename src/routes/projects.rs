@@ -1,5 +1,5 @@
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
-use crate::data::{Location, ProjectInfo};
+use crate::data::{Location, NumOrStr, ProjectInfo};
 use crate::guards::limit_guard::OnePerSecond;
 use crate::queues::report_queue::{send_report, ReportLog};
 use crate::rocket::futures::StreamExt;
@@ -643,7 +643,7 @@ pub async fn report_project(
     send_report(ReportLog {
         reportee: token.user,
         reason: format!("{}|{}", &report.category, &report.reason),
-        resource_id: id,
+        resource_id: NumOrStr::Num(id),
         location: Location::Project as u8
     });
 

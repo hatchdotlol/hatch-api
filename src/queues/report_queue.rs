@@ -2,14 +2,15 @@ use redis::{RedisError, AsyncCommands};
 use rmp_serde::Serializer;
 use rocket::futures::StreamExt;
 use serde::{Deserialize, Serialize};
+use webhook::client::WebhookClient;
 
-use crate::db::REDIS;
+use crate::{config::report_webhook, data::NumOrStr, db::REDIS};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct ReportLog {
     pub reportee: u32,
     pub reason: String,
-    pub resource_id: u32,
+    pub resource_id: NumOrStr,
     pub location: u8
 }
 
@@ -20,13 +21,28 @@ pub async fn report_queue() -> Result<(), RedisError> {
     let _ = pubsub_conn.subscribe("reports").await?;
     let mut msgs = pubsub_conn.on_message();
 
+    let webhook = report_webhook().map(|url| WebhookClient::new(url));
+
     loop {
         while let Some(msg) = msgs.next().await {
             let payload = msg.get_payload::<Vec<u8>>().unwrap();
-            let report: ReportLog = rmp_serde::from_slice(&payload).unwrap();
+            let _report: ReportLog = rmp_serde::from_slice(&payload).unwrap();
 
-            println!("{:?}", report);
-            
+            if let Some(client) = webhook.as_ref() {
+                let title = "hello world";
+                let description = "foo bar";
+
+                client
+                    .send(move |message| {
+                        message.embed(|embed| {
+                            embed
+                                .title(title)
+                                .description(description)
+                        })
+                    })
+                    .await
+                    .unwrap();
+            }
         }
     }
 }
