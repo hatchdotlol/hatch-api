@@ -26,18 +26,35 @@ pub async fn report_queue() -> Result<(), RedisError> {
     loop {
         while let Some(msg) = msgs.next().await {
             let payload = msg.get_payload::<Vec<u8>>().unwrap();
-            let _report: ReportLog = rmp_serde::from_slice(&payload).unwrap();
+            let report: ReportLog = rmp_serde::from_slice(&payload).unwrap();
 
             if let Some(client) = webhook.as_ref() {
-                let title = "hello world";
-                let description = "foo bar";
+                let NumOrStr::Num(id) = report.resource_id else {
+                    unreachable!();
+                };
+
+                let title = format!("https://dev.hatch.lol/project?id={} was reported", id);
+
+                let (category, rest) = report.reason.split_at(1);
+                let description = rest.strip_prefix("|").unwrap();
+
+                let report_category = match category {
+                    "0" => "Inappropriate or graphic",
+                    "1" => "Copyrighted or stolen material",
+                    "2" => "Harassment or bullying",
+                    "3" => "Spam",
+                    "4" => "Malicious links (such as malware)",
+                    _ => unreachable!()
+                };
+
+                let description = format!("**Reason**\n```\n{report_category}\n\n{description}");
 
                 client
                     .send(move |message| {
                         message.embed(|embed| {
                             embed
-                                .title(title)
-                                .description(description)
+                                .title(&title)
+                                .description(&description)
                         })
                     })
                     .await

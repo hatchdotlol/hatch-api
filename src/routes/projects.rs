@@ -629,15 +629,8 @@ pub async fn report_project(
         return Err(Status::Conflict);
     }
 
-    let _report_category = match report.category {
-        0 => "Inappropriate or graphic",
-        1 => "Copyrighted or stolen material",
-        2 => "Harassment or bullying",
-        3 => "Spam",
-        4 => "Malicious links (such as malware)",
-        _ => {
-            return Err(Status::BadRequest);
-        }
+    let (0 | 1 | 2 | 3 | 4) = report.category else {
+        return Err(Status::BadRequest);
     };
 
     send_report(ReportLog {
