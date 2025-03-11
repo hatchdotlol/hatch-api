@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use rusqlite::{Connection, Rows};
 
 use crate::data::{Author, Comment, Location, NumOrStr, Report};
@@ -121,7 +123,7 @@ impl SqliteBackend {
         comment_count.get(0).unwrap()
     }
 
-    pub fn comments(&self, location: Location, id: u32) -> Vec<Comment> {
+    pub fn comments(&self, location: Location, id: u32) -> BTreeMap<u32, Comment> {
         let mut select_comments = self.client
             .prepare_cached(
                 "SELECT * FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE",
@@ -159,13 +161,29 @@ impl SqliteBackend {
                     author,
                     post_date: row.get(3).unwrap(),
                     reply_to,
+                    replies: vec![]
                 }))
             })
             .unwrap()
             .filter_map(|x| x.unwrap())
             .collect();
 
-        comments
+        let mut new_comments: BTreeMap<u32, Comment> = BTreeMap::new();
+
+        for comment in comments.iter().filter(|c| c.reply_to.is_none()) {
+            new_comments.insert(comment.id, comment.clone());
+        }
+
+        for comment in comments.iter() {
+            if let Some(reply_to) = comment.reply_to {
+                let original_comment = new_comments.get(&reply_to).unwrap().clone();
+                let mut cloned = original_comment.clone();
+                (&mut cloned).replies.push(comment.clone());
+                new_comments.insert(original_comment.id, cloned);
+            }
+        }
+        
+        new_comments
     }
 
     pub fn reports(&self, typ: &str) -> Vec<Report> {

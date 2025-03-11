@@ -1,10 +1,12 @@
+use std::collections::BTreeMap;
+
 use rocket::{
     http::Status,
     response::{content, status},
     serde::json::Json,
 };
 use rocket_governor::RocketGovernor;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use webhook::client::WebhookClient;
 
 use crate::{
@@ -14,25 +16,20 @@ use crate::{
     logging_webhook, report_webhook,
 };
 
-#[derive(Debug, Serialize)]
-pub struct Comments {
-    comments: Vec<Comment>,
-}
-
 #[get("/projects/<id>/comments")]
-pub fn project_comments(id: u32) -> Json<Comments> {
+pub fn project_comments(id: u32) -> Json<BTreeMap<u32, Comment>> {
     let cur = db().lock().unwrap();
 
     let comments = cur.comments(Location::Project, id);
 
-    Json(Comments { comments })
+    Json(comments)
 }
 
 #[get("/users/<user>/comments")]
 pub fn user_comments(
     user: &str,
     _l: RocketGovernor<TenPerSecond>,
-) -> Result<Json<Comments>, Status> {
+) -> Result<Json<BTreeMap<u32, Comment>>, Status> {
     let cur = db().lock().unwrap();
 
     let Some(user) = cur.user_by_name(user, true) else {
@@ -41,7 +38,7 @@ pub fn user_comments(
 
     let comments = cur.comments(Location::User, user.id);
 
-    Ok(Json(Comments { comments }))
+    Ok(Json(comments))
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]

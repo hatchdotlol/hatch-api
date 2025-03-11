@@ -28,7 +28,7 @@ pub struct User {
     pub theme: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Author {
     #[serde(skip)]
@@ -77,7 +77,7 @@ pub enum Location {
     User = 2,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Comment {
     pub id: u32,
@@ -85,4 +85,5 @@ pub struct Comment {
     pub author: Author,
     pub post_date: u32,
     pub reply_to: Option<u32>,
+    pub replies: Vec<Comment>,
 }
