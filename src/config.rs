@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, env, sync::OnceLock};
+use std::{collections::HashMap, env, sync::OnceLock};
 
 pub static TOKEN_EXPIRY: u64 = 604800; // secs
 pub static EMAIL_TOKEN_EXPIRY: u64 = 900; // secs
@@ -302,10 +302,10 @@ pub static VERIFICATION_TEMPLATE: &str = r#"
 </body>
 "#;
 
-pub fn mods() -> &'static BTreeMap<String, bool> {
-    static MODS: OnceLock<BTreeMap<String, bool>> = OnceLock::new();
+pub fn mods() -> &'static HashMap<String, bool> {
+    static MODS: OnceLock<HashMap<String, bool>> = OnceLock::new();
     MODS.get_or_init(|| {
-        let mut mods = BTreeMap::new();
+        let mut mods = HashMap::new();
         let mod_str = env::var("MODS").expect("MODS not present");
 
         for moderator in mod_str.split(",") {
