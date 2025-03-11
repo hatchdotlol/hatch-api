@@ -272,6 +272,51 @@ pub fn register(
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}".into()))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct Password {
+    old_password: String,
+    new_password: String,
+}
+
+#[post("/change-password", format = "application/json", data = "<password>")]
+pub fn change_password(
+    token: Token<'_>,
+    password: Json<Password>,
+) -> status::Custom<content::RawJson<&'static str>> {
+    if calculate_entropy(&password.new_password) < 28.0 {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Password is too weak\"}"),
+        );
+    };
+
+    let cur = db().lock().unwrap();
+
+    let mut select_passwd = cur
+        .client
+        .prepare_cached("SELECT pw FROM users WHERE id = ?1")
+        .unwrap();
+    let mut rows = select_passwd.query((token.user,)).unwrap();
+    let passwd = rows.next().unwrap();
+    let passwd_hash: String = passwd.unwrap().get(0).unwrap();
+
+    if !bcrypt::verify(&password.old_password, &passwd_hash).is_ok_and(|f| f) {
+        return status::Custom(
+            Status::BadRequest,
+            content::RawJson("{\"message\": \"Old password is incorrect\"}"),
+        );
+    }
+
+    cur.client
+        .execute(
+            "UPDATE users SET pw = ?1 WHERE id = ?2",
+            (bcrypt::hash(&password.new_password, 10).unwrap(), token.user),
+        )
+        .unwrap();
+
+    status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
+}
+
 #[post("/login", format = "application/json", data = "<creds>")]
 pub fn login(
     client_ip: ClientRealAddr,

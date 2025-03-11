@@ -11,7 +11,13 @@ use url::Url;
 use webhook::client::WebhookClient;
 
 use crate::{
-    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT}, data::{Location, NumOrStr, ProjectInfo, Report, User}, db::db, guards::{limit_guard::TenPerSecond, verify_guard::TokenVerified}, mods, queues::report_queue::{send_report, ReportLog}, report_webhook
+    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
+    data::{Location, NumOrStr, ProjectInfo, Report, User},
+    db::db,
+    guards::{limit_guard::TenPerSecond, verify_guard::TokenVerified},
+    mods,
+    queues::report_queue::{send_report, ReportLog},
+    report_webhook,
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -520,7 +526,7 @@ pub async fn report_user(
         reportee: token.user,
         reason: format!("{}|{}", &report.category, &report.reason),
         resource_id: NumOrStr::Str(user.into()),
-        location: Location::User as u8
+        location: Location::User as u8,
     });
     // cur.client
     //     .execute(

@@ -1,4 +1,4 @@
-use redis::{RedisError, AsyncCommands};
+use redis::{AsyncCommands, RedisError};
 use rmp_serde::Serializer;
 use rocket::futures::StreamExt;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ pub struct ReportLog {
     pub reportee: u32,
     pub reason: String,
     pub resource_id: NumOrStr,
-    pub location: u8
+    pub location: u8,
 }
 
 pub async fn report_queue() -> Result<(), RedisError> {
@@ -44,18 +44,15 @@ pub async fn report_queue() -> Result<(), RedisError> {
                     "2" => "Harassment or bullying",
                     "3" => "Spam",
                     "4" => "Malicious links (such as malware)",
-                    _ => unreachable!()
+                    _ => unreachable!(),
                 };
 
-                let description = format!("**Reason**\n```\n{report_category}\n\n{description}");
+                let description =
+                    format!("**Reason**\n```\n{report_category}\n\n{description}\n```");
 
                 client
                     .send(move |message| {
-                        message.embed(|embed| {
-                            embed
-                                .title(&title)
-                                .description(&description)
-                        })
+                        message.embed(|embed| embed.title(&title).description(&description))
                     })
                     .await
                     .unwrap();

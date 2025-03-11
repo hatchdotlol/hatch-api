@@ -637,7 +637,7 @@ pub async fn report_project(
         reportee: token.user,
         reason: format!("{}|{}", &report.category, &report.reason),
         resource_id: NumOrStr::Num(id),
-        location: Location::Project as u8
+        location: Location::Project as u8,
     });
 
     Ok(content::RawJson("{\"success\": true}"))
