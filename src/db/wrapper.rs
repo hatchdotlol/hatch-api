@@ -176,7 +176,7 @@ impl SqliteBackend {
 
         for comment in comments.iter() {
             if let Some(reply_to) = comment.reply_to {
-                let original_comment = new_comments.get(&reply_to).unwrap().clone();
+                let original_comment = new_comments.get(&reply_to).unwrap();
                 let mut cloned = original_comment.clone();
                 (&mut cloned).replies.push(comment.clone());
                 new_comments.insert(original_comment.id, cloned);
