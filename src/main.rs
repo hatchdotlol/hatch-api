@@ -153,6 +153,7 @@ async fn rocket() -> Rocket<Build> {
                 admin::set_rating,
                 admin::project_reports,
                 admin::user_reports,
+                admin::user_ids
             ],
         )
         .mount(
