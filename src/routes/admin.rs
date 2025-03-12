@@ -1,5 +1,8 @@
 use crate::{
-    config::mods, data::Report, db::db, guards::ban_guard::is_banned, guards::token_guard::Token,
+    config::mods,
+    data::Report,
+    db::db,
+    guards::{admin_guard::AdminToken, ban_guard::is_banned, token_guard::Token},
 };
 use rocket::{http::Status, serde::json::Json};
 use serde::{Deserialize, Serialize};
@@ -126,4 +129,19 @@ pub fn user_reports(token: Token<'_>) -> Result<Json<Reports>, Status> {
     let reports = cur.reports("user");
 
     Ok(Json(Reports { reports }))
+}
+
+#[post("/user-ids", format = "application/json", data = "<ids>")]
+pub fn user_ids(
+    _token: AdminToken<'_>,
+    ids: Json<Vec<u32>>,
+) -> Result<Json<Vec<Option<String>>>, Status> {
+    let cur = db().lock().unwrap();
+
+    let usernames = ids
+        .iter()
+        .map(|s| cur.user_by_id(*s).map(|u| u.username))
+        .collect();
+
+    Ok(Json(usernames))
 }
