@@ -352,10 +352,10 @@ pub fn login(
         );
     };
 
-    let id = user.get::<usize, u32>(0).unwrap();
-    let hash = user.get::<usize, String>(1).unwrap();
+    let id: u32 = user.get(0).unwrap();
+    let hash: String = user.get(1).unwrap();
 
-    let ips = user.get::<usize, String>(2).unwrap();
+    let ips: String = user.get(2).unwrap();
     let ips = &mut ips.split("|").collect::<Vec<_>>();
 
     if !bcrypt::verify(&creds.password, &hash).is_ok_and(|f| f) {
@@ -375,7 +375,7 @@ pub fn login(
 
     if let Ok(first_token) = first_row.next() {
         if let Some(_token) = first_token {
-            token = _token.get::<usize, String>(0).unwrap()
+            token = _token.get(0).unwrap()
         } else {
             token = hex::encode(&rand::thread_rng().gen::<[u8; 16]>());
             cur.client.flush_prepared_statement_cache();
@@ -541,7 +541,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
     let mut rows = select.query((token.token,)).unwrap();
     let token = rows.next().unwrap().unwrap();
 
-    let user = token.get::<usize, u32>(0).unwrap();
+    let user = token.get(0).unwrap();
     let mut select = cur
         .client
         .prepare_cached("SELECT * FROM users WHERE id = ?1")

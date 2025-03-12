@@ -136,10 +136,10 @@ impl SqliteBackend {
 
         let comments: Vec<_> = select_comments
             .query_map((Location::Project as u8, id), |row| {
-                let author_id = row.get::<usize, u32>(2).unwrap();
+                let author_id: u32 = row.get(2).unwrap();
                 let author = self.user_by_id(author_id).unwrap();
 
-                let reply_to = row.get::<usize, Option<u32>>(4).unwrap();
+                let reply_to: Option<u32> = row.get(4).unwrap();
 
                 if let Some(reply_to) = reply_to {
                     if hidden_threads.contains(&reply_to) {

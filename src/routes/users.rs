@@ -247,7 +247,7 @@ pub fn follow(token: &TokenVerified, user: &str) -> (Status, Json<Value>) {
     let Some(row) = row.next().unwrap() else {
         return (Status::NotFound, Json(json!({"message": "Not Found"})));
     };
-    let followee = row.get::<usize, u32>(0).unwrap();
+    let followee: u32 = row.get(0).unwrap();
 
     let mut followers = row
         .get::<usize, Option<String>>(10)
@@ -307,7 +307,7 @@ pub fn unfollow(token: &TokenVerified, user: &str) -> (Status, Json<Value>) {
     let Some(row) = row.next().unwrap() else {
         return (Status::NotFound, Json(json!({"message": "Not Found"})));
     };
-    let unfollowee = row.get::<usize, u32>(0).unwrap();
+    let unfollowee: u32 = row.get(0).unwrap();
 
     let followers = row
         .get::<usize, Option<String>>(10)
