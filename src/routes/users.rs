@@ -167,6 +167,65 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
     }))
 }
 
+#[get("/id/<user>")]
+pub fn user(user: &str) -> Result<Json<User>, Status> {
+    let cur = db().lock().unwrap();
+
+    let mut select = cur
+        .client
+        .prepare_cached("SELECT * FROM users WHERE id = ?1 COLLATE nocase")
+        .unwrap();
+    let mut row = select.query([user]).unwrap();
+    let Some(row) = row.next().unwrap() else {
+        return Err(Status::NotFound);
+    };
+
+    let id: u32 = row.get(0).unwrap();
+    let display_name: Option<String> = row.get(3).unwrap();
+    let bio: Option<String> = row.get(5).unwrap();
+
+    let _highlighted_projects = row
+        .get::<usize, Option<String>>(6)
+        .unwrap()
+        .unwrap_or("".into());
+    let highlighted_projects: Vec<String> = if _highlighted_projects == "" {
+        vec![]
+    } else {
+        _highlighted_projects.split(",").map(|x| x.into()).collect()
+    };
+
+    let banner_image: Option<String> = row.get(9).unwrap();
+
+    let follower_count = match row.get::<usize, Option<String>>(10).unwrap() {
+        Some(followers) => followers.chars().filter(|c| *c == ',').count(),
+        None => 0,
+    };
+    let following_count = match row.get::<usize, Option<String>>(11).unwrap() {
+        Some(following) => following.chars().filter(|c| *c == ',').count(),
+        None => 0,
+    };
+
+    let project_count = cur.project_count(id);
+
+    Ok(Json(User {
+        id,
+        name: row.get(1).unwrap(),
+        display_name,
+        country: row.get(4).unwrap(),
+        bio,
+        highlighted_projects: Some(highlighted_projects),
+        profile_picture: row.get(7).unwrap(),
+        join_date: row.get(8).unwrap(),
+        banner_image,
+        following_count: Some(following_count),
+        follower_count: Some(follower_count),
+        verified: Some(row.get(12).unwrap()),
+        project_count: Some(project_count),
+        hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
+        theme: Some(row.get(16).unwrap_or("#ffbd59".into())),
+    }))
+}
+
 #[derive(Debug, Serialize)]
 pub struct Projects {
     projects: Vec<ProjectInfo>,
