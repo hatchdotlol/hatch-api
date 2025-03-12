@@ -13,21 +13,25 @@ pub fn is_valid(token: &str) -> Option<u32> {
         .client
         .prepare_cached("SELECT user, expiration_ts FROM auth_tokens WHERE token = ?1")
         .unwrap();
-    let mut rows = select.query([token]).unwrap();
-    let user = rows.next().unwrap();
+
+    let user = select
+        .query_row([token], |r| {
+            let user: u32 = r.get(0).unwrap();
+            let expiration_date: i64 = r.get(1).unwrap();
+
+            if expiration_date < chrono::Utc::now().timestamp() {
+                cur.client
+                    .execute("DELETE FROM auth_tokens WHERE user = ?1", (user,))
+                    .unwrap();
+                Ok(None)
+            } else {
+                Ok(Some(user))
+            }
+        })
+        .ok();
 
     if let Some(account) = user {
-        let user = account.get::<usize, u32>(0).unwrap();
-        let expiration_date = account.get::<usize, i64>(1).unwrap();
-
-        if expiration_date < chrono::Utc::now().timestamp() {
-            cur.client
-                .execute("DELETE FROM auth_tokens WHERE user = ?1", [user])
-                .unwrap();
-            None
-        } else {
-            Some(user)
-        }
+        account
     } else {
         None
     }

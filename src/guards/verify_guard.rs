@@ -13,13 +13,10 @@ pub fn is_verified(user: u32) -> bool {
         .client
         .prepare_cached("SELECT verified FROM users WHERE id = ?1")
         .unwrap();
-    let mut rows = select.query([user]).unwrap();
 
-    let Some(row) = rows.next().unwrap() else {
-        return false;
-    };
+    let verified: Option<bool> = select.query_row((user,), |r| Ok(r.get(0).unwrap())).ok();
 
-    row.get(0).unwrap()
+    verified.unwrap_or(false)
 }
 
 #[derive(Debug)]

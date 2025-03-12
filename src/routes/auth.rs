@@ -1,16 +1,19 @@
 use crate::config::{
-    base_url, logging_webhook, postal_key, postal_url, EMAIL_TOKEN_EXPIRY, TOKEN_EXPIRY,
-    USERNAME_LIMIT, VERIFICATION_TEMPLATE,
+    base_url, logging_webhook, postal_key, postal_url, EMAIL_TOKEN_EXPIRY, PFPS_BUCKET,
+    PROJECTS_BUCKET, TOKEN_EXPIRY, USERNAME_LIMIT, VERIFICATION_TEMPLATE,
 };
 use crate::data::User;
-use crate::db::db;
+use crate::db::{db, projects};
 use crate::entropy::calculate_entropy;
 use crate::guards::{admin_guard::AdminToken, ip_guard::ClientRealAddr, token_guard::Token};
 use crate::{backup_resend_key, mods};
 
 use chrono::TimeDelta;
 use email_address::EmailAddress;
+use minio::s3::builders::ObjectToDelete;
+use minio::s3::types::{S3Api, ToStream};
 use rand::Rng;
+use rocket::futures::StreamExt;
 use rocket::http::Status;
 use rocket::response::{content, status, Redirect};
 use rocket::serde::json::Json;
@@ -21,6 +24,8 @@ use serde_json::Value;
 use std::collections::HashSet;
 use tokio::time::Duration;
 use webhook::client::WebhookClient;
+
+use super::uploads::user_pfp_t;
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
 pub struct Credentials {
@@ -296,11 +301,11 @@ pub fn change_password(
         .client
         .prepare_cached("SELECT pw FROM users WHERE id = ?1")
         .unwrap();
-    let mut rows = select_passwd.query((token.user,)).unwrap();
-    let passwd = rows.next().unwrap();
-    let passwd_hash: String = passwd.unwrap().get(0).unwrap();
 
-    if !bcrypt::verify(&password.old_password, &passwd_hash).is_ok_and(|f| f) {
+    let passwd_hash: Result<String, _> =
+        select_passwd.query_row((token.user,), |r| Ok(r.get(0).unwrap()));
+
+    if !bcrypt::verify(&password.old_password, &passwd_hash.unwrap()).is_ok_and(|f| f) {
         return status::Custom(
             Status::BadRequest,
             content::RawJson("{\"message\": \"Old password is incorrect\"}"),
@@ -310,7 +315,10 @@ pub fn change_password(
     cur.client
         .execute(
             "UPDATE users SET pw = ?1 WHERE id = ?2",
-            (bcrypt::hash(&password.new_password, 10).unwrap(), token.user),
+            (
+                bcrypt::hash(&password.new_password, 10).unwrap(),
+                token.user,
+            ),
         )
         .unwrap();
 
@@ -361,7 +369,7 @@ pub fn login(
         .client
         .prepare_cached("SELECT token FROM auth_tokens WHERE user = ?1")
         .unwrap();
-    let mut first_row = select.query([id]).unwrap();
+    let mut first_row = select.query((id,)).unwrap();
 
     let mut token = String::new();
 
@@ -427,19 +435,19 @@ pub fn verify(email_token: &str) -> Redirect {
         .client
         .prepare_cached("SELECT * from email_tokens WHERE token= ?1")
         .unwrap();
-    let mut rows = select.query((email_token,)).unwrap();
 
-    if let Some(row) = rows.next().unwrap() {
-        let user = row.get::<usize, String>(1).unwrap();
-        if row.get::<usize, i64>(3).unwrap() >= chrono::Utc::now().timestamp() {
+    let _ = select.query_row((email_token,), |r| {
+        let user: String = r.get(1).unwrap();
+        if r.get::<usize, i64>(3).unwrap() >= chrono::Utc::now().timestamp() {
             cur.client
                 .execute("UPDATE users SET verified=TRUE WHERE name= ?1", (&user,))
                 .unwrap();
         }
         cur.client
-            .execute("DELETE FROM email_tokens WHERE user= ?1", [user])
+            .execute("DELETE FROM email_tokens WHERE user= ?1", (user,))
             .unwrap();
-    }
+        Ok(())
+    });
 
     Redirect::to(uri!("https://dev.hatch.lol"))
 }
@@ -449,23 +457,75 @@ pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>
     let cur = db().lock().unwrap();
 
     cur.client
-        .execute("DELETE FROM auth_tokens WHERE token = ?1", [token.token])
+        .execute("DELETE FROM auth_tokens WHERE token = ?1", (token.token,))
         .unwrap();
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
 
-#[get("/delete")]
-pub fn delete(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
+// delete (most) info associated with user and return project ids
+// again because of send + sync shenangians idk
+fn _delete(token: Token<'_>) -> Vec<String> {
     let cur = db().lock().unwrap();
 
     cur.client
-        .execute("DELETE FROM auth_tokens WHERE token = ?1", [token.token])
+        .execute("DELETE FROM auth_tokens WHERE token = ?1", (token.token,))
         .unwrap();
 
     cur.client
-        .execute("DELETE FROM users WHERE id = ?1", [token.user])
+        .execute("DELETE FROM users WHERE id = ?1", (token.user,))
         .unwrap();
+
+    let mut select_ids = cur
+        .client
+        .prepare_cached("SELECT id FROM projects WHERE author = ?1")
+        .unwrap();
+
+    let ids = select_ids
+        .query_map((token.user,), |r| Ok(r.get::<usize, u32>(0).unwrap()))
+        .unwrap()
+        .map(|id| id.unwrap().to_string())
+        .collect::<Vec<_>>();
+
+    let id_select = ids.join(", ");
+
+    cur.client
+        .execute(
+            &format!("DELETE FROM projects WHERE id in ({})", id_select),
+            (),
+        )
+        .unwrap();
+
+    ids
+}
+
+#[get("/delete")]
+pub async fn delete(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
+    let pfp = user_pfp_t(token.user).unwrap();
+
+    let minio = projects().lock().await;
+
+    minio
+        .remove_object(&PFPS_BUCKET, pfp.as_str())
+        .send()
+        .await
+        .unwrap();
+
+    let ids = _delete(token);
+
+    let project_objects: Vec<ObjectToDelete> = ids
+        .iter()
+        .map(|id| ObjectToDelete::from(format!("{}.sb3", id).as_str()))
+        .collect();
+
+    let mut removal = minio
+        .remove_objects(&PROJECTS_BUCKET, project_objects.into_iter())
+        .to_stream()
+        .await;
+
+    while let Some(item) = removal.next().await {
+        item.unwrap();
+    }
 
     status::Custom(Status::Ok, content::RawJson("{\"success\": true}"))
 }
@@ -478,7 +538,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
         .client
         .prepare_cached("SELECT user FROM auth_tokens WHERE token = ?1")
         .unwrap();
-    let mut rows = select.query([token.token]).unwrap();
+    let mut rows = select.query((token.token,)).unwrap();
     let token = rows.next().unwrap().unwrap();
 
     let user = token.get::<usize, u32>(0).unwrap();
@@ -486,8 +546,8 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
         .client
         .prepare_cached("SELECT * FROM users WHERE id = ?1")
         .unwrap();
-    let mut row = select.query([user]).unwrap();
-    let row = row.next().unwrap().unwrap();
+    let mut rows = select.query((user,)).unwrap();
+    let row = rows.next().unwrap().unwrap();
 
     let display_name: Option<String> = row.get(3).unwrap();
     let bio: Option<String> = row.get(5).unwrap();

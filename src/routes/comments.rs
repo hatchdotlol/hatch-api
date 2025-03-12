@@ -80,16 +80,22 @@ pub fn post_project_comment(
             .client
             .prepare_cached("SELECT * FROM comments WHERE id= ?1")
             .unwrap();
-        let mut rows = select.query((reply_to,)).unwrap();
-        let Some(row) = rows.next().unwrap() else {
+
+        let exists = select
+            .query_row((reply_to,), |r| {
+                if r.get::<usize, u32>(6).unwrap() != id {
+                    return Ok(false);
+                }
+                if !r.get::<usize, bool>(7).unwrap() {
+                    return Ok(false);
+                }
+                Ok(true)
+            })
+            .unwrap();
+
+        if !exists {
             return Err(Status::NotFound);
         };
-        if row.get::<usize, u32>(6).unwrap() != id {
-            return Err(Status::NotFound);
-        }
-        if !row.get::<usize, bool>(7).unwrap() {
-            return Err(Status::NotFound);
-        }
     }
 
     cur.client

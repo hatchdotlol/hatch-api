@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use rusqlite::{Connection, Rows};
+use rusqlite::Connection;
 
 use crate::data::{Author, Comment, Location, NumOrStr, Report};
 
@@ -9,19 +9,6 @@ pub struct SqliteBackend {
 }
 
 impl SqliteBackend {
-    fn author_row_to_author(&self, rows: &mut Rows<'_>) -> Option<Author> {
-        let Some(first_row) = rows.next().unwrap() else {
-            return None;
-        };
-
-        Some(Author {
-            id: first_row.get(0).unwrap(),
-            username: first_row.get(1).unwrap(),
-            profile_picture: first_row.get(7).unwrap(),
-            display_name: Some(first_row.get(3).unwrap()),
-        })
-    }
-
     pub fn user_by_name(&self, name: &str, nocase: bool) -> Option<Author> {
         let mut select = if nocase {
             self.client
@@ -33,9 +20,16 @@ impl SqliteBackend {
                 .unwrap()
         };
 
-        let mut rows = select.query((name,)).unwrap();
-
-        self.author_row_to_author(&mut rows)
+        select
+            .query_row((name,), |r| {
+                Ok(Author {
+                    id: r.get(0).unwrap(),
+                    username: r.get(1).unwrap(),
+                    profile_picture: r.get(7).unwrap(),
+                    display_name: Some(r.get(3).unwrap()),
+                })
+            })
+            .ok()
     }
 
     pub fn user_by_id(&self, id: u32) -> Option<Author> {
@@ -44,9 +38,16 @@ impl SqliteBackend {
             .prepare_cached("SELECT * FROM users WHERE id = ?1 LIMIT 1")
             .unwrap();
 
-        let mut rows = select.query((id,)).unwrap();
-
-        self.author_row_to_author(&mut rows)
+        select
+            .query_row((id,), |r| {
+                Ok(Author {
+                    id: r.get(0).unwrap(),
+                    username: r.get(1).unwrap(),
+                    profile_picture: r.get(7).unwrap(),
+                    display_name: Some(r.get(3).unwrap()),
+                })
+            })
+            .ok()
     }
 
     pub fn user_ips(&self, name: &str) -> Option<Vec<String>> {
@@ -55,20 +56,19 @@ impl SqliteBackend {
             .prepare_cached("SELECT ips FROM users WHERE name = ?1 COLLATE nocase")
             .unwrap();
 
-        let mut rows = select.query((name,)).unwrap();
+        select
+            .query_row((name,), |r| {
+                let ips: String = r.get(0).unwrap();
 
-        let Some(first_row) = rows.next().unwrap() else {
-            return None;
-        };
+                let ips = ips
+                    .split("|")
+                    .filter(|ip| *ip != "")
+                    .map(|ip| ip.into())
+                    .collect::<Vec<String>>();
 
-        let ips: String = first_row.get(0).unwrap();
-        let ips = ips
-            .split("|")
-            .filter(|ip| *ip != "")
-            .map(|ip| ip.into())
-            .collect::<Vec<String>>();
-
-        Some(ips)
+                Ok(ips)
+            })
+            .ok()
     }
 
     pub fn ban_ips(&self, ips: Vec<String>) {
@@ -99,28 +99,20 @@ impl SqliteBackend {
             .prepare_cached("SELECT COUNT(*) FROM projects WHERE author = ?1")
             .unwrap();
 
-        let mut rows = select.query((id,)).unwrap();
+        let count: Option<u32> = select.query_row((id,), |r| r.get(0)).ok();
 
-        let Some(project_count) = rows.next().unwrap() else {
-            return 0;
-        };
-
-        project_count.get(0).unwrap()
+        count.unwrap_or(0)
     }
 
     pub fn comment_count(&self, id: u32) -> u32 {
         let mut select_comment_count = self.client
             .prepare_cached("SELECT COUNT(*) FROM comments WHERE location = ?1 AND resource_id = ?2 AND visible = TRUE").unwrap();
 
-        let mut rows = select_comment_count
-            .query((Location::Project as u8, id))
-            .unwrap();
+        let comment_count: Option<u32> = select_comment_count
+            .query_row((Location::Project as u8, id), |r| r.get(0))
+            .ok();
 
-        let Some(comment_count) = rows.next().unwrap() else {
-            return 0;
-        };
-
-        comment_count.get(0).unwrap()
+        comment_count.unwrap_or(0)
     }
 
     pub fn comments(&self, location: Location, id: u32) -> BTreeMap<u32, Comment> {
@@ -161,7 +153,7 @@ impl SqliteBackend {
                     author,
                     post_date: row.get(3).unwrap(),
                     reply_to,
-                    replies: vec![]
+                    replies: vec![],
                 }))
             })
             .unwrap()
@@ -182,7 +174,7 @@ impl SqliteBackend {
                 new_comments.insert(original_comment.id, cloned);
             }
         }
-        
+
         new_comments
     }
 
@@ -218,5 +210,14 @@ impl SqliteBackend {
         let reports = reports.map(|r| r.unwrap()).collect();
 
         reports
+    }
+
+    pub fn user_pfp(&self, id: u32) -> Option<String> {
+        let mut select = self
+            .client
+            .prepare_cached("SELECT profile_picture from users WHERE id = ?1")
+            .unwrap();
+
+        select.query_row((id,), |r| r.get(0)).ok()
     }
 }

@@ -346,7 +346,7 @@ pub fn unfollow(token: &TokenVerified, user: &str) -> (Status, Json<Value>) {
         .client
         .prepare_cached("SELECT * FROM users WHERE id = ?1")
         .unwrap();
-    let mut rows = select.query([token.user]).unwrap();
+    let mut rows = select.query((token.user,)).unwrap();
     let row = rows.next().unwrap().unwrap();
 
     let following = row
@@ -445,7 +445,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
         .client
         .prepare_cached("SELECT following FROM users WHERE name = ?1 COLLATE nocase")
         .unwrap();
-    let mut row = select.query([&user]).unwrap();
+    let mut row = select.query((&user,)).unwrap();
     let Some(row) = row.next().unwrap() else {
         return Err(Status::NotFound);
     };

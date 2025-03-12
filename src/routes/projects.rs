@@ -215,17 +215,18 @@ pub async fn index(
 
 fn checks(token: Option<Token>, id: u32) -> Option<Status> {
     let cur = db().lock().unwrap();
+
     let mut select = cur
         .client
         .prepare_cached("SELECT * FROM projects WHERE id= ?1")
         .unwrap();
+
     let mut rows = select.query((id,)).unwrap();
     let Some(project) = rows.next().unwrap() else {
         return Some(Status::NotFound);
     };
 
     let author_id: u32 = project.get(1).unwrap();
-
     let no_token = token.is_none();
 
     if !project.get::<usize, bool>(5).unwrap() {
@@ -443,11 +444,14 @@ pub async fn update_project(
 
 fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status> {
     let cur = db().lock().unwrap();
+
     let mut select = cur
         .client
         .prepare_cached("SELECT * FROM projects WHERE id= ?1")
         .unwrap();
+
     let mut rows = select.query((id,)).unwrap();
+
     let Some(project) = rows.next().unwrap() else {
         return Err(Status::NotFound);
     };

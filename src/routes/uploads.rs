@@ -18,17 +18,11 @@ pub struct Upload<'f> {
     file: TempFile<'f>,
 }
 
-fn get_user_pfp(user: u32) -> String {
+// thread safety reasons..
+pub fn user_pfp_t(user: u32) -> Option<String> {
     let cur = db().lock().unwrap();
 
-    let mut select = cur
-        .client
-        .prepare_cached("SELECT profile_picture from users WHERE id = ?1")
-        .unwrap();
-
-    let mut rows = select.query([user]).unwrap();
-    let row = rows.next().unwrap().unwrap();
-    row.get::<usize, String>(0).unwrap()
+    cur.user_pfp(user)
 }
 
 #[post("/pfp", format = "multipart/form-data", data = "<form>")]
@@ -111,7 +105,7 @@ pub async fn update_pfp(
 
     let file = format!("{}.{}", token.user, ext);
     let new_pfp = format!("/uploads/pfp/{}", file.as_str());
-    let previous_pfp = get_user_pfp(token.user);
+    let previous_pfp = user_pfp_t(token.user).unwrap();
 
     client
         .put_object_content(&PFPS_BUCKET, file.as_str(), content)
@@ -125,7 +119,9 @@ pub async fn update_pfp(
             .send()
             .await
             .unwrap();
+
         let cur = db().lock().unwrap();
+
         cur.client
             .execute(
                 "UPDATE users SET profile_picture = ?1 WHERE id = ?2",
