@@ -361,7 +361,7 @@ pub fn login(
     if !bcrypt::verify(&creds.password, &hash).is_ok_and(|f| f) {
         return status::Custom(
             Status::Unauthorized,
-            content::RawJson("{\"message\": \"Unauthorized\"}".into()),
+            content::RawJson("{\"message\": \"Invalid password\"}".into()),
         );
     }
 
