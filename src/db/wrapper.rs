@@ -39,7 +39,7 @@ impl SqliteBackend {
             .unwrap();
 
         let ips: String = select
-            .query_row((name,), |r| Ok(r.get(10).unwrap()))
+            .query_row((name,), |r| Ok(r.get(0).unwrap()))
             .unwrap();
         let ip_select = ips.split("|").collect::<Vec<_>>().join(",");
 
