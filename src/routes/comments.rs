@@ -6,6 +6,7 @@ use rocket::{
     serde::json::Json,
 };
 use rocket_governor::RocketGovernor;
+use rustrict::{CensorStr, Type};
 use serde::Deserialize;
 use webhook::client::WebhookClient;
 
@@ -73,6 +74,10 @@ pub fn post_project_comment(
     };
 
     if (&comment.content).is_empty() {
+        return Err(Status::BadRequest);
+    }
+
+    if (&comment.content).is(Type::SEXUAL) {
         return Err(Status::BadRequest);
     }
 
