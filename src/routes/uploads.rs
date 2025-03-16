@@ -1,9 +1,11 @@
+use std::cmp::min;
 use std::io::Cursor;
 use std::path::Path;
 
 use crate::config::{MAX_PFP_HEIGHT, MAX_PFP_WIDTH, PFPS_BUCKET, PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::db::{db, projects};
 use crate::guards::verify_guard::TokenVerified;
+use image::imageops::FilterType;
 use image::{GenericImageView, ImageFormat, ImageReader};
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::S3Api;
@@ -133,8 +135,8 @@ pub async fn update_pfp(
     status::Custom(Status::Ok, content::RawJson(String::from("asfdsfd")))
 }
 
-#[get("/pfp/<user>")]
-pub async fn user(user: &str) -> Result<Vec<u8>, Status> {
+#[get("/pfp/<user>?<size>")]
+pub async fn user(user: &str, size: u32) -> Result<Vec<u8>, Status> {
     let db = projects().lock().await;
 
     let obj = db.get_object(&PFPS_BUCKET, user).send().await;
@@ -154,11 +156,18 @@ pub async fn user(user: &str) -> Result<Vec<u8>, Status> {
         .to_bytes()
         .to_vec();
 
-    Ok(body)
+    let img = image::load_from_memory(&body[..]).unwrap();
+    let scale = img.resize(
+        min(size, img.height()),
+        min(size, img.height()),
+        FilterType::Nearest,
+    );
+
+    Ok(scale.as_bytes().to_vec())
 }
 
-#[get("/thumb/<id>")]
-pub async fn thumb(id: &str) -> Result<Vec<u8>, Status> {
+#[get("/thumb/<id>?<size>")]
+pub async fn thumb(id: &str, size: u32) -> Result<Vec<u8>, Status> {
     let db = projects().lock().await;
 
     let obj = db.get_object(&THUMBNAILS_BUCKET, id).send().await;
@@ -175,5 +184,12 @@ pub async fn thumb(id: &str) -> Result<Vec<u8>, Status> {
         .to_bytes()
         .to_vec();
 
-    Ok(body)
+    let img = image::load_from_memory(&body[..]).unwrap();
+    let scale = img.resize(
+        min(size, img.width()),
+        min(size, img.height()),
+        FilterType::Nearest,
+    );
+
+    Ok(scale.as_bytes().to_vec())
 }
