@@ -46,6 +46,10 @@ pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> 
 
     let cur = db().lock().unwrap();
 
+    if cur.user_by_name(username, true).unwrap().id == token.user {
+        return Err(Status::ImATeapot)
+    }
+
     let Some(ips) = cur.user_ips(username) else {
         return Err(Status::Unauthorized);
     };
@@ -68,6 +72,10 @@ pub fn ip_unban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status
     }
 
     let cur = db().lock().unwrap();
+
+    if cur.user_by_name(username, true).unwrap().id == token.user {
+        return Err(Status::ImATeapot)
+    }
 
     let Some(ips) = cur.user_ips(username) else {
         return Err(Status::Unauthorized);
