@@ -163,7 +163,11 @@ pub async fn user(user: &str, size: u32) -> Result<Vec<u8>, Status> {
         FilterType::Nearest,
     );
 
-    Ok(scale.as_bytes().to_vec())
+    let mut buf: Vec<u8> = vec![];
+    let mut cursor = Cursor::new(&mut buf);
+    scale.write_to(&mut cursor, ImageFormat::Png).unwrap();
+
+    Ok(cursor.into_inner().to_vec())
 }
 
 #[get("/thumb/<id>?<size>")]
@@ -191,5 +195,9 @@ pub async fn thumb(id: &str, size: u32) -> Result<Vec<u8>, Status> {
         FilterType::Nearest,
     );
 
-    Ok(scale.as_bytes().to_vec())
+    let mut buf: Vec<u8> = vec![];
+    let mut cursor = Cursor::new(&mut buf);
+    scale.write_to(&mut cursor, ImageFormat::Png).unwrap();
+
+    Ok(cursor.into_inner().to_vec())
 }
