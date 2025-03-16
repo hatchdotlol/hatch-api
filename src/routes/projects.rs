@@ -1,5 +1,6 @@
 use crate::config::{PFP_LIMIT, THUMBNAILS_BUCKET};
 use crate::data::{Location, NumOrStr, ProjectInfo};
+use crate::guards::ban_guard::NotBanned;
 use crate::guards::limit_guard::OnePerSecond;
 use crate::queues::report_queue::{send_report, ReportLog};
 use crate::rocket::futures::StreamExt;
@@ -72,6 +73,7 @@ pub async fn index(
     token: &TokenVerified,
     form: Form<Upload<'_>>,
     _l: RocketGovernor<'_, OnePerSecond>,
+    _nb: NotBanned<'_>,
 ) -> status::Custom<content::RawJson<String>> {
     match form.file.content_type() {
         Some(_content_type) => {
@@ -247,9 +249,10 @@ fn checks(token: Option<Token>, id: u32) -> Option<Status> {
 #[post("/<id>/update", format = "multipart/form-data", data = "<form>")]
 pub async fn update_project(
     token: &TokenVerified,
-    // _l: RocketGovernor<'_, OnePerMinute>,
     id: u32,
     form: Form<Update<'_>>,
+    _l: RocketGovernor<'_, OnePerSecond>,
+    _nb: NotBanned<'_>,
 ) -> status::Custom<content::RawJson<&'static str>> {
     // convert verified token into regular token; safe to use at this point
     // i would use an enum but im lazy
@@ -611,6 +614,7 @@ pub async fn report_project(
     token: Token<'_>,
     id: u32,
     report: Json<Report>,
+    _nb: NotBanned<'_>,
 ) -> Result<content::RawJson<&'static str>, Status> {
     let cur = db().lock().unwrap();
 

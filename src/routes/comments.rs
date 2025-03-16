@@ -12,7 +12,7 @@ use webhook::client::WebhookClient;
 use crate::{
     data::{Comment, Location, Report},
     db::db,
-    guards::{limit_guard::TenPerSecond, verify_guard::TokenVerified},
+    guards::{ban_guard::NotBanned, limit_guard::TenPerSecond, verify_guard::TokenVerified},
     logging_webhook, report_webhook,
 };
 
@@ -56,6 +56,7 @@ pub fn post_project_comment(
     token: &TokenVerified,
     id: u32,
     comment: Json<PostComment>,
+    _nb: NotBanned<'_>,
     _l: RocketGovernor<TenPerSecond>,
 ) -> Result<content::RawJson<String>, Status> {
     let cur = db().lock().unwrap();
