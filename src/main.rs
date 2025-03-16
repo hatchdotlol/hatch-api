@@ -11,6 +11,7 @@ pub mod routes;
 
 use config::*;
 use db::{db, projects, set_redis};
+use queues::audit_queue::audit_queue;
 use queues::report_queue::report_queue;
 use rocket::http::{Method, Status};
 use rocket::response::{content, status};
@@ -89,6 +90,10 @@ async fn rocket() -> Rocket<Build> {
     }
     .to_cors()
     .unwrap();
+
+    tokio::spawn(async {
+        audit_queue().await.unwrap();
+    });
 
     tokio::spawn(async {
         report_queue().await.unwrap();

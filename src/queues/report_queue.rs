@@ -6,7 +6,7 @@ use webhook::client::WebhookClient;
 
 use crate::{config::report_webhook, data::NumOrStr, db::REDIS};
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ReportLog {
     pub reportee: u32,
     pub reason: String,

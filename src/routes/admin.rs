@@ -2,7 +2,7 @@ use crate::{
     config::mods,
     data::Report,
     db::db,
-    guards::{admin_guard::AdminToken, ban_guard::is_banned, token_guard::Token},
+    guards::{admin_guard::AdminToken, ban_guard::is_banned, token_guard::Token}, queues::audit_queue::{send_audit, AuditCategory, AuditLog},
 };
 use rocket::{http::Status, serde::json::Json};
 use serde::{Deserialize, Serialize};
@@ -52,6 +52,12 @@ pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> 
 
     cur.ban_ips(ips);
 
+    send_audit(AuditLog {
+        culprit: token.user,
+        category: AuditCategory::Mod as u8,
+        description: format!("banned {username}")
+    });
+
     Ok(Json(Banned { banned: true }))
 }
 
@@ -68,6 +74,12 @@ pub fn ip_unban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status
     };
 
     cur.unban_ips(ips);
+
+    send_audit(AuditLog {
+        culprit: token.user,
+        category: AuditCategory::Mod as u8,
+        description: format!("unbanned {username}")
+    });
 
     Ok(Json(Banned { banned: false }))
 }
@@ -96,6 +108,12 @@ pub fn set_rating(token: Token<'_>, rating: Json<Rating>) -> Result<Json<Value>,
             (rating.rating.to_string(), rating.project_id),
         )
         .unwrap();
+
+    send_audit(AuditLog {
+        culprit: token.user,
+        category: AuditCategory::Mod as u8,
+        description: format!("set rating of https://dev.hatch.lol/project?id={} to {}", rating.project_id, rating.rating)
+    });
 
     Ok(Json(json!({"message": "success"})))
 }
