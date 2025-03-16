@@ -156,7 +156,7 @@ pub async fn user(user: &str, size: u32) -> Result<Vec<u8>, Status> {
         .to_bytes()
         .to_vec();
 
-    let img = image::load_from_memory(&body[..]).unwrap();
+    let img = image::load_from_memory_with_format(&body[..], ImageFormat::Png).unwrap();
     let scale = img.resize(
         min(size, img.height()),
         min(size, img.height()),
@@ -184,7 +184,7 @@ pub async fn thumb(id: &str, size: u32) -> Result<Vec<u8>, Status> {
         .to_bytes()
         .to_vec();
 
-    let img = image::load_from_memory(&body[..]).unwrap();
+    let img = image::load_from_memory_with_format(&body[..], ImageFormat::Png).unwrap();
     let scale = img.resize(
         min(size, img.width()),
         min(size, img.height()),
