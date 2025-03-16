@@ -14,7 +14,7 @@ use crate::{
     data::{Comment, Location, Report},
     db::db,
     guards::{ban_guard::NotBanned, limit_guard::TenPerSecond, verify_guard::TokenVerified},
-    logging_webhook, report_webhook,
+    logging_webhook, report_webhook, types::RawJson,
 };
 
 #[get("/projects/<id>/comments")]
@@ -201,7 +201,7 @@ pub fn report_project_comment(
     comment_id: u32,
     report: Json<Report>,
     _l: RocketGovernor<TenPerSecond>,
-) -> status::Custom<content::RawJson<&'static str>> {
+) -> RawJson {
     let cur = db().lock().unwrap();
 
     let mut select = cur

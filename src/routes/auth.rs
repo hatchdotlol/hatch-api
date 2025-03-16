@@ -6,6 +6,7 @@ use crate::data::User;
 use crate::db::{db, projects};
 use crate::entropy::calculate_entropy;
 use crate::guards::{admin_guard::AdminToken, ip_guard::ClientRealAddr, token_guard::Token};
+use crate::types::RawJson;
 use crate::{backup_resend_key, mods};
 
 use chrono::TimeDelta;
@@ -287,7 +288,7 @@ pub struct Password {
 pub fn change_password(
     token: Token<'_>,
     password: Json<Password>,
-) -> status::Custom<content::RawJson<&'static str>> {
+) -> RawJson {
     if calculate_entropy(&password.new_password) < 28.0 {
         return status::Custom(
             Status::BadRequest,
@@ -453,7 +454,7 @@ pub fn verify(email_token: &str) -> Redirect {
 }
 
 #[get("/logout")]
-pub fn logout(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
+pub fn logout(token: Token<'_>) -> RawJson {
     let cur = db().lock().unwrap();
 
     cur.client
@@ -500,7 +501,7 @@ fn _delete(token: Token<'_>) -> Vec<String> {
 }
 
 #[get("/delete")]
-pub async fn delete(token: Token<'_>) -> status::Custom<content::RawJson<&'static str>> {
+pub async fn delete(token: Token<'_>) -> RawJson {
     let pfp = user_pfp_t(token.user).unwrap();
 
     let minio = projects().lock().await;

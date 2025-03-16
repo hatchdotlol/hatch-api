@@ -8,6 +8,7 @@ pub mod entropy;
 pub mod guards;
 pub mod queues;
 pub mod routes;
+pub mod types;
 
 use config::*;
 use db::{db, projects, set_redis};
@@ -21,9 +22,10 @@ use rocket_governor::rocket_governor_catcher;
 use routes::root::message;
 use routes::*;
 use routes::{auth, projects, root, uploads, users};
+use types::RawJson;
 
 #[catch(404)]
-fn not_found() -> status::Custom<content::RawJson<&'static str>> {
+fn not_found() -> RawJson {
     status::Custom(
         Status::NotFound,
         content::RawJson("{\"message\": \"Not Found\"}"),
@@ -31,7 +33,7 @@ fn not_found() -> status::Custom<content::RawJson<&'static str>> {
 }
 
 #[catch(400)]
-fn bad_request() -> status::Custom<content::RawJson<&'static str>> {
+fn bad_request() -> RawJson {
     status::Custom(
         Status::BadRequest,
         content::RawJson("{\"message\": \"Bad Request\"}"),
@@ -39,7 +41,7 @@ fn bad_request() -> status::Custom<content::RawJson<&'static str>> {
 }
 
 #[catch(401)]
-fn unauthorized() -> status::Custom<content::RawJson<&'static str>> {
+fn unauthorized() -> RawJson {
     status::Custom(
         Status::Unauthorized,
         content::RawJson("{\"message\": \"Unauthorized\"}"),
@@ -47,7 +49,7 @@ fn unauthorized() -> status::Custom<content::RawJson<&'static str>> {
 }
 
 #[catch(409)]
-fn conflict() -> status::Custom<content::RawJson<&'static str>> {
+fn conflict() -> RawJson {
     status::Custom(
         Status::Unauthorized,
         content::RawJson("{\"message\": \"Already reported\"}"),
@@ -55,8 +57,11 @@ fn conflict() -> status::Custom<content::RawJson<&'static str>> {
 }
 
 #[catch(422)]
-fn unprocessable() -> Status {
-    Status::UnprocessableEntity
+fn unprocessable() -> RawJson {
+    status::Custom(
+        Status::UnprocessableEntity,
+        content::RawJson("{\"message\": \"Unprocessable entity (bad request maybe)\"}"),
+    )
 }
 
 #[launch]

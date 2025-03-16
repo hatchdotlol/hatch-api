@@ -4,6 +4,7 @@ use crate::guards::ban_guard::NotBanned;
 use crate::guards::limit_guard::OnePerSecond;
 use crate::queues::report_queue::{send_report, ReportLog};
 use crate::rocket::futures::StreamExt;
+use crate::types::RawJson;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
 use rocket::{
@@ -253,7 +254,7 @@ pub async fn update_project(
     form: Form<Update<'_>>,
     _l: RocketGovernor<'_, OnePerSecond>,
     _nb: NotBanned<'_>,
-) -> status::Custom<content::RawJson<&'static str>> {
+) -> RawJson {
     // convert verified token into regular token; safe to use at this point
     // i would use an enum but im lazy
     let mapped_token = Token {

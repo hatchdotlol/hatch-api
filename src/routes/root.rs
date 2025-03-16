@@ -4,7 +4,7 @@ use rocket::{
 };
 use std::{env, sync::OnceLock};
 
-use crate::guards::ban_guard::NotBanned;
+use crate::{guards::ban_guard::NotBanned, types::RawJson};
 
 #[options("/<_..>")]
 pub fn all_options() {
@@ -33,7 +33,7 @@ pub fn message() -> &'static str {
 }
 
 #[get("/")]
-pub fn index(_banned: NotBanned) -> status::Custom<content::RawJson<&'static str>> {
+pub fn index(_banned: NotBanned) -> RawJson {
     let message = message();
     status::Custom(Status::Ok, content::RawJson(message))
 }
