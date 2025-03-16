@@ -123,7 +123,8 @@ async fn rocket() -> Rocket<Build> {
                 auth::logout,
                 auth::verify,
                 auth::delete,
-                auth::me
+                auth::me,
+                auth::change_password
             ],
         )
         .mount(
