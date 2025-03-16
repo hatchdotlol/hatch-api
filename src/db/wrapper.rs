@@ -32,6 +32,30 @@ impl SqliteBackend {
             .ok()
     }
 
+    pub fn user_by_name_banned(&self, name: &str) -> bool {
+        let mut select = self
+            .client
+            .prepare_cached("SELECT ips from users WHERE name = ?1 COLLATE nocase LIMIT 1")
+            .unwrap();
+
+        let ips: String = select
+            .query_row((name,), |r| Ok(r.get(10).unwrap()))
+            .unwrap();
+        let ip_select = ips.split("|").collect::<Vec<_>>().join(",");
+
+        let mut select_ips = self
+            .client
+            .prepare_cached(&format!(
+                "SELECT address from ip_bans WHERE address in ({}) LIMIT 1",
+                ip_select
+            ))
+            .unwrap();
+
+        let banned: Option<String> = select_ips.query_row((), |r| Ok(r.get(0).unwrap())).ok();
+
+        banned.is_some()
+    }
+
     pub fn user_by_id(&self, id: u32) -> Option<Author> {
         let mut select = self
             .client

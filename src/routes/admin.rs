@@ -2,7 +2,8 @@ use crate::{
     config::mods,
     data::Report,
     db::db,
-    guards::{admin_guard::AdminToken, ban_guard::is_banned, token_guard::Token}, queues::audit_queue::{send_audit, AuditCategory, AuditLog},
+    guards::{admin_guard::AdminToken, ban_guard::is_banned, token_guard::Token},
+    queues::audit_queue::{send_audit, AuditCategory, AuditLog},
 };
 use rocket::{http::Status, serde::json::Json};
 use serde::{Deserialize, Serialize};
@@ -38,6 +39,19 @@ pub fn banned(token: Token<'_>, ip_address: Json<IP>) -> Result<Json<Banned>, St
     }))
 }
 
+#[get("/user-banned/<username>")]
+pub fn user_banned(token: Token<'_>, username: String) -> Result<Json<Banned>, Status> {
+    if !is_mod(token.user) {
+        return Err(Status::Unauthorized);
+    }
+
+    let cur = db().lock().unwrap();
+
+    Ok(Json(Banned {
+        banned: cur.user_by_name_banned(&username),
+    }))
+}
+
 #[post("/ip-ban/<username>")]
 pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> {
     if !is_mod(token.user) {
@@ -47,7 +61,7 @@ pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> 
     let cur = db().lock().unwrap();
 
     if cur.user_by_name(username, true).unwrap().id == token.user {
-        return Err(Status::ImATeapot)
+        return Err(Status::ImATeapot);
     }
 
     let Some(ips) = cur.user_ips(username) else {
@@ -59,7 +73,7 @@ pub fn ip_ban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status> 
     send_audit(AuditLog {
         culprit: token.user,
         category: AuditCategory::Mod as u8,
-        description: format!("banned {username}")
+        description: format!("banned {username}"),
     });
 
     Ok(Json(Banned { banned: true }))
@@ -74,7 +88,7 @@ pub fn ip_unban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status
     let cur = db().lock().unwrap();
 
     if cur.user_by_name(username, true).unwrap().id == token.user {
-        return Err(Status::ImATeapot)
+        return Err(Status::ImATeapot);
     }
 
     let Some(ips) = cur.user_ips(username) else {
@@ -86,7 +100,7 @@ pub fn ip_unban(token: Token<'_>, username: &str) -> Result<Json<Banned>, Status
     send_audit(AuditLog {
         culprit: token.user,
         category: AuditCategory::Mod as u8,
-        description: format!("unbanned {username}")
+        description: format!("unbanned {username}"),
     });
 
     Ok(Json(Banned { banned: false }))
@@ -120,7 +134,10 @@ pub fn set_rating(token: Token<'_>, rating: Json<Rating>) -> Result<Json<Value>,
     send_audit(AuditLog {
         culprit: token.user,
         category: AuditCategory::Mod as u8,
-        description: format!("set rating of https://dev.hatch.lol/project?id={} to {}", rating.project_id, rating.rating)
+        description: format!(
+            "set rating of https://dev.hatch.lol/project?id={} to {}",
+            rating.project_id, rating.rating
+        ),
     });
 
     Ok(Json(json!({"message": "success"})))
