@@ -77,7 +77,7 @@ pub fn post_project_comment(
         return Err(Status::BadRequest);
     }
 
-    if (&comment.content).is(Type::SEXUAL) {
+    if (&comment.content).is(Type::SEVERE) {
         return Err(Status::BadRequest);
     }
 
