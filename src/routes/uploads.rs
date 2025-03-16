@@ -160,7 +160,7 @@ pub async fn user(user: &str, size: u32) -> Result<Vec<u8>, Status> {
     let scale = img.resize(
         min(size, img.height()),
         min(size, img.height()),
-        FilterType::Nearest,
+        FilterType::Triangle,
     );
 
     let mut buf: Vec<u8> = vec![];
@@ -192,7 +192,7 @@ pub async fn thumb(id: &str, size: u32) -> Result<Vec<u8>, Status> {
     let scale = img.resize(
         min(size, img.width()),
         min(size, img.height()),
-        FilterType::Nearest,
+        FilterType::Triangle,
     );
 
     let mut buf: Vec<u8> = vec![];
