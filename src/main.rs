@@ -113,6 +113,7 @@ async fn rocket() -> Rocket<Build> {
                 unauthorized,
                 conflict,
                 rocket_governor_catcher,
+                unauthorized,
             ],
         )
         .mount("/", routes![root::index, root::all_options])
