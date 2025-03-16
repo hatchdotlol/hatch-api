@@ -42,12 +42,13 @@ impl SqliteBackend {
             .query_row((name,), |r| Ok(r.get(0).unwrap()))
             .unwrap();
         let ip_select = ips.split("|").collect::<Vec<_>>().join(",");
+        let ip_select = ip_select.strip_prefix(",");
 
         let mut select_ips = self
             .client
             .prepare_cached(&format!(
                 "SELECT address from ip_bans WHERE address in ({}) LIMIT 1",
-                ip_select
+                ip_select.unwrap()
             ))
             .unwrap();
 
