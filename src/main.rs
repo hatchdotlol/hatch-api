@@ -54,6 +54,11 @@ fn conflict() -> status::Custom<content::RawJson<&'static str>> {
     )
 }
 
+#[catch(422)]
+fn unprocessable() -> Status {
+    Status::UnprocessableEntity
+}
+
 #[launch]
 #[tokio::main]
 async fn rocket() -> Rocket<Build> {
