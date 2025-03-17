@@ -165,7 +165,9 @@ impl<'r> FromRequest<'r> for ETagHeader {
 }
 
 fn downscale_image(body: Vec<u8>, width: u32, height: u32) -> Vec<u8> {
-    let img = image::load_from_memory_with_format(&body[..], ImageFormat::Gif).unwrap();
+    let format = image::guess_format(&body[..]).unwrap();
+    let img = image::load_from_memory_with_format(&body[..], format).unwrap();
+
     let scale = img.resize(
         min(width, img.width()),
         min(height, img.height()),
@@ -174,7 +176,8 @@ fn downscale_image(body: Vec<u8>, width: u32, height: u32) -> Vec<u8> {
 
     let mut buf: Vec<u8> = vec![];
     let mut cursor = Cursor::new(&mut buf);
-    scale.write_to(&mut cursor, ImageFormat::Gif).unwrap();
+
+    scale.write_to(&mut cursor, format).unwrap();
 
     cursor.into_inner().to_vec()
 }
