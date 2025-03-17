@@ -33,3 +33,4 @@ minio.deb
 test.py
 *.png
 *.sb3
+index.html
