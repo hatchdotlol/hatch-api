@@ -12,7 +12,9 @@ use minio::s3::types::S3Api;
 use rocket::form::Form;
 use rocket::fs::TempFile;
 use rocket::http::{ContentType, Header, Status};
+use rocket::request::FromRequest;
 use rocket::response::{content, status, Responder};
+use rocket::{request, Request};
 use tokio::io::AsyncReadExt;
 
 #[derive(FromForm)]
@@ -150,6 +152,18 @@ impl<'r, 'o: 'r, T: Responder<'r, 'o>> ETag<T> {
     }
 }
 
+pub struct ETagHeader(Option<String>);
+
+#[rocket::async_trait]
+impl<'r> FromRequest<'r> for ETagHeader {
+    type Error = ();
+
+    async fn from_request(request: &'r Request<'_>) -> request::Outcome<Self, Self::Error> {
+        let etag = request.headers().get_one("ETag");
+        request::Outcome::Success(ETagHeader(etag.map(|e| e.to_string())))
+    }
+}
+
 fn downscale_image(body: Vec<u8>, width: u32, height: u32) -> Vec<u8> {
     let img = image::load_from_memory_with_format(&body[..], ImageFormat::Png).unwrap();
     let scale = img.resize(
@@ -166,7 +180,7 @@ fn downscale_image(body: Vec<u8>, width: u32, height: u32) -> Vec<u8> {
 }
 
 #[get("/pfp/<user>?<size>")]
-pub async fn user(user: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
+pub async fn user(etag: ETagHeader, user: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
     let db = projects().lock().await;
 
     let obj = db.get_object(&PFPS_BUCKET, user).send().await;
@@ -178,6 +192,12 @@ pub async fn user(user: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
         obj.unwrap()
     };
 
+    let obj_etag = obj.etag.unwrap();
+
+    if etag.0.is_some_and(|e| e == obj_etag) {
+        return Err(Status::NotModified)
+    }
+
     let body = obj
         .content
         .to_segmented_bytes()
@@ -188,18 +208,24 @@ pub async fn user(user: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
 
     let resized = downscale_image(body, size, size);
 
-    Ok(ETag::new(resized, obj.etag.unwrap()))
+    Ok(ETag::new(resized, obj_etag))
 }
 
 #[get("/thumb/<id>?<size>")]
-pub async fn thumb(id: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
+pub async fn thumb(etag: ETagHeader, id: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
     let db = projects().lock().await;
 
     let obj = db.get_object(&THUMBNAILS_BUCKET, id).send().await;
 
     let Ok(obj) = obj else {
-        return Err(Status::NotFound);
+        return Err(Status::NotModified);
     };
+
+    let obj_etag = obj.etag.unwrap();
+
+    if etag.0.is_some_and(|e| e == obj_etag) {
+        return Err(Status::Ok)
+    }
 
     let body = obj
         .content
@@ -211,5 +237,5 @@ pub async fn thumb(id: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
 
     let resized = downscale_image(body, size, size);
 
-    Ok(ETag::new(resized, obj.etag.unwrap()))
+    Ok(ETag::new(resized, obj_etag))
 }
