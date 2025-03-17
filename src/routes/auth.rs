@@ -134,7 +134,7 @@ pub fn register(
             ?1,
             ?2,
             ?3,
-            \"US\",
+            \"Location Not Given\",
             NULL,
             NULL,
             \"/uploads/pfp/default.png\",

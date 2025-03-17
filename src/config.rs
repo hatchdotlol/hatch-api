@@ -2,6 +2,7 @@ use std::{collections::HashMap, env, sync::OnceLock};
 
 pub static TOKEN_EXPIRY: u64 = 604800; // secs
 pub static EMAIL_TOKEN_EXPIRY: u64 = 900; // secs
+pub static USER_DELETION: u64 = 259200; // secs
 
 pub static USERNAME_LIMIT: usize = 20;
 pub static BIO_LIMIT: usize = 800;

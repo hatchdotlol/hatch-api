@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use redis::{AsyncCommands, RedisError};
 use rmp_serde::Serializer;
 use rocket::futures::StreamExt;
@@ -5,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use webhook::client::WebhookClient;
 
 use crate::{
-    config::logging_webhook,
+    config::{logging_webhook, USER_DELETION},
     db::{db, REDIS},
 };
 
@@ -73,6 +75,18 @@ pub fn send_audit(audit: AuditLog) {
     audit.serialize(&mut Serializer::new(&mut buf)).unwrap();
 
     tokio::spawn(async move {
+        let redis = REDIS.get().unwrap();
+        let mut redis = redis.lock().await;
+        let _: () = redis.publish("audits", buf).await.unwrap();
+    });
+}
+
+pub fn schedule_deletion(audit: AuditLog) {
+    let mut buf = vec![];
+    audit.serialize(&mut Serializer::new(&mut buf)).unwrap();
+
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(USER_DELETION)).await;
         let redis = REDIS.get().unwrap();
         let mut redis = redis.lock().await;
         let _: () = redis.publish("audits", buf).await.unwrap();
