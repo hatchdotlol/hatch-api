@@ -165,7 +165,7 @@ impl<'r> FromRequest<'r> for ETagHeader {
 }
 
 fn downscale_image(body: Vec<u8>, width: u32, height: u32) -> Vec<u8> {
-    let img = image::load_from_memory_with_format(&body[..], ImageFormat::Png).unwrap();
+    let img = image::load_from_memory_with_format(&body[..], ImageFormat::Gif).unwrap();
     let scale = img.resize(
         min(width, img.width()),
         min(height, img.height()),
@@ -174,7 +174,7 @@ fn downscale_image(body: Vec<u8>, width: u32, height: u32) -> Vec<u8> {
 
     let mut buf: Vec<u8> = vec![];
     let mut cursor = Cursor::new(&mut buf);
-    scale.write_to(&mut cursor, ImageFormat::Png).unwrap();
+    scale.write_to(&mut cursor, ImageFormat::Gif).unwrap();
 
     cursor.into_inner().to_vec()
 }
@@ -218,14 +218,16 @@ pub async fn thumb(etag: ETagHeader, id: &str, size: u32) -> Result<ETag<Vec<u8>
     let obj = db.get_object(&THUMBNAILS_BUCKET, id).send().await;
 
     let Ok(obj) = obj else {
-        return Err(Status::NotModified);
+        return Err(Status::NotFound);
     };
 
     let obj_etag = obj.etag.unwrap();
 
     if etag.0.is_some_and(|e| e == obj_etag) {
-        return Err(Status::ImATeapot)
+        return Err(Status::NotModified)
     }
+
+    obj
 
     let body = obj
         .content
