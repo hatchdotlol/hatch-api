@@ -230,8 +230,6 @@ pub async fn thumb(etag: ETagHeader, id: &str, size: u32) -> Result<ETag<Vec<u8>
         return Err(Status::NotModified)
     }
 
-    obj
-
     let body = obj
         .content
         .to_segmented_bytes()
