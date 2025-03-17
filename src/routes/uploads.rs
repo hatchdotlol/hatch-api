@@ -11,8 +11,8 @@ use minio::s3::builders::ObjectContent;
 use minio::s3::types::S3Api;
 use rocket::form::Form;
 use rocket::fs::TempFile;
-use rocket::http::{ContentType, Status};
-use rocket::response::{content, status};
+use rocket::http::{ContentType, Header, Status};
+use rocket::response::{content, status, Responder};
 use tokio::io::AsyncReadExt;
 
 #[derive(FromForm)]
@@ -135,8 +135,38 @@ pub async fn update_pfp(
     status::Custom(Status::Ok, content::RawJson(String::from("asfdsfd")))
 }
 
+#[derive(Responder)]
+pub struct ETag<T> {
+    inner: T,
+    etag: Header<'static>,
+}
+
+impl<'r, 'o: 'r, T: Responder<'r, 'o>> ETag<T> {
+    fn new(inner: T, etag: String) -> Self {
+        ETag {
+            inner,
+            etag: Header::new("ETag", etag),
+        }
+    }
+}
+
+fn downscale_image(body: Vec<u8>, width: u32, height: u32) -> Vec<u8> {
+    let img = image::load_from_memory_with_format(&body[..], ImageFormat::Png).unwrap();
+    let scale = img.resize(
+        min(width, img.width()),
+        min(height, img.height()),
+        FilterType::Triangle,
+    );
+
+    let mut buf: Vec<u8> = vec![];
+    let mut cursor = Cursor::new(&mut buf);
+    scale.write_to(&mut cursor, ImageFormat::Png).unwrap();
+
+    cursor.into_inner().to_vec()
+}
+
 #[get("/pfp/<user>?<size>")]
-pub async fn user(user: &str, size: u32) -> Result<Vec<u8>, Status> {
+pub async fn user(user: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
     let db = projects().lock().await;
 
     let obj = db.get_object(&PFPS_BUCKET, user).send().await;
@@ -156,24 +186,13 @@ pub async fn user(user: &str, size: u32) -> Result<Vec<u8>, Status> {
         .to_bytes()
         .to_vec();
 
-    println!("{}", obj.etag.unwrap_or("((no etag))".into()));
+    let resized = downscale_image(body, size, size);
 
-    let img = image::load_from_memory_with_format(&body[..], ImageFormat::Png).unwrap();
-    let scale = img.resize(
-        min(size, img.height()),
-        min(size, img.height()),
-        FilterType::Triangle,
-    );
-
-    let mut buf: Vec<u8> = vec![];
-    let mut cursor = Cursor::new(&mut buf);
-    scale.write_to(&mut cursor, ImageFormat::Png).unwrap();
-
-    Ok(cursor.into_inner().to_vec())
+    Ok(ETag::new(resized, obj.etag.unwrap()))
 }
 
 #[get("/thumb/<id>?<size>")]
-pub async fn thumb(id: &str, size: u32) -> Result<Vec<u8>, Status> {
+pub async fn thumb(id: &str, size: u32) -> Result<ETag<Vec<u8>>, Status> {
     let db = projects().lock().await;
 
     let obj = db.get_object(&THUMBNAILS_BUCKET, id).send().await;
@@ -190,16 +209,7 @@ pub async fn thumb(id: &str, size: u32) -> Result<Vec<u8>, Status> {
         .to_bytes()
         .to_vec();
 
-    let img = image::load_from_memory_with_format(&body[..], ImageFormat::Png).unwrap();
-    let scale = img.resize(
-        min(size, img.width()),
-        min(size, img.height()),
-        FilterType::Triangle,
-    );
+    let resized = downscale_image(body, size, size);
 
-    let mut buf: Vec<u8> = vec![];
-    let mut cursor = Cursor::new(&mut buf);
-    scale.write_to(&mut cursor, ImageFormat::Png).unwrap();
-
-    Ok(cursor.into_inner().to_vec())
+    Ok(ETag::new(resized, obj.etag.unwrap()))
 }

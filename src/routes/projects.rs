@@ -545,17 +545,15 @@ pub async fn project(token: Option<Token<'_>>, id: u32) -> Result<Json<ProjectIn
     }))
 }
 
-// ...rocket why must you suck so bad at anything non-text related
-
 #[derive(Responder)]
-pub struct ContentResponder<T> {
+pub struct ContentDisposition<T> {
     inner: T,
     content_dispos: Header<'static>,
 }
 
-impl<'r, 'o: 'r, T: Responder<'r, 'o>> ContentResponder<T> {
+impl<'r, 'o: 'r, T: Responder<'r, 'o>> ContentDisposition<T> {
     fn new(inner: T, content_dispos: String) -> Self {
-        ContentResponder {
+        ContentDisposition {
             inner,
             content_dispos: Header::new("Content-Disposition", content_dispos),
         }
@@ -566,7 +564,7 @@ impl<'r, 'o: 'r, T: Responder<'r, 'o>> ContentResponder<T> {
 pub async fn project_content(
     token: Option<&str>,
     id: u32,
-) -> Result<ContentResponder<Vec<u8>>, Status> {
+) -> Result<ContentDisposition<Vec<u8>>, Status> {
     let user_id = if let Some(token) = token {
         is_valid(token)
     } else {
@@ -604,7 +602,7 @@ pub async fn project_content(
         .to_bytes()
         .to_vec();
 
-    Ok(ContentResponder::new(
+    Ok(ContentDisposition::new(
         body,
         format!("attachment; filename=\"{}.sb3\"", id),
     ))
