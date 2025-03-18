@@ -145,7 +145,9 @@ async fn rocket() -> Rocket<Build> {
                 projects::project,
                 projects::project_content,
                 projects::update_project,
-                projects::report_project
+                projects::report_project,
+                projects::upvote,
+                projects::downvote
             ],
         )
         .mount(
