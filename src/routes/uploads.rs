@@ -198,7 +198,7 @@ pub async fn user(etag: ETagHeader, user: &str, size: u32) -> Result<ETag<Vec<u8
     let obj_etag = obj.etag.unwrap();
 
     if etag.0.is_some_and(|e| e == obj_etag) {
-        return Err(Status::ImATeapot)
+        return Err(Status::ImATeapot);
     }
 
     let body = obj
@@ -227,7 +227,7 @@ pub async fn thumb(etag: ETagHeader, id: &str, size: u32) -> Result<ETag<Vec<u8>
     let obj_etag = obj.etag.unwrap();
 
     if etag.0.is_some_and(|e| e == obj_etag) {
-        return Err(Status::NotModified)
+        return Err(Status::NotModified);
     }
 
     let body = obj

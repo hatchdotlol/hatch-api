@@ -3,10 +3,10 @@ use crate::data::{Location, NumOrStr, ProjectInfo};
 use crate::guards::ban_guard::NotBanned;
 use crate::guards::limit_guard::OnePerSecond;
 use crate::queues::report_queue::{send_report, ReportLog};
-use crate::rocket::futures::StreamExt;
 use crate::types::RawJson;
 use minio::s3::builders::ObjectContent;
 use minio::s3::types::{S3Api, ToStream};
+use rocket::futures::StreamExt;
 use rocket::{
     form::Form,
     fs::TempFile,
@@ -327,7 +327,7 @@ pub async fn update_project(
 
         let project = format!("{}.sb3", id);
         let content = ObjectContent::from(file.path().unwrap());
- 
+
         let resp = client
             .put_object_content(&PROJECTS_BUCKET, &project, content)
             .send()
@@ -648,4 +648,30 @@ pub async fn report_project(
     });
 
     Ok(content::RawJson("{\"success\": true}"))
+}
+
+#[post("/<id>/upvote")]
+pub fn upvote(
+    token: &TokenVerified,
+    id: u32,
+    _nb: NotBanned<'_>,
+) -> content::RawJson<&'static str> {
+    let cur = db().lock().unwrap();
+
+    cur.vote_project(id, token.user, true).unwrap();
+
+    content::RawJson("{\"success\": true}")
+}
+
+#[post("/<id>/downvote")]
+pub fn downvote(
+    token: &TokenVerified,
+    id: u32,
+    _nb: NotBanned<'_>,
+) -> content::RawJson<&'static str> {
+    let cur = db().lock().unwrap();
+
+    cur.vote_project(id, token.user, false).unwrap();
+
+    content::RawJson("{\"success\": true}")
 }

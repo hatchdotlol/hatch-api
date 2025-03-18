@@ -116,6 +116,17 @@ pub fn db() -> &'static Mutex<SqliteBackend> {
         )
         .unwrap();
 
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS votes (
+                id INTEGER PRIMARY KEY,
+                user INTEGER NOT NULL,
+                project INTEGER NOT NULL,
+                type INTEGER NOT NULL
+            )",
+            (),
+        )
+        .unwrap();
+
         conn.execute_batch("PRAGMA journal_mode=WAL").unwrap();
 
         Mutex::new(SqliteBackend { client: conn })

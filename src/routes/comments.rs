@@ -14,7 +14,8 @@ use crate::{
     data::{Comment, Location, Report},
     db::db,
     guards::{ban_guard::NotBanned, limit_guard::TenPerSecond, verify_guard::TokenVerified},
-    logging_webhook, report_webhook, types::RawJson,
+    logging_webhook, report_webhook,
+    types::RawJson,
 };
 
 #[get("/projects/<id>/comments")]

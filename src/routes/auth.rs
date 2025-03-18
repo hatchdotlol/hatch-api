@@ -285,10 +285,7 @@ pub struct Password {
 }
 
 #[post("/change-password", format = "application/json", data = "<password>")]
-pub fn change_password(
-    token: Token<'_>,
-    password: Json<Password>,
-) -> RawJson {
+pub fn change_password(token: Token<'_>, password: Json<Password>) -> RawJson {
     if calculate_entropy(&password.new_password) < 28.0 {
         return status::Custom(
             Status::BadRequest,

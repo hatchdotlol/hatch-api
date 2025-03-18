@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use crate::data::{Author, Comment, Location, NumOrStr, Report};
 
@@ -245,5 +245,62 @@ impl SqliteBackend {
             .unwrap();
 
         select.query_row((id,), |r| r.get(0)).ok()
+    }
+
+    pub fn vote_project(
+        &self,
+        id: u32,
+        user: u32,
+        set_upvote: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let mut select = self
+            .client
+            .prepare_cached("SELECT type FROM votes WHERE user = ?1 AND project = ?2 LIMIT 1")
+            .unwrap();
+
+        let vote: Option<bool> = select
+            .query_row((user, id), |r| Ok(r.get(3).unwrap()))
+            .optional()
+            .unwrap();
+
+        if let Some(upvote) = vote {
+            self.toggle_vote(id, user, upvote, set_upvote)?;
+        } else {
+            self.client
+                .execute(
+                    "INSERT INTO votes (user, project, type) VALUES (?1, ?2, 1)",
+                    (user, id),
+                )
+                .unwrap();
+        }
+
+        Ok(())
+    }
+
+    fn toggle_vote(
+        &self,
+        id: u32,
+        user: u32,
+        upvote: bool,
+        set_upvote: bool,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        if upvote == set_upvote {
+            // if currently an upvote and want to upvote again
+            self.client.execute(
+                "DELETE FROM votes WHERE user = ?1 AND project = ?2 AND type = ?3",
+                (user, id, upvote == set_upvote),
+            )?;
+        } else {
+            self.client.execute(
+                "DELETE FROM votes WHERE user = ?1 AND project = ?2 AND type = ?3",
+                (user, id, upvote),
+            )?;
+            self.client.execute(
+                "INSERT INTO votes (user, project, type) VALUES (?1, ?2, ?3)",
+                (user, id, set_upvote),
+            )?;
+        }
+
+        Ok(())
     }
 }
