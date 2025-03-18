@@ -68,6 +68,8 @@ pub struct ProjectInfo {
     pub rating: String,
     pub thumbnail: String,
     pub comment_count: u32,
+    pub upvotes: u32,
+    pub downvotes: u32,
 }
 
 #[derive(Clone, Copy, Debug, Serialize)]

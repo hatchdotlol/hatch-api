@@ -247,6 +247,28 @@ impl SqliteBackend {
         select.query_row((id,), |r| r.get(0)).ok()
     }
 
+    pub fn project_votes(&self, id: u32) -> (u32, u32) {
+        let mut select_downvotes = self
+            .client
+            .prepare_cached("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1")
+            .unwrap();
+
+        let downvotes: u32 = select_downvotes
+            .query_row((id,), |r| r.get(0))
+            .unwrap();
+
+        let mut select_upvotes = self
+            .client
+            .prepare_cached("SELECT COUNT(*) FROM votes WHERE type = 1 AND project = ?1")
+            .unwrap();
+
+        let upvotes: u32 = select_upvotes
+            .query_row((id,), |r| r.get(0))
+            .unwrap();
+
+        (downvotes, upvotes)
+    }
+
     pub fn vote_project(
         &self,
         id: u32,

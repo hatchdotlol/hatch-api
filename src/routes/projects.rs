@@ -480,6 +480,7 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
     );
 
     let comment_count = cur.comment_count(project_id);
+    let (upvotes, downvotes) = cur.project_votes(project_id);
 
     return Ok(ProjectInfo {
         id: project_id,
@@ -491,6 +492,8 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
         version: None,
         thumbnail,
         comment_count,
+        upvotes,
+        downvotes
     });
 }
 

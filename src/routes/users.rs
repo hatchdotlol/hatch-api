@@ -207,6 +207,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
             );
 
             let comment_count = cur.comment_count(project_id);
+            let (upvotes, downvotes) = cur.project_votes(project_id);
 
             Ok(Some(ProjectInfo {
                 id: project_id,
@@ -218,6 +219,8 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 version: None,
                 thumbnail,
                 comment_count,
+                upvotes,
+                downvotes
             }))
         })
         .unwrap();
