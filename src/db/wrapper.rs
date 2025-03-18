@@ -281,7 +281,7 @@ impl SqliteBackend {
             .unwrap();
 
         let vote: Option<bool> = select
-            .query_row((user, id), |r| Ok(r.get(3).unwrap()))
+            .query_row((user, id), |r| Ok(r.get(0).unwrap()))
             .optional()
             .unwrap();
 
