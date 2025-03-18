@@ -240,7 +240,7 @@ fn checks(token: Option<Token>, id: u32) -> Option<Status> {
 
     let rating: String = project.get(6).unwrap();
 
-    if no_token && rating == "13+" {
+    if no_token && (rating == "13+" || rating == "N/A") {
         return Some(Status::NotFound);
     }
 
@@ -323,6 +323,20 @@ pub async fn update_project(
                     content::RawJson(r#"{"error": "💣"}"#.into()),
                 );
             }
+        }
+
+        let project = format!("{}.sb3", id);
+        let content = ObjectContent::from(file.path().unwrap());
+ 
+        let resp = client
+            .put_object_content(&PROJECTS_BUCKET, &project, content)
+            .send()
+            .await;
+
+        if resp.is_ok() {
+            2
+        } else {
+            1
         }
     } else {
         0
