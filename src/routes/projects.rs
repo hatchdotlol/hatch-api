@@ -324,20 +324,6 @@ pub async fn update_project(
                 );
             }
         }
-
-        let project = format!("{}.sb3", id);
-
-        let content = ObjectContent::from(file.path().unwrap());
-        let resp = client
-            .put_object_content(&PROJECTS_BUCKET, &project, content)
-            .send()
-            .await;
-
-        if resp.is_ok() {
-            2
-        } else {
-            1
-        }
     } else {
         0
     };
