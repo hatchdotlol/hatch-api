@@ -306,11 +306,13 @@ impl SqliteBackend {
             "DELETE FROM votes WHERE user = ?1 AND project = ?2 AND type = ?3",
             (user, id, upvote),
         )?;
-
-        self.client.execute(
-            "INSERT INTO votes (user, project, type) VALUES (?1, ?2, ?3)",
-            (user, id, set_upvote),
-        )?;
+        
+        if upvote != set_upvote {
+            self.client.execute(
+                "INSERT INTO votes (user, project, type) VALUES (?1, ?2, ?3)",
+                (user, id, set_upvote),
+            )?;
+        }
 
         Ok(())
     }
