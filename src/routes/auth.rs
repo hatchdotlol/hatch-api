@@ -435,7 +435,7 @@ pub fn verify(email_token: &str) -> Redirect {
         .unwrap();
 
     let _ = select.query_row((email_token,), |r| {
-        let user = r.get::<usize, String>(1).unwrap_or(r.get::<usize, u32>(1).unwrap().to_string());
+        let user: String = r.get(1).unwrap();
         if r.get::<usize, i64>(3).unwrap() >= chrono::Utc::now().timestamp() {
             cur.client
                 .execute("UPDATE users SET verified=TRUE WHERE name= ?1", (&user,))
