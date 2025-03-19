@@ -220,7 +220,7 @@ pub fn projects(user: &str) -> Result<Json<Projects>, Status> {
                 thumbnail,
                 comment_count,
                 upvotes,
-                downvotes
+                downvotes,
             }))
         })
         .unwrap();

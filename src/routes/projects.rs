@@ -493,7 +493,7 @@ fn get_project(token: Option<Token<'_>>, id: u32) -> Result<ProjectInfo, Status>
         thumbnail,
         comment_count,
         upvotes,
-        downvotes
+        downvotes,
     });
 }
 

@@ -253,18 +253,14 @@ impl SqliteBackend {
             .prepare_cached("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1")
             .unwrap();
 
-        let downvotes: u32 = select_downvotes
-            .query_row((id,), |r| r.get(0))
-            .unwrap();
+        let downvotes: u32 = select_downvotes.query_row((id,), |r| r.get(0)).unwrap();
 
         let mut select_upvotes = self
             .client
             .prepare_cached("SELECT COUNT(*) FROM votes WHERE type = 1 AND project = ?1")
             .unwrap();
 
-        let upvotes: u32 = select_upvotes
-            .query_row((id,), |r| r.get(0))
-            .unwrap();
+        let upvotes: u32 = select_upvotes.query_row((id,), |r| r.get(0)).unwrap();
 
         (downvotes, upvotes)
     }
@@ -306,18 +302,15 @@ impl SqliteBackend {
         upvote: bool,
         set_upvote: bool,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        if upvote == set_upvote {
-            // if currently an upvote and want to upvote again
-            self.client.execute(
-                "DELETE FROM votes WHERE user = ?1 AND project = ?2 AND type = ?3",
-                (user, id, upvote == set_upvote),
-            )?;
-        } else {
-            self.client.execute(
-                "DELETE FROM votes WHERE user = ?1 AND project = ?2 AND type = ?3",
-                (user, id, upvote),
-            )?;
-        }
+        self.client.execute(
+            "DELETE FROM votes WHERE user = ?1 AND project = ?2 AND type = ?3",
+            (user, id, upvote),
+        )?;
+
+        self.client.execute(
+            "INSERT INTO votes (user, project, type) VALUES (?1, ?2, ?3)",
+            (user, id, set_upvote),
+        )?;
 
         Ok(())
     }
