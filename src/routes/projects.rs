@@ -661,7 +661,7 @@ pub fn upvote(
 ) -> content::RawJson<&'static str> {
     let cur = db().lock().unwrap();
 
-    cur.vote_project(id, token.user, true).unwrap();
+    cur.vote_project(id, token.user, false).unwrap();
 
     content::RawJson("{\"success\": true}")
 }
@@ -674,7 +674,7 @@ pub fn downvote(
 ) -> content::RawJson<&'static str> {
     let cur = db().lock().unwrap();
 
-    cur.vote_project(id, token.user, false).unwrap();
+    cur.vote_project(id, token.user, true).unwrap();
 
     content::RawJson("{\"success\": true}")
 }
