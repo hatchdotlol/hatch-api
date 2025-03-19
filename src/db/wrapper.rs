@@ -286,8 +286,8 @@ impl SqliteBackend {
         } else {
             self.client
                 .execute(
-                    "INSERT INTO votes (user, project, type) VALUES (?1, ?2, 1)",
-                    (user, id),
+                    "INSERT INTO votes (user, project, type) VALUES (?1, ?2, ?3)",
+                    (user, id, set_upvote),
                 )
                 .unwrap();
         }
