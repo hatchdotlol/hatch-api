@@ -24,9 +24,12 @@ pub static DESCRIPTION_LIMIT: u64 = 5000;
 pub static ALLOWED_IMAGE_HOSTS: [&str; 5] = [
     "u.cubeupload.com",
     "rdr.lol",
+    "i.rdr.lol",
     "i.ibb.co",
     "i.imgur.com",
     "hatch.lol",
+    "api.hatch.lol",
+    "api.wasteof.money",
 ];
 
 pub static COUNTRIES: [&str; 252] = [
