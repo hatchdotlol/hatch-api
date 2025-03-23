@@ -4,7 +4,7 @@ This is the repository for the API used by hatch.lol.
 
 ## Running
 
-- Install the Rust toolchain, [MinIO](https://min.io/docs/minio/linux/operations/installation.html), Redis, git, and SQLite drivers (on Debian this is `libsqlite-dev` if you don't have it by default)
+- Install the Rust toolchain, [MinIO](https://min.io/docs/minio/linux/operations/installation.html), Redis, git, and SQLite drivers (on Debian this is `libsqlite3-dev` if you don't have it by default)
 - Start a local Redis instance bound to the default port (or just start your Redis systemd service)
 - Start a MinIO server in the background
   - Make a bucket named "pfps" and one named "assets"
