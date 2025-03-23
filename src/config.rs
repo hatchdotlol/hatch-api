@@ -21,7 +21,7 @@ pub static PFP_LIMIT: u64 = 5_000_000;
 pub static TITLE_LIMIT: u64 = 64;
 pub static DESCRIPTION_LIMIT: u64 = 5000;
 
-pub static ALLOWED_IMAGE_HOSTS: [&str; 5] = [
+pub static ALLOWED_IMAGE_HOSTS: [&str; 8] = [
     "u.cubeupload.com",
     "rdr.lol",
     "i.rdr.lol",
