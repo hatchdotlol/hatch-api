@@ -1,5 +1,5 @@
 use crate::{
-    config::mods,
+    config::config,
     data::Report,
     db::db,
     guards::{admin_guard::AdminToken, ban_guard::is_banned, token_guard::Token},
@@ -25,7 +25,7 @@ fn is_mod(user: u32) -> bool {
         return false;
     };
 
-    mods().contains_key(&author.username)
+    config().mods.contains_key(&author.username)
 }
 
 #[post("/banned", format = "application/json", data = "<ip_address>")]

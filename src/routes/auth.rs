@@ -1,13 +1,12 @@
 use crate::config::{
-    base_url, logging_webhook, postal_key, postal_url, EMAIL_TOKEN_EXPIRY, PFPS_BUCKET,
-    PROJECTS_BUCKET, TOKEN_EXPIRY, USERNAME_LIMIT, VERIFICATION_TEMPLATE,
+    config, EMAIL_TOKEN_EXPIRY, PFPS_BUCKET, PROJECTS_BUCKET, TOKEN_EXPIRY, USERNAME_LIMIT,
+    VERIFICATION_TEMPLATE,
 };
 use crate::data::User;
 use crate::db::{db, projects};
 use crate::entropy::calculate_entropy;
 use crate::guards::{admin_guard::AdminToken, ip_guard::ClientRealAddr, token_guard::Token};
 use crate::types::RawJson;
-use crate::{backup_resend_key, mods};
 
 use chrono::TimeDelta;
 use email_address::EmailAddress;
@@ -178,12 +177,12 @@ pub fn register(
         )
         .unwrap();
 
-    let link = format!("{}/auth/verify?email_token={}", base_url(), &token);
+    let link = format!("{}/auth/verify?email_token={}", &config().base_url, &token);
     let username = creds.username.clone();
     let email = creds.email.clone().unwrap();
 
     tokio::spawn(async move {
-        let send = minreq::post(format!("{}/api/v1/send/message", postal_url()))
+        let send = minreq::post(format!("{}/api/v1/send/message", &config().postal_url))
             .with_body(
                 serde_json::json!({
                     "to": &email,
@@ -197,7 +196,7 @@ pub fn register(
                 .to_string(),
             )
             .with_header("Content-Type", "application/json")
-            .with_header("X-Server-API-Key", postal_key())
+            .with_header("X-Server-API-Key", &config().postal_key)
             .send()
             .unwrap();
 
@@ -208,7 +207,7 @@ pub fn register(
 
         tokio::time::sleep(Duration::from_secs(10)).await;
 
-        let status = minreq::post(format!("{}/api/v1/messages/deliveries", postal_url()))
+        let status = minreq::post(format!("{}/api/v1/messages/deliveries", &config().postal_url))
             .with_body(
                 serde_json::json!({
                     "id": message_id
@@ -216,7 +215,7 @@ pub fn register(
                 .to_string(),
             )
             .with_header("Content-Type", "application/json")
-            .with_header("X-Server-API-Key", postal_key())
+            .with_header("X-Server-API-Key", &config().postal_key)
             .send()
             .unwrap();
 
@@ -224,7 +223,7 @@ pub fn register(
         let delivery_status = json["data"][0]["status"].as_str().unwrap();
 
         let description = if delivery_status == "HardFail" || delivery_status == "Held" {
-            if let Some(resend_key) = backup_resend_key() {
+            if let Some(resend_key) = &config().backup_resend_key {
                 let status = minreq::post("https://api.resend.com/email")
                     .with_body(
                         serde_json::json!({
@@ -259,7 +258,7 @@ pub fn register(
         };
         let description = format!("{} The link to verify is: {}", &description, &link);
 
-        if let Some(webhook_url) = logging_webhook() {
+        if let Some(webhook_url) = &config().report_webhook {
             let url: &str = &webhook_url;
             let client = WebhookClient::new(url);
             client
@@ -591,7 +590,7 @@ pub fn me(token: Token<'_>) -> (Status, Json<User>) {
             follower_count: Some(follower_count),
             verified,
             project_count: Some(project_count),
-            hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
+            hatch_team: Some(config().mods.contains_key(row.get::<usize, String>(1).unwrap().as_str())),
             theme: Some(row.get(16).unwrap_or("#ffbd59".into())),
         }),
     )

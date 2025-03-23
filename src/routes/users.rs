@@ -11,13 +11,11 @@ use url::Url;
 use webhook::client::WebhookClient;
 
 use crate::{
-    config::{ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
+    config::{config, ALLOWED_IMAGE_HOSTS, BIO_LIMIT, COUNTRIES, DISPLAY_NAME_LIMIT},
     data::{Location, NumOrStr, ProjectInfo, Report, User},
     db::db,
     guards::{limit_guard::TenPerSecond, verify_guard::TokenVerified},
-    mods,
     queues::report_queue::{send_report, ReportLog},
-    report_webhook,
 };
 
 #[derive(Debug, PartialEq, Eq, Deserialize)]
@@ -162,7 +160,7 @@ pub fn user(user: &str) -> Result<Json<User>, Status> {
         follower_count: Some(follower_count),
         verified: Some(row.get(12).unwrap()),
         project_count: Some(project_count),
-        hatch_team: Some(mods().contains_key(row.get::<usize, String>(1).unwrap().as_str())),
+        hatch_team: Some(config().mods.contains_key(row.get::<usize, String>(1).unwrap().as_str())),
         theme: Some(row.get(16).unwrap_or("#ffbd59".into())),
     }))
 }
@@ -423,7 +421,7 @@ pub fn followers(user: &str) -> Result<Json<Followers>, Status> {
                 verified: None,
                 project_count: None,
                 hatch_team: Some(
-                    mods().contains_key(row.get::<usize, String>(1).unwrap().as_str()),
+                    config().mods.contains_key(row.get::<usize, String>(1).unwrap().as_str()),
                 ),
                 theme: None,
             })
@@ -480,7 +478,7 @@ pub fn following(user: &str) -> Result<Json<Following>, Status> {
                 verified: None,
                 project_count: None,
                 hatch_team: Some(
-                    mods().contains_key(row.get::<usize, String>(1).unwrap().as_str()),
+                    config().mods.contains_key(row.get::<usize, String>(1).unwrap().as_str()),
                 ),
                 theme: None,
             })
@@ -531,18 +529,8 @@ pub async fn report_user(
         resource_id: NumOrStr::Str(user.into()),
         location: Location::User as u8,
     });
-    // cur.client
-    //     .execute(
-    //         "INSERT INTO reports(user, reason, resource_id, type) VALUES (?1, ?2, ?3, \"user\")",
-    //         (
-    //             token.user,
-    //             format!("{}|{}", &report.category, &report.reason),
-    //             user,
-    //         ),
-    //     )
-    //     .unwrap();
 
-    if let Some(webhook_url) = report_webhook() {
+    if let Some(webhook_url) = &config().report_webhook {
         let user = user.to_owned();
 
         tokio::spawn(async move {

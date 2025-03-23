@@ -9,14 +9,14 @@ use std::sync::{Mutex, OnceLock};
 use tokio::sync::{Mutex as TokioMutex, OnceCell};
 
 use super::wrapper::SqliteBackend;
-use crate::config::{minio_access_key, minio_secret_key, minio_url};
+use crate::config::config;
 
 /// Fetches a database connection (only one connection is made in lifetime)
 pub fn db() -> &'static Mutex<SqliteBackend> {
     static DB: OnceLock<Mutex<SqliteBackend>> = OnceLock::new();
 
     DB.get_or_init(|| {
-        let conn = SqliteConn::open("hatch.db").unwrap();
+        let conn = SqliteConn::open(&config().db_path).unwrap();
 
         conn.execute(
             "CREATE TABLE IF NOT EXISTS reports (
@@ -137,8 +137,8 @@ pub fn projects() -> &'static TokioMutex<MinIOClient> {
     static PROJECTS: OnceLock<TokioMutex<MinIOClient>> = OnceLock::new();
 
     PROJECTS.get_or_init(|| {
-        let base_url = minio_url().parse::<BaseUrl>().unwrap();
-        let static_provider = StaticProvider::new(&minio_access_key(), &minio_secret_key(), None);
+        let base_url = &config().minio_url.parse::<BaseUrl>().unwrap();
+        let static_provider = StaticProvider::new(&config().minio_access_key, &config().minio_secret_key, None);
 
         let client = ClientBuilder::new(base_url.clone())
             .provider(Some(Box::new(static_provider)))

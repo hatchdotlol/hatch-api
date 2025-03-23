@@ -4,7 +4,7 @@ use rocket::futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use webhook::client::WebhookClient;
 
-use crate::{config::report_webhook, data::NumOrStr, db::REDIS};
+use crate::{config::config, data::NumOrStr, db::REDIS};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReportLog {
@@ -21,7 +21,7 @@ pub async fn report_queue() -> Result<(), RedisError> {
     let _ = pubsub_conn.subscribe("reports").await?;
     let mut msgs = pubsub_conn.on_message();
 
-    let webhook = report_webhook().map(|url| WebhookClient::new(url));
+    let webhook = &config().report_webhook.as_ref().map(|url| WebhookClient::new(url));
 
     loop {
         while let Some(msg) = msgs.next().await {

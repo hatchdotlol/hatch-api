@@ -14,7 +14,7 @@ use crate::{
     data::{Comment, Location, Report},
     db::db,
     guards::{ban_guard::NotBanned, limit_guard::TenPerSecond, verify_guard::TokenVerified},
-    logging_webhook, report_webhook,
+    config::config,
     types::RawJson,
 };
 
@@ -170,7 +170,7 @@ pub fn delete_project_comment(
     )
     .unwrap();
 
-    if let Some(webhook_url) = logging_webhook() {
+    if let Some(webhook_url) = &config().logging_webhook {
         tokio::spawn(async move {
             let url: &str = &webhook_url;
             let client = WebhookClient::new(url);
@@ -256,7 +256,7 @@ pub fn report_project_comment(
         )
         .unwrap();
 
-    if let Some(webhook_url) = report_webhook() {
+    if let Some(webhook_url) = &config().report_webhook {
         let reportee_comment: String = comment.get(1).unwrap();
         let reportee_author: u32 = comment.get(2).unwrap();
 

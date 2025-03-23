@@ -10,7 +10,7 @@ pub mod queues;
 pub mod routes;
 pub mod types;
 
-use config::*;
+use config::config;
 use db::{db, projects, set_redis};
 use queues::audit_queue::audit_queue;
 use queues::report_queue::report_queue;
@@ -69,15 +69,10 @@ fn unprocessable() -> RawJson {
 async fn rocket() -> Rocket<Build> {
     dotenv::dotenv().ok();
 
+    message();
+    config();
     db();
     projects();
-    message();
-    postal_key();
-    postal_url();
-    base_url();
-    logging_webhook();
-    report_webhook();
-    admin_key();
     set_redis().await;
 
     let allowed_origins = AllowedOrigins::all();

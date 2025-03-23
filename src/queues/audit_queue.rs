@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use webhook::client::WebhookClient;
 
 use crate::{
-    config::{logging_webhook, USER_DELETION},
+    config::{config, USER_DELETION},
     db::{db, REDIS},
 };
 
@@ -37,7 +37,7 @@ pub async fn audit_queue() -> Result<(), RedisError> {
     let _ = pubsub_conn.subscribe("audits").await?;
     let mut msgs = pubsub_conn.on_message();
 
-    let webhook = logging_webhook().map(|url| WebhookClient::new(url));
+    let webhook = &config().logging_webhook.as_ref().map(|url| WebhookClient::new(url));
 
     loop {
         while let Some(msg) = msgs.next().await {

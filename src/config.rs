@@ -303,9 +303,25 @@ pub static VERIFICATION_TEMPLATE: &str = r#"
 </body>
 "#;
 
-pub fn mods() -> &'static HashMap<String, bool> {
-    static MODS: OnceLock<HashMap<String, bool>> = OnceLock::new();
-    MODS.get_or_init(|| {
+pub struct Config {
+    pub mods: HashMap<String, bool>,
+    pub postal_url: String,
+    pub postal_key: String,
+    pub backup_resend_key: Option<String>,
+    pub logging_webhook: Option<String>,
+    pub report_webhook: Option<String>,
+    pub admin_key: String,
+    pub base_url: String,
+    pub minio_url: String,
+    pub minio_access_key: String,
+    pub minio_secret_key: String,
+    pub db_path: String,
+}
+
+pub fn config() -> &'static Config {
+    static CONFIG: OnceLock<Config> = OnceLock::new();
+
+    CONFIG.get_or_init(|| {
         let mut mods = HashMap::new();
         let mod_str = env::var("MODS").expect("MODS not present");
 
@@ -313,76 +329,50 @@ pub fn mods() -> &'static HashMap<String, bool> {
             mods.insert(moderator.into(), true);
         }
 
-        mods
+        let postal_url = env::var("POSTAL_URL").expect("POSTAL_URL not present");
+        let postal_key = env::var("POSTAL_KEY").expect("POSTAL_KEY not present");
+
+        let backup_resend_key = env::var("RESEND_KEY").unwrap_or("".into());
+        let backup_resend_key = if backup_resend_key == "" {
+            None
+        } else {
+            Some(backup_resend_key)
+        };
+
+        let logging_webhook = env::var("LOGGING_WEBHOOK").unwrap_or("".into());
+        let logging_webhook = if logging_webhook == "" {
+            None
+        } else {
+            Some(logging_webhook)
+        };
+
+        let report_webhook = env::var("REPORT_WEBHOOK").unwrap_or("".into());
+        let report_webhook = if report_webhook == "" {
+            None
+        } else {
+            Some(report_webhook)
+        };
+
+        let admin_key = env::var("ADMIN_KEY").expect("ADMIN_KEY not present");
+        let base_url = env::var("BASE_URL").expect("BASE_URL not present");
+        let minio_url = env::var("MINIO_URL").expect("MINIO_URL not present");
+        let minio_access_key = env::var("MINIO_ACCESS_KEY").expect("MINIO_ACCESS_KEY not present");
+        let minio_secret_key = env::var("MINIO_SECRET_KEY").expect("MINIO_SECRET_KEY not present");
+        let db_path = env::var("DB_PATH").expect("DB_PATH not present");
+
+        Config {
+            mods,
+            postal_url,
+            postal_key,
+            backup_resend_key,
+            logging_webhook,
+            report_webhook,
+            admin_key,
+            base_url,
+            minio_url,
+            minio_access_key,
+            minio_secret_key,
+            db_path,
+        }
     })
-}
-
-pub fn postal_url() -> &'static str {
-    static ADMIN_KEY: OnceLock<String> = OnceLock::new();
-    ADMIN_KEY.get_or_init(|| env::var("POSTAL_URL").expect("POSTAL_URL not present"))
-}
-
-pub fn postal_key() -> &'static str {
-    static ADMIN_KEY: OnceLock<String> = OnceLock::new();
-    ADMIN_KEY.get_or_init(|| env::var("POSTAL_KEY").expect("POSTAL_KEY not present"))
-}
-
-pub fn backup_resend_key() -> Option<&'static str> {
-    static RESEND_KEY: OnceLock<String> = OnceLock::new();
-    let resend_key =
-        RESEND_KEY.get_or_init(|| env::var("RESEND_KEY").expect("RESEND_KEY not present"));
-    if resend_key == "" {
-        None
-    } else {
-        Some(&resend_key)
-    }
-}
-
-pub fn logging_webhook() -> Option<&'static str> {
-    static WEBHOOK: OnceLock<String> = OnceLock::new();
-    let webhook_url =
-        WEBHOOK.get_or_init(|| env::var("LOGGING_WEBHOOK").expect("LOGGING_WEBHOOK not present"));
-    if webhook_url == "" {
-        None
-    } else {
-        Some(&webhook_url)
-    }
-}
-
-pub fn report_webhook() -> Option<&'static str> {
-    static WEBHOOK: OnceLock<String> = OnceLock::new();
-    let webhook_url =
-        WEBHOOK.get_or_init(|| env::var("REPORT_WEBHOOK").expect("REPORT_WEBHOOK not present"));
-    if webhook_url == "" {
-        None
-    } else {
-        Some(&webhook_url)
-    }
-}
-
-pub fn admin_key() -> &'static str {
-    static ADMIN_KEY: OnceLock<String> = OnceLock::new();
-    ADMIN_KEY.get_or_init(|| env::var("ADMIN_KEY").expect("ADMIN_KEY not present"))
-}
-
-pub fn base_url() -> &'static str {
-    static BASE_URL: OnceLock<String> = OnceLock::new();
-    BASE_URL.get_or_init(|| env::var("BASE_URL").expect("BASE_URL not present"))
-}
-
-pub fn minio_url() -> &'static str {
-    static MINIO_URL: OnceLock<String> = OnceLock::new();
-    MINIO_URL.get_or_init(|| env::var("MINIO_URL").expect("MINIO_URL not present"))
-}
-
-pub fn minio_access_key() -> &'static str {
-    static MINIO_ACCESS_KEY: OnceLock<String> = OnceLock::new();
-    MINIO_ACCESS_KEY
-        .get_or_init(|| env::var("MINIO_ACCESS_KEY").expect("MINIO_ACCESS_KEY not present"))
-}
-
-pub fn minio_secret_key() -> &'static str {
-    static MINIO_SECRET_KEY: OnceLock<String> = OnceLock::new();
-    MINIO_SECRET_KEY
-        .get_or_init(|| env::var("MINIO_SECRET_KEY").expect("MINIO_SECRET_KEY not present"))
 }

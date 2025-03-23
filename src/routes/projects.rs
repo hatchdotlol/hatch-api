@@ -21,14 +21,13 @@ use webhook::client::WebhookClient;
 use zip::ZipArchive;
 
 use crate::{
-    config::{ASSET_LIMIT, PROJECTS_BUCKET},
+    config::{config, ASSET_LIMIT, PROJECTS_BUCKET},
     data::Report,
     db::{db, projects},
     guards::{
         token_guard::{is_valid, Token},
         verify_guard::TokenVerified,
     },
-    logging_webhook,
 };
 
 #[derive(FromForm)]
@@ -175,7 +174,7 @@ pub async fn index(
         .send()
         .await;
 
-    if let Some(webhook_url) = logging_webhook() {
+    if let Some(webhook_url) = &config().logging_webhook {
         let title = form.title.clone().to_owned();
         let desc = form.description.clone().to_owned();
         let success = format!("```\n{desc}\n```\n")
@@ -405,7 +404,7 @@ pub async fn update_project(
         }
     }
 
-    if let Some(webhook_url) = logging_webhook() {
+    if let Some(webhook_url) = &config().logging_webhook {
         let title = form.title.clone().unwrap_or("[Unchanged title]".into());
         let desc = form
             .description
