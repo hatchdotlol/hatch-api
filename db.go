@@ -7,7 +7,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var db = CreateDB()  
+var db = CreateDB()
 
 func CreateDB() *sql.DB {
 	db, err := sql.Open("sqlite3", "./hatch.db")
