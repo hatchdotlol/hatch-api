@@ -23,3 +23,15 @@ go.work.sum
 
 # env file
 .env
+
+# various things floating around in production
+.idea
+*.db
+*.db-*
+assets
+.env
+minio.deb
+test.py
+*.png
+*.sb3
+index.html
