@@ -10,7 +10,7 @@ import (
 var db = CreateDB()
 
 func CreateDB() *sql.DB {
-	db, err := sql.Open("sqlite3", "./hatch.db")
+	db, err := sql.Open("sqlite3", config.dbPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -123,4 +123,34 @@ func CreateDB() *sql.DB {
 	}
 
 	return db
+}
+
+type UserRow struct {
+	Id                  int64   `json:"id"`
+	Name                string  `json:"name"`
+	Pw                  string  `json:"-"`
+	DisplayName         *string `json:"displayName"`
+	Country             string  `json:"country"`
+	Bio                 *string `json:"bio"`
+	HighlightedProjects *string `json:"highlightedProjects"`
+	ProfilePicture      string  `json:"profilePicture"`
+	JoinDate            string  `json:"joinDate"`
+	BannerImage         *string `json:"bannerImage"`
+	Followers           string  `json:"followers"`
+	Following           string  `json:"following"`
+	Verified            bool    `json:"-"`
+	Email               string  `json:"-"`
+	Banned              bool    `json:"-"`
+	Ips                 string  `json:"-"`
+	Theme               *string `json:"-"`
+}
+
+func FromUserRow(row *sql.Row) (*UserRow, error) {
+	var user UserRow
+
+	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Ips, &user.Theme); err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }

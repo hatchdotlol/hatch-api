@@ -1,15 +1,13 @@
 package api
 
 func IPBanned(ip string) (bool, error) {
-	rows, err := db.Query("SELECT address FROM ip_bans WHERE address = ?1", ip)
-	if err != nil {
-		return false, err
+	row := db.QueryRow("SELECT address FROM ip_bans WHERE address = ?1", ip)
+	if row != nil {
+		return false, nil
 	}
-	defer rows.Close()
-	rows.Next()
 
 	var userIp *string
-	if err := rows.Scan(&userIp); err != nil {
+	if err := row.Scan(&userIp); err != nil {
 		return false, err
 	}
 
