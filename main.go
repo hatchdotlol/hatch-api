@@ -4,21 +4,15 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
 )
 
-var (
-	startTime = time.Now().Unix()
-	version   = os.Getenv("VERSION")
-)
-
 func Root(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+
 	fmt.Fprintf(w, `{
 	"startTime": "%d",
 	"website": "https://hatch.lol",
@@ -26,7 +20,7 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	"forums": "https://forums.hatch.lol",
 	"email": "contact@hatch.lol",
 	"version": "%s"
-}`, startTime, version)
+}`, config.startTime, config.version)
 }
 
 func main() {
