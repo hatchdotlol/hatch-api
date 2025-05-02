@@ -1,4 +1,4 @@
-module hatch-api
+module github.com/hatchdotlol/hatch-api
 
 go 1.23.8
 

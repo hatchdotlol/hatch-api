@@ -1,4 +1,4 @@
-package main
+package api
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ type Error struct {
 var (
 	NotFound            = Error{err: "resource not found", code: 404}
 	InternalServerError = Error{err: "internal server error", code: 500}
-	TestError           = Error{err: "this is a test error", code: 500}
+	Forbidden           = Error{err: "forbidden", code: 403}
 )
 
 func SendError(w http.ResponseWriter, err Error) {
