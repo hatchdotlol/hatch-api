@@ -1,21 +1,32 @@
 package api
 
 import (
+	"context"
 	"database/sql"
-	"log"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var db = CreateDB()
+var db *sql.DB
 
-func CreateDB() *sql.DB {
-	db, err := sql.Open("sqlite3", config.dbPath)
+func InitDB(ctx context.Context) error {
+
+	hdb, err := sql.Open("sqlite3", config.dbPath)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS reports (
+	_, err = hdb.Exec("PRAGMA journal_mode=WAL")
+	if err != nil {
+		return err
+	}
+
+	tx, err := hdb.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS reports (
                 id INTEGER PRIMARY KEY,
                 user INTEGER NOT NULL,
                 reason TEXT NOT NULL,
@@ -23,10 +34,10 @@ func CreateDB() *sql.DB {
                 type TEXT NOT NULL
             )`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS users (
+	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY,
                 name TEXT NOT NULL,
                 pw TEXT NOT NULL,
@@ -46,30 +57,30 @@ func CreateDB() *sql.DB {
                 theme TEXT
             )`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS auth_tokens (
+	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS auth_tokens (
                 id INTEGER PRIMARY KEY,
                 user INTEGER NOT NULL,
                 token TEXT NOT NULL,
                 expiration_ts INTEGER NOT NULL
             )`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS email_tokens (
+	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS email_tokens (
                 id INTEGER PRIMARY KEY,
                 user INTEGER NOT NULL,
                 token TEXT NOT NULL,
                 expiration_ts INTEGER NOT NULL
             )`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS projects (
+	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS projects (
                 id INTEGER PRIMARY KEY,
                 author INTEGER NOT NULL,
                 upload_ts INTEGER NOT NULL,
@@ -81,10 +92,10 @@ func CreateDB() *sql.DB {
                 thumbnail TEXT NOT NULL
             )`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS comments (
+	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS comments (
                 id INTEGER PRIMARY KEY,
                 content TEXT NOT NULL,
                 author INTEGER NOT NULL,
@@ -95,60 +106,60 @@ func CreateDB() *sql.DB {
                 visible INTEGER NOT NULL
             )`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS ip_bans (
+	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS ip_bans (
                 id INTEGER PRIMARY KEY,
                 address TEXT NOT NULL
             )`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec(`CREATE TABLE IF NOT EXISTS votes (
+	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS votes (
                 id INTEGER PRIMARY KEY,
                 user INTEGER NOT NULL,
                 project INTEGER NOT NULL,
                 type INTEGER NOT NULL
             )`)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	db.Exec("PRAGMA journal_mode=WAL")
-	if err != nil {
-		log.Fatal(err)
+	if err := tx.Commit(); err != nil {
+		return err
 	}
 
-	return db
+	db = hdb
+
+	return nil
 }
 
 type UserRow struct {
-	Id                  int64   `json:"id"`
-	Name                string  `json:"name"`
-	Pw                  string  `json:"-"`
-	DisplayName         *string `json:"displayName"`
-	Country             string  `json:"country"`
-	Bio                 *string `json:"bio"`
-	HighlightedProjects *string `json:"highlightedProjects"`
-	ProfilePicture      string  `json:"profilePicture"`
-	JoinDate            string  `json:"joinDate"`
-	BannerImage         *string `json:"bannerImage"`
-	Followers           string  `json:"followers"`
-	Following           string  `json:"following"`
-	Verified            bool    `json:"-"`
-	Email               string  `json:"-"`
-	Banned              bool    `json:"-"`
-	Ips                 string  `json:"-"`
-	Theme               *string `json:"-"`
+	Id                  int64
+	Name                string
+	Pw                  string
+	DisplayName         *string
+	Country             string
+	Bio                 *string
+	HighlightedProjects *string
+	ProfilePicture      string
+	JoinDate            string
+	BannerImage         *string
+	Followers           string
+	Following           string
+	Verified            bool
+	Email               string
+	Banned              bool
+	Ips                 string
+	Theme               *string
 }
 
 func FromUserRow(row *sql.Row) (*UserRow, error) {
 	var user UserRow
 
 	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Ips, &user.Theme); err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 

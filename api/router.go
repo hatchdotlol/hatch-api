@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -23,6 +25,11 @@ func Root(w http.ResponseWriter, r *http.Request) {
 }
 
 func Router() *chi.Mux {
+	InitConfig()
+	if err := InitDB(context.TODO()); err != nil {
+		log.Fatal(err)
+	}
+
 	r := chi.NewRouter()
 
 	cors := cors.New(cors.Options{
@@ -40,7 +47,9 @@ func Router() *chi.Mux {
 
 	r.Options("/*", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "") })
 	r.Get("/", Root)
+
 	r.Mount("/users", UserRouter())
+	r.Mount("/projects", ProjectsRouter())
 
 	return r
 }
