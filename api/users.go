@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -41,6 +42,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 
 	stmt, err := db.Prepare("SELECT * FROM users WHERE name = ? COLLATE nocase")
 	if err != nil {
+		sentry.CaptureException(err)
 		SendError(w, InternalServerError)
 		return
 	}
@@ -70,6 +72,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 
 	projectCount, err := ProjectCount(user.Id)
 	if err != nil {
+		sentry.CaptureException(err)
 		SendError(w, InternalServerError)
 	}
 

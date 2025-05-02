@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/cors"
@@ -26,7 +28,15 @@ func Root(w http.ResponseWriter, r *http.Request) {
 
 func Router() *chi.Mux {
 	InitConfig()
+
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn: os.Getenv("SENTRY_DSN"),
+	}); err != nil {
+		log.Fatal(err)
+	}
+
 	if err := InitDB(context.TODO()); err != nil {
+		sentry.CaptureException(err)
 		log.Fatal(err)
 	}
 
