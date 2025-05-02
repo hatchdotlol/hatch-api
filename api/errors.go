@@ -17,5 +17,7 @@ var (
 )
 
 func SendError(w http.ResponseWriter, err Error) {
-	http.Error(w, fmt.Sprintf("{\"error\": \"%s\"}", err.err), err.code)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(err.code)
+	fmt.Fprintf(w, "{\"error\": \"%s\"}", err.err)
 }

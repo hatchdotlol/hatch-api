@@ -22,11 +22,13 @@ func user(w http.ResponseWriter, r *http.Request) {
 	row := db.QueryRow("SELECT * FROM users WHERE name = ?1 COLLATE nocase", username)
 	if row != nil {
 		SendError(w, NotFound)
+		return
 	}
 
 	user, err := FromUserRow(row)
 	if err != nil {
 		SendError(w, InternalServerError)
+		return
 	}
 
 	w.Header().Add("Content-Type", "application/json")
