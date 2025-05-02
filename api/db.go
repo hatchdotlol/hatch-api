@@ -14,7 +14,6 @@ func CreateDB() *sql.DB {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
 
 	db.Exec(`CREATE TABLE IF NOT EXISTS reports (
                 id INTEGER PRIMARY KEY,
@@ -149,6 +148,7 @@ func FromUserRow(row *sql.Row) (*UserRow, error) {
 	var user UserRow
 
 	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Ips, &user.Theme); err != nil {
+		log.Fatal(err)
 		return nil, err
 	}
 

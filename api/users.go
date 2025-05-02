@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -20,7 +21,8 @@ func user(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
 	row := db.QueryRow("SELECT * FROM users WHERE name = ?1 COLLATE nocase", username)
-	if row != nil {
+	log.Println(string(row))
+	if row == nil {
 		SendError(w, NotFound)
 		return
 	}
