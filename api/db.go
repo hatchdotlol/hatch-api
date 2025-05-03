@@ -156,7 +156,31 @@ type UserRow struct {
 	Theme               *string
 }
 
-func FromUserRow(row *sql.Row) (*UserRow, error) {
+func UserByName(name string, nocase bool) (*UserRow, error) {
+	var sqls string
+	if nocase {
+		sqls = "SELECT * FROM users WHERE name = ? COLLATE nocase LIMIT 1"
+	} else {
+		sqls = "SELECT * FROM users WHERE name = ? LIMIT 1"
+	}
+
+	stmt, err := db.Prepare(sqls)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRow(name)
+
+	user, err := UserFromRow(row)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func UserFromRow(row *sql.Row) (*UserRow, error) {
 	var user UserRow
 
 	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Ips, &user.Theme); err != nil {

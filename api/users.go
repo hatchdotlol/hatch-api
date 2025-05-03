@@ -15,49 +15,18 @@ func UserRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Get("/{username}", user)
+	r.Get("/{username}/projects", userProjects)
 
 	return r
-}
-
-type UserResp struct {
-	Id                  int64   `json:"id"`
-	Name                string  `json:"name"`
-	DisplayName         *string `json:"displayName"`
-	Country             string  `json:"country"`
-	Bio                 *string `json:"bio"`
-	HighlightedProjects []int64 `json:"highlightedProjects"`
-	ProfilePicture      string  `json:"profilePicture"`
-	JoinDate            string  `json:"joinDate"`
-	BannerImage         *string `json:"bannerImage"`
-	FollowerCount       int     `json:"followerCount"`
-	FollowingCount      int     `json:"followingCount"`
-	Verified            bool    `json:"verified"`
-	Theme               *string `json:"theme"`
-	ProjectCount        int64   `json:"projectCount"`
-	HatchTeam           bool    `json:"hatchTeam"`
 }
 
 func user(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
-	stmt, err := db.Prepare("SELECT * FROM users WHERE name = ? COLLATE nocase")
+	user, err := UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		SendError(w, InternalServerError)
-		return
-	}
-	defer stmt.Close()
-
-	row := stmt.QueryRow(username)
-
-	if row == nil {
-		SendError(w, NotFound)
-		return
-	}
-
-	user, err := FromUserRow(row)
-	if err != nil {
-		SendError(w, NotFound)
+		SendError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
@@ -73,7 +42,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 	projectCount, err := ProjectCount(user.Id)
 	if err != nil {
 		sentry.CaptureException(err)
-		SendError(w, InternalServerError)
+		SendError(w, http.StatusInternalServerError, "Something went wrong")
 	}
 
 	resp, _ := json.Marshal(UserResp{
@@ -96,4 +65,32 @@ func user(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprintln(w, string(resp))
+}
+
+func userProjects(w http.ResponseWriter, r *http.Request) {
+	username := chi.URLParam(r, "username")
+
+	user, err := UserByName(username, true)
+	if err != nil {
+		sentry.CaptureException(err)
+		SendError(w, http.StatusNotFound, "User not found")
+		return
+	}
+	id := user.Id
+
+	stmt, err := db.Prepare("SELECT * FROM projects WHERE author = ?")
+	if err != nil {
+		sentry.CaptureException(err)
+		SendError(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query(id)
+	if err != nil {
+		sentry.CaptureException(err)
+		SendError(w, http.StatusInternalServerError, "Something went wrong")
+		return
+	}
+	defer rows.Close()
 }
