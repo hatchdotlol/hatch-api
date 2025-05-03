@@ -44,6 +44,7 @@ func InitConfig() {
 		mods:           mods,
 		loggingWebhook: &loggingWebhook,
 		reportWebhook:  &reportWebhook,
+		perPage: 50,
 	}
 }
 
@@ -61,4 +62,5 @@ type Config struct {
 	mods           map[string]bool
 	loggingWebhook *string
 	reportWebhook  *string
+	perPage int
 }

@@ -69,6 +69,20 @@ func user(w http.ResponseWriter, r *http.Request) {
 
 func userProjects(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
+	
+	var page int
+	
+	if _page := r.URL.Query().Get("page"); _page != "" {
+		_page, err := strconv.Atoi(_page)
+		if err != nil {
+			sentry.CaptureException(err)
+			JSONError(w, http.StatusBadRequest, "Bad request")
+			return
+		}
+		page = _page
+	} else {
+		page = 0
+	}
 
 	user, err := UserByName(username, true)
 	if err != nil {
@@ -78,7 +92,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	id := user.Id
 
-	stmt, err := db.Prepare("SELECT * FROM projects WHERE author = ?")
+	stmt, err := db.Prepare("SELECT * FROM projects WHERE author = ? LIMIT ?, ?")
 	if err != nil {
 		sentry.CaptureException(err)
 		JSONError(w, http.StatusInternalServerError, "Something went wrong")
@@ -86,7 +100,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(id)
+	rows, err := stmt.Query(id, page * config.perPage, (page + 1) * config.perPage)
 	if err != nil {
 		sentry.CaptureException(err)
 		JSONError(w, http.StatusInternalServerError, "Something went wrong")
@@ -109,7 +123,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 			thumbnailExt string
 		)
 
-		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &rating, &shared, &rating, &score, &thumbnailExt); err != nil {
+		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score, &thumbnailExt); err != nil {
 			panic(err)
 		}
 
