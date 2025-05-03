@@ -10,7 +10,6 @@ import (
 var db *sql.DB
 
 func InitDB(ctx context.Context) error {
-
 	hdb, err := sql.Open("sqlite3", config.dbPath)
 	if err != nil {
 		return err
@@ -188,4 +187,21 @@ func UserFromRow(row *sql.Row) (*UserRow, error) {
 	}
 
 	return &user, nil
+}
+
+func CommentCount(projectId int64) (*int64, error) {
+	stmt, err := db.Prepare("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRow(projectId)
+
+	var commentCount int64
+	if err := row.Scan(&commentCount); err != nil {
+		return nil, err
+	}
+
+	return &commentCount, nil
 }

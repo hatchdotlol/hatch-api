@@ -26,17 +26,17 @@ type Author struct {
 }
 
 type ProjectResp struct {
-	Id     int64  `json:"id"`
-	Author Author `json:"author"`
-	UploadTs int64 `json:"uploadTs"`
-	Title string `json:"title"`
-	Description string `json:"description"`
-	Version *uint `json:"version,omitempty"`
-	Rating string `json:"rating"`
-	Thumbnail string `json:"thumbnail"`
-	CommentCount uint32 `json:"commentCount"`
-	Upvotes uint32 `json:"upvotes"`
-	Downvotes uint32 `json:"downvotes"`
+	Id           int64  `json:"id"`
+	Author       Author `json:"author"`
+	UploadTs     int64  `json:"uploadTs"`
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	Version      *uint  `json:"version,omitempty"`
+	Rating       string `json:"rating"`
+	Thumbnail    string `json:"thumbnail"`
+	CommentCount int64  `json:"commentCount"`
+	Upvotes      int64  `json:"upvotes"`
+	Downvotes    int64  `json:"downvotes"`
 }
 
 type ProjectsResp struct {

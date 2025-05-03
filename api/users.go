@@ -26,7 +26,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 	user, err := UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		SendError(w, http.StatusNotFound, "User not found")
+		JSONError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
@@ -42,7 +42,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 	projectCount, err := ProjectCount(user.Id)
 	if err != nil {
 		sentry.CaptureException(err)
-		SendError(w, http.StatusInternalServerError, "Something went wrong")
+		JSONError(w, http.StatusInternalServerError, "Something went wrong")
 	}
 
 	resp, _ := json.Marshal(UserResp{
@@ -73,7 +73,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	user, err := UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		SendError(w, http.StatusNotFound, "User not found")
+		JSONError(w, http.StatusNotFound, "User not found")
 		return
 	}
 	id := user.Id
@@ -81,7 +81,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	stmt, err := db.Prepare("SELECT * FROM projects WHERE author = ?")
 	if err != nil {
 		sentry.CaptureException(err)
-		SendError(w, http.StatusInternalServerError, "Something went wrong")
+		JSONError(w, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
 	defer stmt.Close()
@@ -89,8 +89,70 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	rows, err := stmt.Query(id)
 	if err != nil {
 		sentry.CaptureException(err)
-		SendError(w, http.StatusInternalServerError, "Something went wrong")
+		JSONError(w, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
 	defer rows.Close()
+
+	projects := []ProjectResp{}
+
+	for rows.Next() {
+		var (
+			projectId    int64
+			authorId     uint32
+			uploadTs     int64
+			title        string
+			description  string
+			shared       bool
+			rating       string
+			score        int64
+			thumbnailExt string
+		)
+
+		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &rating, &shared, &rating, &score, &thumbnailExt); err != nil {
+			panic(err)
+		}
+
+		commentCount, err := CommentCount(projectId)
+		if err != nil {
+			sentry.CaptureException(err)
+			JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			return
+		}
+
+		upvotes, downvotes, err := ProjectVotes(projectId)
+		if err != nil {
+			sentry.CaptureException(err)
+			JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			return
+		}
+
+		thumbnail := fmt.Sprintf("/uploads/thumb/%d.%s", projectId, thumbnailExt)
+
+		projects = append(projects, ProjectResp{
+			Id: id,
+			Author: Author{
+				Id:             user.Id,
+				Username:       user.Name,
+				ProfilePicture: user.ProfilePicture,
+				DisplayName:    user.DisplayName,
+			},
+			UploadTs:     uploadTs,
+			Title:        title,
+			Description:  description,
+			Version:      nil,
+			Rating:       rating,
+			Thumbnail:    thumbnail,
+			CommentCount: *commentCount,
+			Upvotes:      *upvotes,
+			Downvotes:    *downvotes,
+		})
+	}
+
+	resp, _ := json.Marshal(ProjectsResp{
+		Projects: projects,
+	})
+
+	w.Header().Add("Content-Type", "application/json")
+	fmt.Fprintln(w, string(resp))
 }

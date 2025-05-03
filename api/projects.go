@@ -26,3 +26,33 @@ func ProjectCount(userId int64) (*int64, error) {
 
 	return &projectCount, nil
 }
+
+func ProjectVotes(projectId int64) (*int64, *int64, error) {
+	stmt, err := db.Prepare("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRow(projectId)
+
+	var downvotes int64
+	if err := row.Scan(&downvotes); err != nil {
+		return nil, nil, err
+	}
+
+	stmt, err = db.Prepare("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer stmt.Close()
+
+	row = stmt.QueryRow(projectId)
+
+	var upvotes int64
+	if err := row.Scan(&upvotes); err != nil {
+		return nil, nil, err
+	}
+
+	return &upvotes, &downvotes, nil
+}
