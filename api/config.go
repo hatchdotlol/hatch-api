@@ -37,14 +37,11 @@ func InitConfig() {
 		version:        os.Getenv("VERSION"),
 		adminKey:       os.Getenv("ADMIN_KEY"),
 		baseUrl:        os.Getenv("BASE_URL"),
-		minioAccessKey: os.Getenv("MINIO_ACCESS_KEY"),
-		minioSecretKey: os.Getenv("MINIO_SECRET_KEY"),
 		resendKey:      os.Getenv("RESEND_KEY"),
-		dbPath:         os.Getenv("DB_PATH"),
 		mods:           mods,
 		loggingWebhook: &loggingWebhook,
 		reportWebhook:  &reportWebhook,
-		perPage: 50,
+		perPage:        50,
 	}
 }
 
@@ -55,12 +52,9 @@ type Config struct {
 	version        string
 	adminKey       string
 	baseUrl        string
-	minioAccessKey string
-	minioSecretKey string
 	resendKey      string
-	dbPath         string
 	mods           map[string]bool
 	loggingWebhook *string
 	reportWebhook  *string
-	perPage int
+	perPage        int
 }

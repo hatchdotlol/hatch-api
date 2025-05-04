@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"database/sql"
+	"os"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -10,7 +11,7 @@ import (
 var db *sql.DB
 
 func InitDB(ctx context.Context) error {
-	hdb, err := sql.Open("sqlite3", config.dbPath)
+	hdb, err := sql.Open("sqlite3", os.Getenv("DB_PATH"))
 	if err != nil {
 		return err
 	}
