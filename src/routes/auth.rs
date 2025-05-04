@@ -446,7 +446,7 @@ pub fn verify(email_token: &str) -> Redirect {
         Ok(())
     });
 
-    Redirect::to(uri!("https://dev.hatch.lol"))
+    Redirect::to(uri!("https://dev.hatch.lol/email-confirmed/"))
 }
 
 #[get("/logout")]
