@@ -41,6 +41,11 @@ func Router() *chi.Mux {
 		log.Fatal(err)
 	}
 
+	if err := InitS3(); err != nil {
+		sentry.CaptureException(err)
+		log.Fatal(err)
+	}
+
 	r := chi.NewRouter()
 
 	cors := cors.New(cors.Options{
