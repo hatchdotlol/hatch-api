@@ -45,6 +45,16 @@ func user(w http.ResponseWriter, r *http.Request) {
 		JSONError(w, http.StatusInternalServerError, "Something went wrong")
 	}
 
+	var followerCount = 0
+	if user.Followers != nil {
+		followerCount = len(strings.Split(*user.Followers, ","))
+	}
+
+	var followingCount = 0
+	if user.Following != nil {
+		followerCount = len(strings.Split(*user.Following, ","))
+	}
+
 	resp, _ := json.Marshal(UserResp{
 		Id:                  user.Id,
 		Name:                user.Name,
@@ -55,8 +65,8 @@ func user(w http.ResponseWriter, r *http.Request) {
 		ProfilePicture:      user.ProfilePicture,
 		JoinDate:            user.JoinDate,
 		BannerImage:         user.BannerImage,
-		FollowerCount:       len(strings.Split(user.Followers, ",")),
-		FollowingCount:      len(strings.Split(user.Following, ",")),
+		FollowerCount:       followerCount,
+		FollowingCount:      followingCount,
 		Verified:            user.Verified,
 		Theme:               user.Theme,
 		ProjectCount:        *projectCount,
@@ -69,9 +79,9 @@ func user(w http.ResponseWriter, r *http.Request) {
 
 func userProjects(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
-	
+
 	var page int
-	
+
 	if _page := r.URL.Query().Get("page"); _page != "" {
 		_page, err := strconv.Atoi(_page)
 		if err != nil {
@@ -100,7 +110,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query(id, page * config.perPage, (page + 1) * config.perPage)
+	rows, err := stmt.Query(id, page*config.perPage, (page+1)*config.perPage)
 	if err != nil {
 		sentry.CaptureException(err)
 		JSONError(w, http.StatusInternalServerError, "Something went wrong")

@@ -4,7 +4,7 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-func ProjectsRouter() *chi.Mux {
+func ProjectRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	return r

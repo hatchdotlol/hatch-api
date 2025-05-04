@@ -147,8 +147,8 @@ type UserRow struct {
 	ProfilePicture      string
 	JoinDate            string
 	BannerImage         *string
-	Followers           string
-	Following           string
+	Followers           *string
+	Following           *string
 	Verified            bool
 	Email               string
 	Banned              bool
@@ -171,6 +171,23 @@ func UserByName(name string, nocase bool) (*UserRow, error) {
 	defer stmt.Close()
 
 	row := stmt.QueryRow(name)
+
+	user, err := UserFromRow(row)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func UserByToken(token string) (*UserRow, error) {
+	stmt, err := db.Prepare("SELECT * FROM users WHERE id = (SELECT user FROM auth_tokens WHERE token = ?)")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	row := stmt.QueryRow(token)
 
 	user, err := UserFromRow(row)
 	if err != nil {

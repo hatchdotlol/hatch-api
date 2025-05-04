@@ -24,6 +24,10 @@ go.work.sum
 # env file
 .env
 
+# ingest dir
+.ingest/*
+!.ingest/.gitkeep
+
 # various things floating around in production
 .idea
 *.db

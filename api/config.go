@@ -38,6 +38,7 @@ func InitConfig() {
 		adminKey:       os.Getenv("ADMIN_KEY"),
 		baseUrl:        os.Getenv("BASE_URL"),
 		resendKey:      os.Getenv("RESEND_KEY"),
+		ingestDir:      os.Getenv("INGEST_DIR"),
 		mods:           mods,
 		loggingWebhook: &loggingWebhook,
 		reportWebhook:  &reportWebhook,
@@ -53,6 +54,7 @@ type Config struct {
 	adminKey       string
 	baseUrl        string
 	resendKey      string
+	ingestDir      string
 	mods           map[string]bool
 	loggingWebhook *string
 	reportWebhook  *string

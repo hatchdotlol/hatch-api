@@ -13,6 +13,8 @@ import (
 	"github.com/rs/cors"
 )
 
+var ctx = context.Background()
+
 func Root(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -65,7 +67,8 @@ func Router() *chi.Mux {
 	r.Get("/", Root)
 
 	r.Mount("/users", UserRouter())
-	r.Mount("/projects", ProjectsRouter())
+	r.Mount("/projects", ProjectRouter())
+	r.Mount("/uploads", UploadRouter())
 
 	return r
 }
