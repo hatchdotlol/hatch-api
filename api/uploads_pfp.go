@@ -12,15 +12,13 @@ type File struct {
 }
 
 func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow) (*File, error) {
-	log.Println(user.Name)
-	
 	id, err := GenerateId()
 	if err != nil {
 		return nil, err
 	}
 
 	ingestDir := fmt.Sprint(config.ingestDir, "/", id)
-	// defer os.RemoveAll(ingestDir)
+	defer os.RemoveAll(ingestDir)
 
 	if err := os.Mkdir(ingestDir, 0700); err != nil {
 		return nil, err

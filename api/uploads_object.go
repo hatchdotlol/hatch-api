@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 
@@ -32,7 +31,6 @@ func SaveToIngest(obj io.Reader, dir string) error {
 		return err
 	}
 	defer dst.Close()
-	log.Println("hi")
 
 	if _, err := io.Copy(dst, obj); err != nil {
 		return err
