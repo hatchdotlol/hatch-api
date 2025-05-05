@@ -119,7 +119,7 @@ func InitDB() error {
 	}
 
 	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS uploads (
-		id INTEGER PRIMARY KEY,
+		id TEXT NOT NULL PRIMARY KEY,
 		hash TEXT NOT NULL,
 		filename TEXT NOT NULL,
 		mime TEXT NOT NULL,
@@ -211,6 +211,7 @@ func CommentCount(projectId int64) (*int64, error) {
 }
 
 type File struct {
+	Id       string
 	Hash     string
 	Filename string
 	Mime     string
@@ -228,7 +229,8 @@ func (f *File) Index() error {
 	}
 
 	if _, err := tx.Exec(
-		"INSERT INTO uploads (hash, filename, mime, uploader, upload_ts, width, height) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO uploads (id, hash, filename, mime, uploader, upload_ts, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		f.Id,
 		f.Hash,
 		f.Filename,
 		f.Mime,

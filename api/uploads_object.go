@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/minio/minio-go/v7"
@@ -53,4 +54,16 @@ func GenerateId() (string, error) {
 	id = strings.ReplaceAll(id, "=", "c")
 
 	return id, err
+}
+
+func FileHash(path string) (*string, error) {
+	out, err := exec.Command(
+		"sha256sum",
+		path,
+	).Output()
+	if err != nil {
+		return nil, err
+	}
+
+	return &strings.Fields(string(out))[0], nil
 }

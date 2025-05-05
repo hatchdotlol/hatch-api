@@ -8,7 +8,8 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
+
+	"github.com/minio/minio-go/v7"
 )
 
 var ErrUnsupported = errors.New("unsupported file type")
@@ -49,15 +50,21 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 		return nil, err
 	}
 
+	filePath := fmt.Sprint(ingestDir, "/original")
+
+	hash, err := FileHash(filePath)
+	if err != nil {
+		return nil, err
+	}
+
 	f := File{
-		Hash:     id,
+		Id:       id,
+		Hash:     *hash,
 		Filename: header.Filename,
 		Uploader: user.Id,
 		Width:    nil,
 		Height:   nil,
 	}
-
-	filePath := fmt.Sprint(ingestDir, "/original")
 
 	mime, err := exec.Command(
 		"file",
@@ -67,7 +74,7 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 	if err != nil {
 		return nil, err
 	}
-	if !strings.HasPrefix("image/", strings.Fields(string(mime))[1]) {
+	if !strings.HasPrefix(strings.Fields(string(mime))[1], "image/") {
 		return nil, ErrUnsupported
 	}
 
@@ -97,6 +104,8 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 		f.Mime = "image/gif"
 	}
 
+	finalPath := fmt.Sprint(ingestDir, "/.", format)
+
 	// remove metadata, optimize and
 	// resize image smallest possible axis on pfp
 	desiredSize := min(*f.Width, *f.Height, 256)
@@ -109,18 +118,17 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 		fmt.Sprint(desiredSize, "x", desiredSize),
 		"-auto-orient",
 		"-strip",
-		fmt.Sprint(ingestDir, "/.", format),
+		finalPath,
 	).Run(); err != nil {
 		return nil, err
 	}
 
-	var wg sync.WaitGroup
+	info, err := s3.FPutObject(ctx, "pfps", f.Hash, finalPath, minio.PutObjectOptions{ContentType: f.Mime})
+	if err != nil {
+		return nil, err
+	}
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-	}()
+	f.Size = &info.Size
 
 	if err := f.Index(); err != nil {
 		return nil, err

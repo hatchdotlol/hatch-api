@@ -1,6 +1,7 @@
 package api
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/minio/minio-go/v7"
@@ -22,6 +23,10 @@ func InitS3() error {
 
 	if err != nil {
 		return err
+	}
+
+	if _, err := s3.BucketExists(ctx, "projects"); err != nil {
+		slog.Warn("MinIO endpoint is not available")
 	}
 
 	return nil

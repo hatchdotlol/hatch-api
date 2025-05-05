@@ -126,7 +126,9 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		)
 
 		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score, &thumbnailExt); err != nil {
-			panic(err)
+			sentry.CaptureException(err)
+			JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			return
 		}
 
 		commentCount, err := CommentCount(projectId)
