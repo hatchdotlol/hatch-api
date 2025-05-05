@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/getsentry/sentry-go"
@@ -37,6 +38,7 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 
 	obj, err := IngestPfp(file, header, user)
 	if err != nil {
+		log.Print(err)
 		JSONError(w, http.StatusInternalServerError, "Failed to upload pfp")
 		return
 	}

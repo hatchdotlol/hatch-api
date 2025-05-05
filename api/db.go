@@ -229,12 +229,13 @@ func CommentCount(projectId int64) (*int64, error) {
 }
 
 type File struct {
-	Hash string
+	Hash     string
 	Filename string
-	Mime string
+	Mime     string
 	Uploader int64
-	Width *int64
-	Height *int64
+	Size 	 *int64
+	Width    *int
+	Height   *int
 }
 
 // Insert file into uploads index
@@ -251,6 +252,8 @@ func (f *File) Index() error {
 		f.Mime,
 		f.Uploader,
 		time.Now().Unix(),
+		f.Width,
+		f.Height,
 	); err != nil {
 		return err
 	}
