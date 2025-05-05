@@ -102,15 +102,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	id := user.Id
 
-	stmt, err := db.Prepare("SELECT * FROM projects WHERE author = ? LIMIT ?, ?")
-	if err != nil {
-		sentry.CaptureException(err)
-		JSONError(w, http.StatusInternalServerError, "Something went wrong")
-		return
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.Query(id, page*config.perPage, (page+1)*config.perPage)
+	rows, err := db.Query("SELECT * FROM projects WHERE author = ? LIMIT ?, ?", id, page*config.perPage, (page+1)*config.perPage)
 	if err != nil {
 		sentry.CaptureException(err)
 		JSONError(w, http.StatusInternalServerError, "Something went wrong")

@@ -168,13 +168,7 @@ func UserByName(name string, nocase bool) (*UserRow, error) {
 		sqls = "SELECT * FROM users WHERE name = ? LIMIT 1"
 	}
 
-	stmt, err := db.Prepare(sqls)
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	row := stmt.QueryRow(name)
+	row := db.QueryRow(sqls, name)
 
 	user, err := UserFromRow(row)
 	if err != nil {
@@ -185,13 +179,7 @@ func UserByName(name string, nocase bool) (*UserRow, error) {
 }
 
 func UserByToken(token string) (*UserRow, error) {
-	stmt, err := db.Prepare("SELECT * FROM users WHERE id = (SELECT user FROM auth_tokens WHERE token = ?)")
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	row := stmt.QueryRow(token)
+	row := db.QueryRow("SELECT * FROM users WHERE id = (SELECT user FROM auth_tokens WHERE token = ?)", token)
 
 	user, err := UserFromRow(row)
 	if err != nil {
@@ -212,13 +200,7 @@ func UserFromRow(row *sql.Row) (*UserRow, error) {
 }
 
 func CommentCount(projectId int64) (*int64, error) {
-	stmt, err := db.Prepare("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE")
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	row := stmt.QueryRow(projectId)
+	row := db.QueryRow("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE", projectId)
 
 	var commentCount int64
 	if err := row.Scan(&commentCount); err != nil {
@@ -233,7 +215,7 @@ type File struct {
 	Filename string
 	Mime     string
 	Uploader int64
-	Size 	 *int64
+	Size     *int64
 	Width    *int
 	Height   *int
 }

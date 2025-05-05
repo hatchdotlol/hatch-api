@@ -11,13 +11,7 @@ func ProjectRouter() *chi.Mux {
 }
 
 func ProjectCount(userId int64) (*int64, error) {
-	stmt, err := db.Prepare("SELECT COUNT(*) FROM projects WHERE author = ?")
-	if err != nil {
-		return nil, err
-	}
-	defer stmt.Close()
-
-	row := stmt.QueryRow(userId)
+	row := db.QueryRow("SELECT COUNT(*) FROM projects WHERE author = ?", userId)
 
 	var projectCount int64
 	if err := row.Scan(&projectCount); err != nil {
@@ -28,26 +22,14 @@ func ProjectCount(userId int64) (*int64, error) {
 }
 
 func ProjectVotes(projectId int64) (*int64, *int64, error) {
-	stmt, err := db.Prepare("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1")
-	if err != nil {
-		return nil, nil, err
-	}
-	defer stmt.Close()
-
-	row := stmt.QueryRow(projectId)
+	row := db.QueryRow("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1", projectId)
 
 	var downvotes int64
 	if err := row.Scan(&downvotes); err != nil {
 		return nil, nil, err
 	}
 
-	stmt, err = db.Prepare("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1")
-	if err != nil {
-		return nil, nil, err
-	}
-	defer stmt.Close()
-
-	row = stmt.QueryRow(projectId)
+	row = db.QueryRow("SELECT COUNT(*) FROM votes WHERE type = 1 AND project = ?1", projectId)
 
 	var upvotes int64
 	if err := row.Scan(&upvotes); err != nil {

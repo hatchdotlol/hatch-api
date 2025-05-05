@@ -28,7 +28,7 @@ func ImageDimensions(imagePath string) (*int, *int, error) {
 	outSlice := strings.Split(string(out), ",")
 	width, _ := strconv.Atoi(outSlice[0])
 	height, _ := strconv.Atoi(outSlice[1])
-	
+
 	return &width, &height, nil
 }
 
@@ -119,7 +119,7 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		
+
 	}()
 
 	if err := f.Index(); err != nil {
