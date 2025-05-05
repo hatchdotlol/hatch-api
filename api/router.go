@@ -38,7 +38,7 @@ func Router() *chi.Mux {
 		log.Fatal(err)
 	}
 
-	if err := InitDB(context.TODO()); err != nil {
+	if err := InitDB(); err != nil {
 		sentry.CaptureException(err)
 		log.Fatal(err)
 	}

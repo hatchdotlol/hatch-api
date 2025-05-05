@@ -41,7 +41,7 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintln(w, obj.Id)
+	fmt.Fprintln(w, obj.Hash)
 }
 
 func downloadPfp(w http.ResponseWriter, r *http.Request) {

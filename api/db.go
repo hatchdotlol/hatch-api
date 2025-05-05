@@ -1,16 +1,16 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"os"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 )
 
 var db *sql.DB
 
-func InitDB(ctx context.Context) error {
+func InitDB() error {
 	hdb, err := sql.Open("sqlite3", os.Getenv("DB_PATH"))
 	if err != nil {
 		return err
@@ -118,6 +118,19 @@ func InitDB(ctx context.Context) error {
 		return err
 	}
 
+	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS uploads (
+		id INTEGER PRIMARY KEY,
+		hash TEXT NOT NULL,
+		filename TEXT NOT NULL,
+		mime TEXT NOT NULL,
+		uploader INTEGER NOT NULL,
+		upload_ts INTEGER NOT NULL,
+		width INTEGER,
+		height INTEGER
+	)`); err != nil {
+		return err
+	}
+
 	if err := tx.Commit(); err != nil {
 		return err
 	}
@@ -213,4 +226,38 @@ func CommentCount(projectId int64) (*int64, error) {
 	}
 
 	return &commentCount, nil
+}
+
+type File struct {
+	Hash string
+	Filename string
+	Mime string
+	Uploader int64
+	Width *int64
+	Height *int64
+}
+
+// Insert file into uploads index
+func (f *File) Index() error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(
+		"INSERT INTO uploads (hash, filename, mime, uploader, upload_ts, width, height) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		f.Hash,
+		f.Filename,
+		f.Mime,
+		f.Uploader,
+		time.Now().Unix(),
+	); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }

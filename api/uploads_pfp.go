@@ -2,14 +2,11 @@ package api
 
 import (
 	"fmt"
-	"log"
 	"mime/multipart"
 	"os"
+	"os/exec"
+	"strings"
 )
-
-type File struct {
-	Id string
-}
 
 func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow) (*File, error) {
 	id, err := GenerateId()
@@ -25,9 +22,44 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 	}
 
 	if err := SaveToIngest(file, ingestDir); err != nil {
-		log.Print(err)
 		return nil, err
 	}
 
-	return &File{Id: id}, nil
+	f := File{
+		Hash: id,
+		Filename: header.Filename,
+		Uploader: user.Id,
+		Width: nil,
+		Height: nil,
+	}
+
+	filePath := fmt.Sprint(ingestDir, "/original")
+		
+	out, err := exec.Command(
+		"file",
+		"--mime-type",
+		filePath,
+	).Output()
+	if err != nil {
+		return nil, err
+	}
+
+	f.Mime = strings.Fields(string(out))[1]
+
+	if strings.HasPrefix(f.Mime, "image/") {
+		out, err = exec.Command(
+			"magick",
+			"identify",
+			"-format",
+			"%w,%h",
+			fmt.Sprint(ingestDir, "/original"),
+		).Output()
+		if err != nil {
+			return nil, err
+		}
+		// outSlice := strings.Split(string(out), ",")
+		// tfjshdfhj
+	}
+
+	return nil, nil
 }

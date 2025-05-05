@@ -25,6 +25,7 @@ func GetObject(bucket string, objName string) (*minio.Object, *minio.ObjectInfo,
 	return obj, &objInfo, nil
 }
 
+// Saves file to specified directory under "original"
 func SaveToIngest(obj io.Reader, dir string) error {
 	dst, err := os.Create(fmt.Sprint(dir, "/original"))
 	if err != nil {
