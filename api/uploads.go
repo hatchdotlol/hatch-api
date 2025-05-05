@@ -34,7 +34,7 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer file.Close()
-	
+
 	obj, err := IngestPfp(file, header, user)
 	if err != nil {
 		JSONError(w, http.StatusInternalServerError, "Failed to upload pfp")

@@ -66,7 +66,7 @@ func InitDB(ctx context.Context) error {
 		return err
 	}
 
-	if 	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS email_tokens (
+	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS email_tokens (
 		id INTEGER PRIMARY KEY,
 		user INTEGER NOT NULL,
 		token TEXT NOT NULL,
@@ -75,7 +75,7 @@ func InitDB(ctx context.Context) error {
 		return err
 	}
 
-	if 	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS projects (
+	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS projects (
 		id INTEGER PRIMARY KEY,
 		author INTEGER NOT NULL,
 		upload_ts INTEGER NOT NULL,
@@ -89,7 +89,7 @@ func InitDB(ctx context.Context) error {
 		return err
 	}
 
-	if 	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS comments (
+	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS comments (
 		id INTEGER PRIMARY KEY,
 		content TEXT NOT NULL,
 		author INTEGER NOT NULL,
@@ -102,14 +102,14 @@ func InitDB(ctx context.Context) error {
 		return err
 	}
 
-	if 	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS ip_bans (
+	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS ip_bans (
 		id INTEGER PRIMARY KEY,
 		address TEXT NOT NULL
 	)`); err != nil {
 		return err
 	}
 
-	if 	_, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS votes (
+	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS votes (
 		id INTEGER PRIMARY KEY,
 		user INTEGER NOT NULL,
 		project INTEGER NOT NULL,

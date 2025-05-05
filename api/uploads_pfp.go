@@ -28,6 +28,6 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 		log.Print(err)
 		return nil, err
 	}
-	
+
 	return &File{Id: id}, nil
 }
