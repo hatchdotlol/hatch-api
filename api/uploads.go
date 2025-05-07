@@ -70,6 +70,8 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 }
 
 func uploadThumb(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(5e6) // 5 mb
+
 	user, err := UserByToken(r.Header.Get("Token"))
 	if err != nil {
 		sentry.CaptureException(err)
@@ -77,7 +79,7 @@ func uploadThumb(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projectId, err := strconv.Atoi(r.Form.Get("project"))
+	projectId, err := strconv.Atoi(r.FormValue("project"))
 	if err != nil {
 		http.Error(w, "Invalid form", http.StatusBadRequest)
 		return
@@ -125,6 +127,11 @@ func download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	format := "webp"
+	if file.Mime == "image/gif" {
+		format = "gif"
+	}
+
 	obj, info, err := GetObject(file.Bucket, file.Hash)
 	if err != nil {
 		http.Error(w, "Failed to get file", http.StatusInternalServerError)
@@ -136,7 +143,7 @@ func download(w http.ResponseWriter, r *http.Request) {
 		dispos = "inline"
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename=%s`, dispos, file.Filename))
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename=%s.%s`, dispos, file.Id, format))
 	w.Header().Set("Content-Type", file.Mime)
 	w.Header().Set("Content-Length", strconv.FormatInt(info.Size, 10))
 	w.Header().Set("ETag", file.Id)

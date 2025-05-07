@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"time"
 
@@ -207,6 +208,7 @@ type ProjectRow struct {
 	Title       *string
 	Description *string
 	Shared      bool
+	Rating      string
 	Score       int64
 	Thumbnail   string
 }
@@ -215,7 +217,8 @@ func ProjectById(id int64) (*ProjectRow, error) {
 	row := db.QueryRow("SELECT * FROM projects WHERE id = ?", id)
 
 	var p ProjectRow
-	if err := row.Scan(&p.Id, &p.Author, &p.UploadTs, &p.Title, &p.Description, &p.Shared, &p.Score, &p.Thumbnail); err != nil {
+	if err := row.Scan(&p.Id, &p.Author, &p.UploadTs, &p.Title, &p.Description, &p.Shared, &p.Rating, &p.Score, &p.Thumbnail); err != nil {
+		fmt.Print(err)
 		return nil, err
 	}
 
