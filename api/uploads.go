@@ -39,7 +39,7 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	obj, err := IngestPfp(file, header, user)
+	obj, err := IngestImage("pfps", file, header, user)
 	if err != nil {
 		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
 		return
@@ -103,9 +103,9 @@ func uploadThumb(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	obj, err := IngestProject(file, header, user)
+	obj, err := IngestImage("thumbnails", file, header, user)
 	if err != nil {
-		JSONError(w, http.StatusInternalServerError, "Failed to upload pfp")
+		http.Error(w, "Failed to upload thumbnail", http.StatusBadRequest)
 		return
 	}
 
