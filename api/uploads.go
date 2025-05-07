@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
@@ -14,7 +15,7 @@ func UploadRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Post("/pfp", uploadPfp)
-	r.Get("/pfp/{id}", downloadPfp)
+	r.Get("/{id}", download)
 
 	return r
 }
@@ -52,7 +53,7 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 	if _, err := tx.ExecContext(
 		ctx,
 		"UPDATE users SET profile_picture = ? WHERE id = ?",
-		fmt.Sprint("/uploads/pfp/", obj.Id),
+		fmt.Sprint("/uploads/", obj.Id),
 		user.Id,
 	); err != nil {
 		JSONError(w, http.StatusInternalServerError, "Failed to upload pfp")
@@ -67,7 +68,7 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, obj.Hash)
 }
 
-func downloadPfp(w http.ResponseWriter, r *http.Request) {
+func download(w http.ResponseWriter, r *http.Request) {
 	file, err := GetFile(chi.URLParam(r, "id"))
 	if err != nil {
 		sentry.CaptureException(err)
@@ -80,13 +81,18 @@ func downloadPfp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	obj, info, err := GetObject("pfps", file.Hash)
+	obj, info, err := GetObject(file.Bucket, file.Hash)
 	if err != nil {
-		http.Error(w, "Failed to get pfp", http.StatusInternalServerError)
+		http.Error(w, "Failed to get file", http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`inline; filename=%s`, file.Filename))
+	dispos := "attachment"
+	if strings.HasPrefix(file.Mime, "image/") {
+		dispos = "inline"
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename=%s`, dispos, file.Filename))
 	w.Header().Set("Content-Type", file.Mime)
 	w.Header().Set("Content-Length", strconv.FormatInt(info.Size, 10))
 	w.Header().Set("ETag", file.Id)
@@ -95,7 +101,7 @@ func downloadPfp(w http.ResponseWriter, r *http.Request) {
 	_, err = io.Copy(w, obj)
 	if err != nil {
 		sentry.CaptureException(err)
-		http.Error(w, "Failed to get pfp", http.StatusInternalServerError)
+		http.Error(w, "Failed to send file", http.StatusInternalServerError)
 		return
 	}
 }

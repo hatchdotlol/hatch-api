@@ -120,6 +120,7 @@ func InitDB() error {
 
 	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS uploads (
 		id TEXT NOT NULL PRIMARY KEY,
+		bucket TEXT NOT NULL,
 		hash TEXT NOT NULL,
 		filename TEXT NOT NULL,
 		mime TEXT NOT NULL,
@@ -212,6 +213,7 @@ func CommentCount(projectId int64) (*int64, error) {
 
 type File struct {
 	Id       string
+	Bucket   string
 	Hash     string
 	Filename string
 	Mime     string
@@ -230,8 +232,9 @@ func (f *File) Index() error {
 	}
 
 	if _, err := tx.Exec(
-		"INSERT INTO uploads (id, hash, filename, mime, uploader, upload_ts, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+		"INSERT INTO uploads (id, bucket, hash, filename, mime, uploader, upload_ts, width, height) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		f.Id,
+		f.Bucket,
 		f.Hash,
 		f.Filename,
 		f.Mime,
@@ -254,7 +257,7 @@ func GetFile(id string) (*File, error) {
 	row := db.QueryRow("SELECT * FROM uploads WHERE id = ?", id)
 
 	var file File
-	if err := row.Scan(&file.Id, &file.Hash, &file.Filename, &file.Mime, &file.Uploader, &file.UploadTs, &file.Width, &file.Height); err != nil {
+	if err := row.Scan(&file.Id, &file.Bucket, &file.Hash, &file.Filename, &file.Mime, &file.Uploader, &file.UploadTs, &file.Width, &file.Height); err != nil {
 		return nil, err
 	}
 

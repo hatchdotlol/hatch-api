@@ -59,6 +59,7 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 
 	f := File{
 		Id:       id,
+		Bucket:   "pfps",
 		Hash:     *hash,
 		Filename: header.Filename,
 		Uploader: user.Id,
