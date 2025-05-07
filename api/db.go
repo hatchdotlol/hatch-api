@@ -200,6 +200,28 @@ func UserFromRow(row *sql.Row) (*UserRow, error) {
 	return &user, nil
 }
 
+type ProjectRow struct {
+	Id          int64
+	Author      int64
+	UploadTs    int64
+	Title       *string
+	Description *string
+	Shared      bool
+	Score       int64
+	Thumbnail   string
+}
+
+func ProjectById(id int64) (*ProjectRow, error) {
+	row := db.QueryRow("SELECT * FROM projects WHERE id = ?", id)
+
+	var p ProjectRow
+	if err := row.Scan(&p.Id, &p.Author, &p.UploadTs, &p.Title, &p.Description, &p.Shared, &p.Score, &p.Thumbnail); err != nil {
+		return nil, err
+	}
+
+	return &p, nil
+}
+
 func CommentCount(projectId int64) (*int64, error) {
 	row := db.QueryRow("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE", projectId)
 

@@ -15,16 +15,17 @@ func UploadRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Post("/pfp", uploadPfp)
+	r.Post("/thumbnail", uploadThumb)
 	r.Get("/{id}", download)
 
 	return r
 }
 
 func uploadPfp(w http.ResponseWriter, r *http.Request) {
-	user, err := UserByToken(r.Header.Get("Authorization"))
+	user, err := UserByToken(r.Header.Get("Token"))
 	if err != nil {
 		sentry.CaptureException(err)
-		JSONError(w, http.StatusUnauthorized, "Invalid/missing token")
+		http.Error(w, "Invalid token", http.StatusBadRequest)
 		return
 	}
 
@@ -40,13 +41,13 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 
 	obj, err := IngestPfp(file, header, user)
 	if err != nil {
-		JSONError(w, http.StatusInternalServerError, "Failed to upload pfp")
+		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
 		return
 	}
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		JSONError(w, http.StatusInternalServerError, "Failed to upload pfp")
+		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
 		return
 	}
 
@@ -56,16 +57,59 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 		fmt.Sprint("/uploads/", obj.Id),
 		user.Id,
 	); err != nil {
-		JSONError(w, http.StatusInternalServerError, "Failed to upload pfp")
+		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
 		return
 	}
 
 	if err := tx.Commit(); err != nil {
+		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, obj.Id)
+}
+
+func uploadThumb(w http.ResponseWriter, r *http.Request) {
+	user, err := UserByToken(r.Header.Get("Token"))
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Invalid token", http.StatusBadRequest)
+		return
+	}
+
+	projectId, err := strconv.Atoi(r.Form.Get("project"))
+	if err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	project, err := ProjectById(int64(projectId))
+	if err != nil {
+		http.Error(w, "Project does not exist", http.StatusNotFound)
+		return
+	}
+	if project.Author != user.Id {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		if err != http.ErrMissingFile {
+			sentry.CaptureException(err)
+		}
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	obj, err := IngestProject(file, header, user)
+	if err != nil {
 		JSONError(w, http.StatusInternalServerError, "Failed to upload pfp")
 		return
 	}
 
-	fmt.Fprintln(w, obj.Hash)
+	fmt.Fprint(w, obj.Id)
 }
 
 func download(w http.ResponseWriter, r *http.Request) {

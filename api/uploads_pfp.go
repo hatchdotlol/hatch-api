@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"os"
 	"os/exec"
@@ -136,4 +137,33 @@ func IngestPfp(file multipart.File, header *multipart.FileHeader, user *UserRow)
 	}
 
 	return &f, nil
+}
+
+func IngestProject(file multipart.File, header *multipart.FileHeader, user *UserRow) (*File, error) {
+	id, err := GenerateId()
+	if err != nil {
+		return nil, err
+	}
+
+	ingestDir := fmt.Sprint(config.ingestDir, "/", id)
+	defer os.RemoveAll(ingestDir)
+
+	if err := os.Mkdir(ingestDir, 0700); err != nil {
+		return nil, err
+	}
+
+	if err := SaveToIngest(file, ingestDir); err != nil {
+		return nil, err
+	}
+
+	filePath := fmt.Sprint(ingestDir, "/original")
+
+	hash, err := FileHash(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println(hash)
+
+	return nil, nil
 }
