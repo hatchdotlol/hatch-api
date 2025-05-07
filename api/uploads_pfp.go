@@ -33,7 +33,7 @@ func ImageDimensions(imagePath string) (*int, *int, error) {
 	return &width, &height, nil
 }
 
-func IngestImage(bucket string, file multipart.File, header *multipart.FileHeader, user *UserRow) (*File, error) {
+func IngestObject(bucket string, file multipart.File, header *multipart.FileHeader, user *UserRow) (*File, error) {
 	id, err := GenerateId()
 	if err != nil {
 		return nil, err
@@ -132,6 +132,33 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 	f.Size = &info.Size
 
 	if err := f.Index(); err != nil {
+		return nil, err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return nil, err
+	}
+
+	if bucket == "pfps" {
+		if _, err := tx.Exec(
+			"UPDATE users SET profile_picture = ? WHERE id = ?",
+			fmt.Sprint("/uploads/", f.Id),
+			user.Id,
+		); err != nil {
+			return nil, err
+		}
+	} else if bucket == "thumbnails" {
+		if _, err := tx.Exec(
+			"UPDATE projects SET thumbnail = ? WHERE id = ?",
+			fmt.Sprint("/uploads/", f.Id),
+			user.Id,
+		); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 

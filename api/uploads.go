@@ -14,14 +14,18 @@ import (
 func UploadRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Post("/pfp", uploadPfp)
-	r.Post("/thumbnail", uploadThumb)
+	r.Post("/{type:pfp|thumbnail}", upload)
 	r.Get("/{id}", download)
 
 	return r
 }
 
-func uploadPfp(w http.ResponseWriter, r *http.Request) {
+func upload(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(5e6); err != nil {
+		http.Error(w, "Form exceeds 5 mb", http.StatusBadRequest)
+		return
+	}
+
 	user, err := UserByToken(r.Header.Get("Token"))
 	if err != nil {
 		sentry.CaptureException(err)
@@ -39,75 +43,16 @@ func uploadPfp(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	obj, err := IngestImage("pfps", file, header, user)
-	if err != nil {
-		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
-		return
+	objectType := chi.URLParam(r, "type")
+	bucket := "pfps"
+	if objectType == "thumbnail" {
+		bucket = "thumbnails"
 	}
 
-	tx, err := db.BeginTx(ctx, nil)
-	if err != nil {
-		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
-		return
-	}
-
-	if _, err := tx.ExecContext(
-		ctx,
-		"UPDATE users SET profile_picture = ? WHERE id = ?",
-		fmt.Sprint("/uploads/", obj.Id),
-		user.Id,
-	); err != nil {
-		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		http.Error(w, "Failed to upload pfp", http.StatusInternalServerError)
-		return
-	}
-
-	fmt.Fprint(w, obj.Id)
-}
-
-func uploadThumb(w http.ResponseWriter, r *http.Request) {
-	r.ParseMultipartForm(5e6) // 5 mb
-
-	user, err := UserByToken(r.Header.Get("Token"))
+	obj, err := IngestObject(bucket, file, header, user)
 	if err != nil {
 		sentry.CaptureException(err)
-		http.Error(w, "Invalid token", http.StatusBadRequest)
-		return
-	}
-
-	projectId, err := strconv.Atoi(r.FormValue("project"))
-	if err != nil {
-		http.Error(w, "Invalid form", http.StatusBadRequest)
-		return
-	}
-
-	project, err := ProjectById(int64(projectId))
-	if err != nil {
-		http.Error(w, "Project does not exist", http.StatusNotFound)
-		return
-	}
-	if project.Author != user.Id {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	file, header, err := r.FormFile("file")
-	if err != nil {
-		if err != http.ErrMissingFile {
-			sentry.CaptureException(err)
-		}
-		http.Error(w, "Invalid form", http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
-
-	obj, err := IngestImage("thumbnails", file, header, user)
-	if err != nil {
-		http.Error(w, "Failed to upload thumbnail", http.StatusBadRequest)
+		http.Error(w, "Failed to upload", http.StatusInternalServerError)
 		return
 	}
 

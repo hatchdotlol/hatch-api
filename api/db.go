@@ -21,12 +21,12 @@ func InitDB() error {
 		return err
 	}
 
-	tx, err := hdb.BeginTx(ctx, nil)
+	tx, err := hdb.Begin()
 	if err != nil {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS reports (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS reports (
 		id INTEGER PRIMARY KEY,
 		user INTEGER NOT NULL,
 		reason TEXT NOT NULL,
@@ -36,7 +36,7 @@ func InitDB() error {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS users (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS users (
 		id INTEGER PRIMARY KEY,
 		name TEXT NOT NULL,
 		pw TEXT NOT NULL,
@@ -58,7 +58,7 @@ func InitDB() error {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS auth_tokens (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS auth_tokens (
 		id INTEGER PRIMARY KEY,
 		user INTEGER NOT NULL,
 		token TEXT NOT NULL,
@@ -67,7 +67,7 @@ func InitDB() error {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS email_tokens (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS email_tokens (
 		id INTEGER PRIMARY KEY,
 		user INTEGER NOT NULL,
 		token TEXT NOT NULL,
@@ -76,7 +76,7 @@ func InitDB() error {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS projects (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS projects (
 		id INTEGER PRIMARY KEY,
 		author INTEGER NOT NULL,
 		upload_ts INTEGER NOT NULL,
@@ -90,7 +90,7 @@ func InitDB() error {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS comments (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS comments (
 		id INTEGER PRIMARY KEY,
 		content TEXT NOT NULL,
 		author INTEGER NOT NULL,
@@ -103,14 +103,14 @@ func InitDB() error {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS ip_bans (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS ip_bans (
 		id INTEGER PRIMARY KEY,
 		address TEXT NOT NULL
 	)`); err != nil {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS votes (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS votes (
 		id INTEGER PRIMARY KEY,
 		user INTEGER NOT NULL,
 		project INTEGER NOT NULL,
@@ -119,7 +119,7 @@ func InitDB() error {
 		return err
 	}
 
-	if _, err = tx.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS uploads (
+	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS uploads (
 		id TEXT NOT NULL PRIMARY KEY,
 		bucket TEXT NOT NULL,
 		hash TEXT NOT NULL,
@@ -251,7 +251,7 @@ type File struct {
 
 // Insert file into uploads index
 func (f *File) Index() error {
-	tx, err := db.BeginTx(ctx, nil)
+	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
