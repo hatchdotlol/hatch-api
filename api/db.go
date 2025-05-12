@@ -207,7 +207,7 @@ type ProjectRow struct {
 	UploadTs    int64
 	Title       *string
 	Description *string
-	Shared      bool
+	Shared      bool `json:"-"`
 	Rating      string
 	Score       int64
 	Thumbnail   string
