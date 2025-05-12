@@ -2,7 +2,6 @@ package api
 
 import (
 	"database/sql"
-	"fmt"
 	"os"
 	"time"
 
@@ -218,7 +217,6 @@ func ProjectById(id int64) (*ProjectRow, error) {
 
 	var p ProjectRow
 	if err := row.Scan(&p.Id, &p.Author, &p.UploadTs, &p.Title, &p.Description, &p.Shared, &p.Rating, &p.Score, &p.Thumbnail); err != nil {
-		fmt.Print(err)
 		return nil, err
 	}
 

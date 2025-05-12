@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -63,7 +62,6 @@ func upload(w http.ResponseWriter, r *http.Request) {
 func download(w http.ResponseWriter, r *http.Request) {
 	file, err := GetFile(chi.URLParam(r, "id"))
 	if err != nil {
-		log.Print(err)
 		sentry.CaptureException(err)
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
