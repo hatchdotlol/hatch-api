@@ -5,17 +5,23 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"os"
 	"os/exec"
+	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
+	"github.com/minio/minio-go/v7"
 )
 
 var ErrAssetTooLarge = errors.New("project contains asset that is too large")
+
+var allowedAssetExts = []string{".png", ".jpg", ".jpeg", ".gif", ".bmp", ".mp3", ".wav", ".ogg"}
 
 func IngestProject(file multipart.File, header *multipart.FileHeader, user *users.UserRow) (*db.File, error) {
 	id, err := GenerateId()
@@ -27,7 +33,6 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(ingestDir)
 
 	if err := SaveToIngest(file, ingestDir); err != nil {
 		return nil, err
@@ -40,16 +45,6 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 		return nil, err
 	}
 
-	f := db.File{
-		Id:       id,
-		Bucket:   "projects",
-		Hash:     *hash,
-		Filename: header.Filename,
-		Uploader: user.Id,
-		Width:    nil,
-		Height:   nil,
-	}
-
 	mime, err := exec.Command(
 		"file",
 		"--mime-type",
@@ -60,6 +55,17 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 	}
 	if strings.Fields(string(mime))[1] != "application/zip" {
 		return nil, ErrUnsupported
+	}
+
+	f := db.File{
+		Id:       id,
+		Bucket:   "projects",
+		Hash:     *hash,
+		Filename: header.Filename,
+		Mime:     "application/zip",
+		Uploader: user.Id,
+		Width:    nil,
+		Height:   nil,
 	}
 
 	// list project contents
@@ -76,22 +82,79 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 	}
 
 	scanner := bufio.NewScanner(&out)
-	c := 0
+	assets := []string{}
 
 	// check file hash/size
-	for scanner.Scan() {
-		c += 1
-		if c >= 1 && c <= 3 {
+	for c := 0; scanner.Scan(); c++ {
+		if c >= 0 && c <= 2 {
 			continue
 		}
+
 		rows := strings.Fields(scanner.Text())
 		if strings.HasPrefix(rows[0], "---") {
 			break
 		}
+
 		size, _ := strconv.Atoi(rows[0])
 		file := rows[3]
-		fmt.Printf("%d => %s", size, file)
+
+		// ignore asset if project.json or invalid extension
+		if file == "project.json" ||
+			!slices.ContainsFunc(allowedAssetExts, func(e string) bool {
+				return strings.HasSuffix(file, e)
+			}) {
+			continue
+		}
+
+		// must be <=15 mb
+		if size > 15000000 {
+			return nil, ErrAssetTooLarge
+		}
+
+		assets = append(assets, file)
 	}
 
+	go func() {
+		if err := uploadProject(f, filePath, assets); err != nil {
+			log.Print(err)
+			sentry.CaptureException(err)
+		}
+	}()
+
 	return &f, nil
+}
+
+// prune scratch assets from project and upload
+func uploadProject(file db.File, filePath string, assets []string) error {
+	defer os.RemoveAll(strings.Replace(filePath, "/original", "", 1))
+
+	// prune assets on scratch
+	fmt.Printf("assets to check: %v (%d)\n", assets, len(assets))
+	pruned := []string{}
+	for _, a := range assets {
+		log.Println("checking", a)
+		exists, err := AssetExists(a)
+		if err != nil {
+			continue
+		}
+		if exists {
+			pruned = append(pruned, a)
+		}
+	}
+
+	args := []string{"-d", filePath}
+	args = append(args, pruned...)
+	_ = exec.Command("zip", args...).Run()
+
+	info, err := db.Uploads.FPutObject(ctx, "projects", file.Hash, filePath, minio.PutObjectOptions{ContentType: file.Mime})
+	if err != nil {
+		return err
+	}
+
+	file.Size = &info.Size
+	if err := file.Index(); err != nil {
+		return err
+	}
+
+	return nil
 }

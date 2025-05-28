@@ -125,7 +125,7 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 		return nil, err
 	}
 
-	info, err := db.Uploads.FPutObject(ctx, "pfps", f.Hash, finalPath, minio.PutObjectOptions{ContentType: f.Mime})
+	info, err := db.Uploads.FPutObject(ctx, f.Bucket, f.Hash, finalPath, minio.PutObjectOptions{ContentType: f.Mime})
 	if err != nil {
 		return nil, err
 	}

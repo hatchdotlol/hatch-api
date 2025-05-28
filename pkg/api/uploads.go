@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"fmt"
 	"io"
 	"net/http"
@@ -64,8 +65,8 @@ func upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func uploadProject(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(100e6); err != nil {
-		http.Error(w, "Project exceeds 100 mb", http.StatusBadRequest)
+	if err := r.ParseMultipartForm(500e6); err != nil {
+		http.Error(w, "Form exceeds 500 mb", http.StatusBadRequest)
 		return
 	}
 
@@ -86,16 +87,40 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	_, err = uploads.IngestProject(file, header, user)
+	thumbnail, thumbHeader, err := r.FormFile("thumbnail")
 	if err != nil {
-		panic(err)
+		if err != http.ErrMissingFile {
+			sentry.CaptureException(err)
+		}
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
 	}
+	defer thumbnail.Close()
+
+	obj, err := uploads.IngestProject(file, header, user)
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to ingest project", http.StatusInternalServerError)
+		return
+	}
+
+	thumbObj, err := uploads.IngestImage("thumbnails", thumbnail, thumbHeader, user)
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to ingest thumbnail", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, obj.Id, ",", thumbObj.Id)
 }
 
 func download(w http.ResponseWriter, r *http.Request) {
 	file, err := db.GetFile(chi.URLParam(r, "id"))
+
 	if err != nil {
-		sentry.CaptureException(err)
+		if err != sql.ErrNoRows {
+			sentry.CaptureException(err)
+		}
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
 	}
@@ -105,13 +130,19 @@ func download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	format := "webp"
-	if file.Mime == "image/gif" {
-		format = "gif"
+	format := ""
+	switch file.Mime {
+	case "image/gif":
+		format = ".gif"
+	case "image/webp":
+		format = ".webp"
+	case "application/zip":
+		format = ".sb3"
 	}
 
 	obj, info, err := uploads.GetObject(file.Bucket, file.Hash)
 	if err != nil {
+		sentry.CaptureException(err)
 		http.Error(w, "Failed to get file", http.StatusInternalServerError)
 		return
 	}
@@ -121,7 +152,13 @@ func download(w http.ResponseWriter, r *http.Request) {
 		dispos = "inline"
 	}
 
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename=%s.%s`, dispos, file.Id, format))
+	name := file.Id
+	if format == ".sb3" {
+		name = file.Filename
+		format = ""
+	}
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`%s; filename=%s%s`, dispos, name, format))
 	w.Header().Set("Content-Type", file.Mime)
 	w.Header().Set("Content-Length", strconv.FormatInt(info.Size, 10))
 	w.Header().Set("ETag", file.Id)

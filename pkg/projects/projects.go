@@ -12,6 +12,7 @@ type ProjectRow struct {
 	Rating      string
 	Score       int64
 	Thumbnail   string
+	File        string
 }
 
 func ProjectById(id int64) (*ProjectRow, error) {
@@ -63,4 +64,23 @@ func ProjectVotes(projectId int64) (*int64, *int64, error) {
 	}
 
 	return &upvotes, &downvotes, nil
+}
+
+func (p *ProjectRow) Insert() error {
+	tx, err := db.Db.Begin()
+	if err != nil {
+		return err
+	}
+
+	// if _, err := tx.Exec(
+	// 	"INSERT INTO projects (author, upload_ts, title, description, shared, rating, score, file) "
+	// ); err != nil {
+	// 	return err
+	// }
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
