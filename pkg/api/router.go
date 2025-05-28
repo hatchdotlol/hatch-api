@@ -10,9 +10,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
-	"github.com/hatchdotlol/hatch-api/pkg/projects"
-	"github.com/hatchdotlol/hatch-api/pkg/uploads"
-	"github.com/hatchdotlol/hatch-api/pkg/users"
 	"github.com/hatchdotlol/hatch-api/pkg/util"
 	"github.com/rs/cors"
 )
@@ -67,9 +64,9 @@ func Router() *chi.Mux {
 	r.Options("/*", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "") })
 	r.Get("/", Root)
 
-	r.Mount("/users", users.UserRouter())
-	r.Mount("/projects", projects.ProjectRouter())
-	r.Mount("/uploads", uploads.UploadRouter())
+	r.Mount("/users", UserRouter())
+	r.Mount("/projects", ProjectRouter())
+	r.Mount("/uploads", UploadRouter())
 
 	return r
 }

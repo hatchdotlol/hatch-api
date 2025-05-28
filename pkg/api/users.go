@@ -1,4 +1,4 @@
-package users
+package api
 
 import (
 	"encoding/json"
@@ -10,7 +10,9 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
+	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
+	"github.com/hatchdotlol/hatch-api/pkg/users"
 	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
@@ -26,7 +28,7 @@ func UserRouter() *chi.Mux {
 func user(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
-	user, err := db.UserByName(username, true)
+	user, err := users.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
 		util.JSONError(w, http.StatusNotFound, "User not found")
@@ -58,7 +60,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 		followerCount = len(strings.Split(*user.Following, ","))
 	}
 
-	resp, _ := json.Marshal(db.UserResp{
+	resp, _ := json.Marshal(models.UserResp{
 		Id:                  user.Id,
 		Name:                user.Name,
 		DisplayName:         user.DisplayName,
@@ -97,7 +99,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		page = 0
 	}
 
-	user, err := db.UserByName(username, true)
+	user, err := users.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
 		util.JSONError(w, http.StatusNotFound, "User not found")
@@ -113,7 +115,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	projectResp := []db.ProjectResp{}
+	projectResp := []models.ProjectResp{}
 
 	for rows.Next() {
 		var (
@@ -134,7 +136,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		commentCount, err := db.CommentCount(projectId)
+		commentCount, err := projects.CommentCount(projectId)
 		if err != nil {
 			sentry.CaptureException(err)
 			util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
@@ -150,9 +152,9 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 
 		thumbnail := fmt.Sprintf("/uploads/thumb/%d.%s", projectId, thumbnailExt)
 
-		projectResp = append(projectResp, db.ProjectResp{
+		projectResp = append(projectResp, models.ProjectResp{
 			Id: id,
-			Author: db.Author{
+			Author: models.Author{
 				Id:             user.Id,
 				Username:       user.Name,
 				ProfilePicture: user.ProfilePicture,
@@ -170,7 +172,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	resp, _ := json.Marshal(db.ProjectsResp{
+	resp, _ := json.Marshal(models.ProjectsResp{
 		Projects: projectResp,
 	})
 

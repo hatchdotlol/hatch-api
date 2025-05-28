@@ -1,4 +1,4 @@
-package uploads
+package api
 
 import (
 	"fmt"
@@ -10,6 +10,8 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
+	"github.com/hatchdotlol/hatch-api/pkg/uploads"
+	"github.com/hatchdotlol/hatch-api/pkg/users"
 )
 
 func UploadRouter() *chi.Mux {
@@ -27,7 +29,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := db.UserByToken(r.Header.Get("Token"))
+	user, err := users.UserByToken(r.Header.Get("Token"))
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Invalid token", http.StatusBadRequest)
@@ -50,7 +52,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		bucket = "thumbnails"
 	}
 
-	obj, err := IngestObject(bucket, file, header, user)
+	obj, err := uploads.IngestObject(bucket, file, header, user)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to upload", http.StatusInternalServerError)
@@ -78,7 +80,7 @@ func download(w http.ResponseWriter, r *http.Request) {
 		format = "gif"
 	}
 
-	obj, info, err := GetObject(file.Bucket, file.Hash)
+	obj, info, err := uploads.GetObject(file.Bucket, file.Hash)
 	if err != nil {
 		http.Error(w, "Failed to get file", http.StatusInternalServerError)
 		return

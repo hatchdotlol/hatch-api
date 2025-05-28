@@ -1,4 +1,4 @@
-package db
+package models
 
 type UserResp struct {
 	Id                  int64   `json:"id"`
