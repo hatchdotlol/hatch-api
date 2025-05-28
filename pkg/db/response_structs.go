@@ -1,4 +1,4 @@
-package api
+package db
 
 type UserResp struct {
 	Id                  int64   `json:"id"`

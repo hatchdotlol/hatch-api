@@ -1,4 +1,4 @@
-package api
+package uploads
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/hatchdotlol/hatch-api/pkg/db"
 )
 
 func UploadRouter() *chi.Mux {
@@ -26,7 +27,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := UserByToken(r.Header.Get("Token"))
+	user, err := db.UserByToken(r.Header.Get("Token"))
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Invalid token", http.StatusBadRequest)
@@ -60,7 +61,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func download(w http.ResponseWriter, r *http.Request) {
-	file, err := GetFile(chi.URLParam(r, "id"))
+	file, err := db.GetFile(chi.URLParam(r, "id"))
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Not found", http.StatusNotFound)

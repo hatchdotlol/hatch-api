@@ -1,4 +1,4 @@
-package api
+package uploads
 
 import (
 	"errors"
@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/minio/minio-go/v7"
 )
 
@@ -33,7 +34,7 @@ func ImageDimensions(imagePath string) (*int, *int, error) {
 	return &width, &height, nil
 }
 
-func IngestObject(bucket string, file multipart.File, header *multipart.FileHeader, user *UserRow) (*File, error) {
+func IngestObject(bucket string, file multipart.File, header *multipart.FileHeader, user *db.UserRow) (*db.File, error) {
 	id, err := GenerateId()
 	if err != nil {
 		return nil, err
@@ -62,7 +63,7 @@ func IngestObject(bucket string, file multipart.File, header *multipart.FileHead
 		return nil, err
 	}
 
-	f := File{
+	f := db.File{
 		Id:       id,
 		Bucket:   "pfps",
 		Hash:     *hash,
@@ -129,7 +130,7 @@ func IngestObject(bucket string, file multipart.File, header *multipart.FileHead
 		return nil, err
 	}
 
-	info, err := s3.FPutObject(ctx, "pfps", f.Hash, finalPath, minio.PutObjectOptions{ContentType: f.Mime})
+	info, err := db.Uploads.FPutObject(ctx, "pfps", f.Hash, finalPath, minio.PutObjectOptions{ContentType: f.Mime})
 	if err != nil {
 		return nil, err
 	}
@@ -140,7 +141,7 @@ func IngestObject(bucket string, file multipart.File, header *multipart.FileHead
 		return nil, err
 	}
 
-	tx, err := db.Begin()
+	tx, err := db.Db.Begin()
 	if err != nil {
 		return nil, err
 	}

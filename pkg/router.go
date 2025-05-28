@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,10 +9,12 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/hatchdotlol/hatch-api/pkg/db"
+	"github.com/hatchdotlol/hatch-api/pkg/projects"
+	"github.com/hatchdotlol/hatch-api/pkg/uploads"
+	"github.com/hatchdotlol/hatch-api/pkg/users"
 	"github.com/rs/cors"
 )
-
-var ctx = context.Background()
 
 func Root(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -25,11 +26,11 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	"forums": "https://forums.hatch.lol",
 	"email": "contact@hatch.lol",
 	"version": "%s"
-}`, config.startTime, config.version)
+}`, db.Config.StartTime, db.Config.Version)
 }
 
 func Router() *chi.Mux {
-	InitConfig()
+	db.InitConfig()
 
 	if err := sentry.Init(sentry.ClientOptions{
 		Dsn: os.Getenv("SENTRY_DSN"),
@@ -37,12 +38,12 @@ func Router() *chi.Mux {
 		log.Fatal(err)
 	}
 
-	if err := InitDB(); err != nil {
+	if err := db.InitDB(); err != nil {
 		sentry.CaptureException(err)
 		log.Fatal(err)
 	}
 
-	if err := InitS3(); err != nil {
+	if err := db.InitS3(); err != nil {
 		sentry.CaptureException(err)
 		log.Fatal(err)
 	}
@@ -65,9 +66,9 @@ func Router() *chi.Mux {
 	r.Options("/*", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "") })
 	r.Get("/", Root)
 
-	r.Mount("/users", UserRouter())
-	r.Mount("/projects", ProjectRouter())
-	r.Mount("/uploads", UploadRouter())
+	r.Mount("/users", users.UserRouter())
+	r.Mount("/projects", projects.ProjectRouter())
+	r.Mount("/uploads", uploads.UploadRouter())
 
 	return r
 }

@@ -1,6 +1,7 @@
-package api
+package uploads
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"fmt"
@@ -9,16 +10,19 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/minio/minio-go/v7"
 )
 
+var ctx = context.Background()
+
 func GetObject(bucket string, objName string) (*minio.Object, *minio.ObjectInfo, error) {
-	obj, err := s3.GetObject(ctx, bucket, objName, minio.GetObjectOptions{})
+	obj, err := db.Uploads.GetObject(ctx, bucket, objName, minio.GetObjectOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
 
-	objInfo, err := s3.StatObject(ctx, bucket, objName, minio.StatObjectOptions{})
+	objInfo, err := db.Uploads.StatObject(ctx, bucket, objName, minio.StatObjectOptions{})
 	if err != nil {
 		return nil, nil, err
 	}

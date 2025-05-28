@@ -1,4 +1,4 @@
-package api
+package users
 
 import (
 	"encoding/json"
@@ -9,6 +9,9 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/hatchdotlol/hatch-api/pkg/db"
+	errors "github.com/hatchdotlol/hatch-api/pkg/errors"
+	"github.com/hatchdotlol/hatch-api/pkg/projects"
 )
 
 func UserRouter() *chi.Mux {
@@ -23,10 +26,10 @@ func UserRouter() *chi.Mux {
 func user(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
-	user, err := UserByName(username, true)
+	user, err := db.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		JSONError(w, http.StatusNotFound, "User not found")
+		errors.JSONError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
@@ -39,10 +42,10 @@ func user(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	projectCount, err := ProjectCount(user.Id)
+	projectCount, err := projects.ProjectCount(user.Id)
 	if err != nil {
 		sentry.CaptureException(err)
-		JSONError(w, http.StatusInternalServerError, "Something went wrong")
+		errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 	}
 
 	var followerCount = 0
@@ -55,7 +58,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 		followerCount = len(strings.Split(*user.Following, ","))
 	}
 
-	resp, _ := json.Marshal(UserResp{
+	resp, _ := json.Marshal(db.UserResp{
 		Id:                  user.Id,
 		Name:                user.Name,
 		DisplayName:         user.DisplayName,
@@ -70,7 +73,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 		Verified:            user.Verified,
 		Theme:               user.Theme,
 		ProjectCount:        *projectCount,
-		HatchTeam:           config.mods[user.Name],
+		HatchTeam:           db.Config.Mods[user.Name],
 	})
 
 	w.Header().Add("Content-Type", "application/json")
@@ -86,7 +89,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		_page, err := strconv.Atoi(_page)
 		if err != nil {
 			sentry.CaptureException(err)
-			JSONError(w, http.StatusBadRequest, "Bad request")
+			errors.JSONError(w, http.StatusBadRequest, "Bad request")
 			return
 		}
 		page = _page
@@ -94,23 +97,23 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		page = 0
 	}
 
-	user, err := UserByName(username, true)
+	user, err := db.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		JSONError(w, http.StatusNotFound, "User not found")
+		errors.JSONError(w, http.StatusNotFound, "User not found")
 		return
 	}
 	id := user.Id
 
-	rows, err := db.Query("SELECT * FROM projects WHERE author = ? LIMIT ?, ?", id, page*config.perPage, (page+1)*config.perPage)
+	rows, err := db.Db.Query("SELECT * FROM projects WHERE author = ? LIMIT ?, ?", id, page*db.Config.PerPage, (page+1)*db.Config.PerPage)
 	if err != nil {
 		sentry.CaptureException(err)
-		JSONError(w, http.StatusInternalServerError, "Something went wrong")
+		errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
 	defer rows.Close()
 
-	projects := []ProjectResp{}
+	projectResp := []db.ProjectResp{}
 
 	for rows.Next() {
 		var (
@@ -127,29 +130,29 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 
 		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score, &thumbnailExt); err != nil {
 			sentry.CaptureException(err)
-			JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 			return
 		}
 
-		commentCount, err := CommentCount(projectId)
+		commentCount, err := db.CommentCount(projectId)
 		if err != nil {
 			sentry.CaptureException(err)
-			JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 			return
 		}
 
-		upvotes, downvotes, err := ProjectVotes(projectId)
+		upvotes, downvotes, err := projects.ProjectVotes(projectId)
 		if err != nil {
 			sentry.CaptureException(err)
-			JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 			return
 		}
 
 		thumbnail := fmt.Sprintf("/uploads/thumb/%d.%s", projectId, thumbnailExt)
 
-		projects = append(projects, ProjectResp{
+		projectResp = append(projectResp, db.ProjectResp{
 			Id: id,
-			Author: Author{
+			Author: db.Author{
 				Id:             user.Id,
 				Username:       user.Name,
 				ProfilePicture: user.ProfilePicture,
@@ -167,8 +170,8 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	resp, _ := json.Marshal(ProjectsResp{
-		Projects: projects,
+	resp, _ := json.Marshal(db.ProjectsResp{
+		Projects: projectResp,
 	})
 
 	w.Header().Add("Content-Type", "application/json")

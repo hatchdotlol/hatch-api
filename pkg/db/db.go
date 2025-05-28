@@ -1,4 +1,4 @@
-package api
+package db
 
 import (
 	"database/sql"
@@ -8,7 +8,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-var db *sql.DB
+var Db *sql.DB
 
 func InitDB() error {
 	hdb, err := sql.Open("sqlite3", os.Getenv("DB_PATH"))
@@ -136,7 +136,7 @@ func InitDB() error {
 		return err
 	}
 
-	db = hdb
+	Db = hdb
 
 	return nil
 }
@@ -169,7 +169,7 @@ func UserByName(name string, nocase bool) (*UserRow, error) {
 		sqls = "SELECT * FROM users WHERE name = ? LIMIT 1"
 	}
 
-	row := db.QueryRow(sqls, name)
+	row := Db.QueryRow(sqls, name)
 
 	user, err := UserFromRow(row)
 	if err != nil {
@@ -180,7 +180,7 @@ func UserByName(name string, nocase bool) (*UserRow, error) {
 }
 
 func UserByToken(token string) (*UserRow, error) {
-	row := db.QueryRow("SELECT * FROM users WHERE id = (SELECT user FROM auth_tokens WHERE token = ?)", token)
+	row := Db.QueryRow("SELECT * FROM users WHERE id = (SELECT user FROM auth_tokens WHERE token = ?)", token)
 
 	user, err := UserFromRow(row)
 	if err != nil {
@@ -213,7 +213,7 @@ type ProjectRow struct {
 }
 
 func ProjectById(id int64) (*ProjectRow, error) {
-	row := db.QueryRow("SELECT * FROM projects WHERE id = ?", id)
+	row := Db.QueryRow("SELECT * FROM projects WHERE id = ?", id)
 
 	var p ProjectRow
 	if err := row.Scan(&p.Id, &p.Author, &p.UploadTs, &p.Title, &p.Description, &p.Shared, &p.Rating, &p.Score, &p.Thumbnail); err != nil {
@@ -224,7 +224,7 @@ func ProjectById(id int64) (*ProjectRow, error) {
 }
 
 func CommentCount(projectId int64) (*int64, error) {
-	row := db.QueryRow("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE", projectId)
+	row := Db.QueryRow("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE", projectId)
 
 	var commentCount int64
 	if err := row.Scan(&commentCount); err != nil {
@@ -249,7 +249,7 @@ type File struct {
 
 // Insert file into uploads index
 func (f *File) Index() error {
-	tx, err := db.Begin()
+	tx, err := Db.Begin()
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func (f *File) Index() error {
 }
 
 func GetFile(id string) (*File, error) {
-	row := db.QueryRow("SELECT * FROM uploads WHERE id = ?", id)
+	row := Db.QueryRow("SELECT * FROM uploads WHERE id = ?", id)
 
 	var file File
 	if err := row.Scan(&file.Id, &file.Bucket, &file.Hash, &file.Filename, &file.Mime, &file.Uploader, &file.UploadTs, &file.Width, &file.Height); err != nil {

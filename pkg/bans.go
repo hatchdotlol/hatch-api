@@ -1,7 +1,9 @@
 package api
 
+import "github.com/hatchdotlol/hatch-api/pkg/db"
+
 func IPBanned(ip string) (bool, error) {
-	row := db.QueryRow("SELECT address FROM ip_bans WHERE address = ?1", ip)
+	row := db.Db.QueryRow("SELECT address FROM ip_bans WHERE address = ?1", ip)
 	if row != nil {
 		return false, nil
 	}
