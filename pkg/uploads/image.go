@@ -35,23 +35,17 @@ func ImageDimensions(imagePath string) (*int, *int, error) {
 	return &width, &height, nil
 }
 
-func IngestObject(bucket string, file multipart.File, header *multipart.FileHeader, user *users.UserRow) (*db.File, error) {
+func IngestImage(bucket string, file multipart.File, header *multipart.FileHeader, user *users.UserRow) (*db.File, error) {
 	id, err := GenerateId()
 	if err != nil {
 		return nil, err
 	}
 
-	tempdir, err := os.MkdirTemp("/tmp", "ingest")
+	ingestDir, err := os.MkdirTemp("/tmp", "ingest")
 	if err != nil {
 		return nil, err
 	}
-
-	ingestDir := fmt.Sprint(tempdir, "/", id)
 	defer os.RemoveAll(ingestDir)
-
-	if err := os.Mkdir(ingestDir, 0700); err != nil {
-		return nil, err
-	}
 
 	if err := SaveToIngest(file, ingestDir); err != nil {
 		return nil, err
@@ -66,7 +60,7 @@ func IngestObject(bucket string, file multipart.File, header *multipart.FileHead
 
 	f := db.File{
 		Id:       id,
-		Bucket:   "pfps",
+		Bucket:   bucket,
 		Hash:     *hash,
 		Filename: header.Filename,
 		Uploader: user.Id,

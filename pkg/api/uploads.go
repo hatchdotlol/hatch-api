@@ -18,6 +18,7 @@ func UploadRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Post("/{type:pfp|thumbnail}", upload)
+	r.Post("/project", uploadProject)
 	r.Get("/{id}", download)
 
 	return r
@@ -25,7 +26,7 @@ func UploadRouter() *chi.Mux {
 
 func upload(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(5e6); err != nil {
-		http.Error(w, "Form exceeds 5 mb", http.StatusBadRequest)
+		http.Error(w, "Image exceeds 5 mb", http.StatusBadRequest)
 		return
 	}
 
@@ -52,7 +53,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		bucket = "thumbnails"
 	}
 
-	obj, err := uploads.IngestObject(bucket, file, header, user)
+	obj, err := uploads.IngestImage(bucket, file, header, user)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to upload", http.StatusInternalServerError)
@@ -60,6 +61,35 @@ func upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprint(w, obj.Id)
+}
+
+func uploadProject(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseMultipartForm(100e6); err != nil {
+		http.Error(w, "Project exceeds 100 mb", http.StatusBadRequest)
+		return
+	}
+
+	user, err := users.UserByToken(r.Header.Get("Token"))
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Invalid token", http.StatusBadRequest)
+		return
+	}
+
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		if err != http.ErrMissingFile {
+			sentry.CaptureException(err)
+		}
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	_, err = uploads.IngestProject(file, header, user)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func download(w http.ResponseWriter, r *http.Request) {
