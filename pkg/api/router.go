@@ -53,9 +53,9 @@ func Router() *chi.Mux {
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"*"},
 		AllowCredentials: true,
-	}).Handler
+	})
 
-	r.Use(cors)
+	r.Use(cors.Handler)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)
@@ -67,6 +67,7 @@ func Router() *chi.Mux {
 	r.Mount("/users", UserRouter())
 	r.Mount("/projects", ProjectRouter())
 	r.Mount("/uploads", UploadRouter())
+	r.Mount("/auth", AuthRouter())
 
 	return r
 }

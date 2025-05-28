@@ -50,7 +50,6 @@ func InitDB() error {
 		verified INTEGER NOT NULL,
 		email TEXT NOT NULL,
 		banned INTEGER NOT NULL,
-		ips TEXT NOT NULL,
 		theme TEXT
 	)`); err != nil {
 		return err
@@ -98,13 +97,6 @@ func InitDB() error {
 		location INTEGER NOT NULL,
 		resource_id INTEGER NOT NULL,
 		visible INTEGER NOT NULL
-	)`); err != nil {
-		return err
-	}
-
-	if _, err = tx.Exec(`CREATE TABLE IF NOT EXISTS ip_bans (
-		id INTEGER PRIMARY KEY,
-		address TEXT NOT NULL
 	)`); err != nil {
 		return err
 	}

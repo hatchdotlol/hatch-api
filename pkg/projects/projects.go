@@ -9,7 +9,7 @@ import (
 type Project struct {
 	Id          int64   `json:"id"`
 	Author      int64   `json:"-"`
-	UploadTs    *int64  `json:"upload_ts,omitempty"`
+	UploadTs    *int64  `json:"uploadTs,omitempty"`
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
 	Shared      bool    `json:"-"`

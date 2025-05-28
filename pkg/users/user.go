@@ -22,7 +22,6 @@ type UserRow struct {
 	Verified            bool
 	Email               string
 	Banned              bool
-	Ips                 string
 	Theme               *string
 }
 
@@ -58,7 +57,7 @@ func UserByToken(token string) (*UserRow, error) {
 func UserFromRow(row *sql.Row) (*UserRow, error) {
 	var user UserRow
 
-	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Ips, &user.Theme); err != nil {
+	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme); err != nil {
 		return nil, err
 	}
 

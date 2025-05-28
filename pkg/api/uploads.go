@@ -20,8 +20,11 @@ import (
 func UploadRouter() *chi.Mux {
 	r := chi.NewRouter()
 
-	r.Post("/{type:pfp|thumbnail}", upload)
-	r.Post("/project", uploadProject)
+	r.Group(func(r chi.Router) {
+		r.Use(EnsureVerified)
+		r.Post("/{type:pfp|thumbnail}", upload)
+		r.Post("/project", uploadProject)
+	})
 	r.Get("/{id}", download)
 
 	return r
@@ -33,12 +36,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := users.UserByToken(r.Header.Get("Token"))
-	if err != nil {
-		sentry.CaptureException(err)
-		http.Error(w, "Invalid token", http.StatusBadRequest)
-		return
-	}
+	user := r.Context().Value(User).(*users.UserRow)
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -79,11 +77,7 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := users.UserByToken(r.Header.Get("Token"))
-	if err != nil {
-		http.Error(w, "Invalid token", http.StatusBadRequest)
-		return
-	}
+	user := r.Context().Value(User).(*users.UserRow)
 
 	// ingest project
 	file, header, err := r.FormFile("file")
