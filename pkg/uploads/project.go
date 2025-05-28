@@ -89,7 +89,7 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 			break
 		}
 		size, _ := strconv.Atoi(rows[0])
-		file := rows[2]
+		file := rows[3]
 		fmt.Printf("%d => %s", size, file)
 	}
 
