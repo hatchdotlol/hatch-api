@@ -39,7 +39,12 @@ func IngestObject(bucket string, file multipart.File, header *multipart.FileHead
 		return nil, err
 	}
 
-	ingestDir := fmt.Sprint(config.ingestDir, "/", id)
+	tempdir, err := os.MkdirTemp("/tmp", "ingest")
+	if err != nil {
+		return nil, err
+	}
+
+	ingestDir := fmt.Sprint(tempdir, "/", id)
 	defer os.RemoveAll(ingestDir)
 
 	if err := os.Mkdir(ingestDir, 0700); err != nil {

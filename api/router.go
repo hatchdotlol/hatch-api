@@ -32,8 +32,7 @@ func Router() *chi.Mux {
 	InitConfig()
 
 	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:   os.Getenv("SENTRY_DSN"),
-		Debug: true,
+		Dsn: os.Getenv("SENTRY_DSN"),
 	}); err != nil {
 		log.Fatal(err)
 	}
