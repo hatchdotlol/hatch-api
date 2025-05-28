@@ -13,6 +13,7 @@ import (
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
 	"github.com/hatchdotlol/hatch-api/pkg/uploads"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
+	"github.com/hatchdotlol/hatch-api/pkg/util"
 	"github.com/rs/cors"
 )
 
@@ -26,11 +27,11 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	"forums": "https://forums.hatch.lol",
 	"email": "contact@hatch.lol",
 	"version": "%s"
-}`, db.Config.StartTime, db.Config.Version)
+}`, util.Config.StartTime, util.Config.Version)
 }
 
 func Router() *chi.Mux {
-	db.InitConfig()
+	util.InitConfig()
 
 	if err := sentry.Init(sentry.ClientOptions{
 		Dsn: os.Getenv("SENTRY_DSN"),

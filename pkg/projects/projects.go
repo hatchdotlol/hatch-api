@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
-	errors "github.com/hatchdotlol/hatch-api/pkg/errors"
+	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
 func ProjectRouter() *chi.Mux {
@@ -22,29 +22,29 @@ func ProjectRouter() *chi.Mux {
 func project(w http.ResponseWriter, r *http.Request) {
 	id_, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		errors.JSONError(w, http.StatusBadRequest, "Bad request")
+		util.JSONError(w, http.StatusBadRequest, "Bad request")
 		return
 	}
 	id := int64(id_)
 
 	p, err := db.ProjectById(id)
 	if err != nil || !p.Shared {
-		errors.JSONError(w, http.StatusNotFound, "Project not found")
+		util.JSONError(w, http.StatusNotFound, "Project not found")
 	}
 
 	upv, downv, err := ProjectVotes(id)
 	if err != nil {
-		errors.JSONError(w, http.StatusInternalServerError, "Failed to get project")
+		util.JSONError(w, http.StatusInternalServerError, "Failed to get project")
 	}
 
 	user, err := db.UserFromRow(db.Db.QueryRow("SELECT * FROM users WHERE id = ?", p.Author))
 	if err != nil {
-		errors.JSONError(w, http.StatusInternalServerError, "Failed to get project")
+		util.JSONError(w, http.StatusInternalServerError, "Failed to get project")
 	}
 
 	commentCount, err := db.CommentCount(p.Id)
 	if err != nil {
-		errors.JSONError(w, http.StatusInternalServerError, "Failed to get project")
+		util.JSONError(w, http.StatusInternalServerError, "Failed to get project")
 	}
 
 	resp, _ := json.Marshal(db.ProjectResp{

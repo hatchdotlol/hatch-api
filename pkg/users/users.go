@@ -10,8 +10,8 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
-	errors "github.com/hatchdotlol/hatch-api/pkg/errors"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
+	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
 func UserRouter() *chi.Mux {
@@ -29,7 +29,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 	user, err := db.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		errors.JSONError(w, http.StatusNotFound, "User not found")
+		util.JSONError(w, http.StatusNotFound, "User not found")
 		return
 	}
 
@@ -45,7 +45,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 	projectCount, err := projects.ProjectCount(user.Id)
 	if err != nil {
 		sentry.CaptureException(err)
-		errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+		util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 	}
 
 	var followerCount = 0
@@ -73,7 +73,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 		Verified:            user.Verified,
 		Theme:               user.Theme,
 		ProjectCount:        *projectCount,
-		HatchTeam:           db.Config.Mods[user.Name],
+		HatchTeam:           util.Config.Mods[user.Name],
 	})
 
 	w.Header().Add("Content-Type", "application/json")
@@ -89,7 +89,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		_page, err := strconv.Atoi(_page)
 		if err != nil {
 			sentry.CaptureException(err)
-			errors.JSONError(w, http.StatusBadRequest, "Bad request")
+			util.JSONError(w, http.StatusBadRequest, "Bad request")
 			return
 		}
 		page = _page
@@ -100,15 +100,15 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	user, err := db.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		errors.JSONError(w, http.StatusNotFound, "User not found")
+		util.JSONError(w, http.StatusNotFound, "User not found")
 		return
 	}
 	id := user.Id
 
-	rows, err := db.Db.Query("SELECT * FROM projects WHERE author = ? LIMIT ?, ?", id, page*db.Config.PerPage, (page+1)*db.Config.PerPage)
+	rows, err := db.Db.Query("SELECT * FROM projects WHERE author = ? LIMIT ?, ?", id, page*util.Config.PerPage, (page+1)*util.Config.PerPage)
 	if err != nil {
 		sentry.CaptureException(err)
-		errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+		util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
 	defer rows.Close()
@@ -130,21 +130,21 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 
 		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score, &thumbnailExt); err != nil {
 			sentry.CaptureException(err)
-			errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 			return
 		}
 
 		commentCount, err := db.CommentCount(projectId)
 		if err != nil {
 			sentry.CaptureException(err)
-			errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 			return
 		}
 
 		upvotes, downvotes, err := projects.ProjectVotes(projectId)
 		if err != nil {
 			sentry.CaptureException(err)
-			errors.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 			return
 		}
 
