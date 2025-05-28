@@ -1,25 +1,29 @@
 package projects
 
-import "github.com/hatchdotlol/hatch-api/pkg/db"
+import (
+	"time"
 
-type ProjectRow struct {
-	Id          int64
-	Author      int64
-	UploadTs    int64
-	Title       *string
-	Description *string
-	Shared      bool `json:"-"`
-	Rating      string
-	Score       int64
-	Thumbnail   string
-	File        string
+	"github.com/hatchdotlol/hatch-api/pkg/db"
+)
+
+type Project struct {
+	Id          int64   `json:"id"`
+	Author      int64   `json:"-"`
+	UploadTs    *int64  `json:"upload_ts,omitempty"`
+	Title       *string `json:"title"`
+	Description *string `json:"description"`
+	Shared      bool    `json:"-"`
+	Rating      string  `json:"rating,omitempty"`
+	Score       int64   `json:"score,omitempty"`
+	Thumbnail   string  `json:"thumbnail,omitempty"`
+	File        string  `json:"file,omitempty"`
 }
 
-func ProjectById(id int64) (*ProjectRow, error) {
+func ProjectById(id int64) (*Project, error) {
 	row := db.Db.QueryRow("SELECT * FROM projects WHERE id = ?", id)
 
-	var p ProjectRow
-	if err := row.Scan(&p.Id, &p.Author, &p.UploadTs, &p.Title, &p.Description, &p.Shared, &p.Rating, &p.Score, &p.Thumbnail); err != nil {
+	var p Project
+	if err := row.Scan(&p.Id, &p.Author, &p.UploadTs, &p.Title, &p.Description, &p.Shared, &p.Rating, &p.Score, &p.Thumbnail, &p.File); err != nil {
 		return nil, err
 	}
 
@@ -66,21 +70,28 @@ func ProjectVotes(projectId int64) (*int64, *int64, error) {
 	return &upvotes, &downvotes, nil
 }
 
-func (p *ProjectRow) Insert() error {
+func (p *Project) Insert() (int64, error) {
 	tx, err := db.Db.Begin()
 	if err != nil {
-		return err
+		return -1, err
 	}
 
-	// if _, err := tx.Exec(
-	// 	"INSERT INTO projects (author, upload_ts, title, description, shared, rating, score, file) "
-	// ); err != nil {
-	// 	return err
-	// }
+	insert, err := tx.Exec(
+		"INSERT INTO projects (author, upload_ts, title, description, shared, rating, score, thumbnail, file) VALUES (?, ?, ?, ?, TRUE, 'N/A', 0, ?, ?)",
+		p.Author,
+		time.Now().Unix(),
+		p.Title,
+		p.Description,
+		p.Thumbnail,
+		p.File,
+	)
+	if err != nil {
+		return -1, err
+	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return -1, err
 	}
 
-	return nil
+	return insert.LastInsertId()
 }

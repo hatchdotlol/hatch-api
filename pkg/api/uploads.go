@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
+	"github.com/hatchdotlol/hatch-api/pkg/projects"
 	"github.com/hatchdotlol/hatch-api/pkg/uploads"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
 )
@@ -70,13 +72,20 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	title := r.FormValue("title")
+	desc := r.FormValue("description")
+	if title == "" || desc == "" {
+		http.Error(w, "Title/description cannot be blank", http.StatusBadRequest)
+		return
+	}
+
 	user, err := users.UserByToken(r.Header.Get("Token"))
 	if err != nil {
-		sentry.CaptureException(err)
 		http.Error(w, "Invalid token", http.StatusBadRequest)
 		return
 	}
 
+	// ingest project
 	file, header, err := r.FormFile("file")
 	if err != nil {
 		if err != http.ErrMissingFile {
@@ -87,6 +96,14 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
+	obj, err := uploads.IngestProject(file, header, user)
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to ingest project", http.StatusInternalServerError)
+		return
+	}
+
+	// ingest thumbnail
 	thumbnail, thumbHeader, err := r.FormFile("thumbnail")
 	if err != nil {
 		if err != http.ErrMissingFile {
@@ -97,13 +114,6 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 	}
 	defer thumbnail.Close()
 
-	obj, err := uploads.IngestProject(file, header, user)
-	if err != nil {
-		sentry.CaptureException(err)
-		http.Error(w, "Failed to ingest project", http.StatusInternalServerError)
-		return
-	}
-
 	thumbObj, err := uploads.IngestImage("thumbnails", thumbnail, thumbHeader, user)
 	if err != nil {
 		sentry.CaptureException(err)
@@ -111,7 +121,26 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprint(w, obj.Id, ",", thumbObj.Id)
+	p := projects.Project{
+		Author:      user.Id,
+		Title:       &title,
+		Description: &desc,
+		Thumbnail:   fmt.Sprint("/uploads/", thumbObj.Id),
+		File:        fmt.Sprint("/uploads/", obj.Id),
+	}
+
+	id, err := p.Insert()
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to ingest project", http.StatusInternalServerError)
+		return
+	}
+
+	p.Id = id
+
+	resp, _ := json.Marshal(p)
+	w.Header().Add("Content-Type", "application/json")
+	fmt.Fprint(w, string(resp))
 }
 
 func download(w http.ResponseWriter, r *http.Request) {

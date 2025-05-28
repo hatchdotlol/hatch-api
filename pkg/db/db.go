@@ -83,7 +83,8 @@ func InitDB() error {
 		shared INTEGER NOT NULL,
 		rating TEXT NOT NULL,
 		score INTEGER NOT NULL,
-		thumbnail TEXT NOT NULL
+		thumbnail TEXT NOT NULL,
+		file TEXT NOT NULL
 	)`); err != nil {
 		return err
 	}

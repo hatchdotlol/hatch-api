@@ -40,6 +40,7 @@ func project(w http.ResponseWriter, r *http.Request) {
 		util.JSONError(w, http.StatusInternalServerError, "Failed to get project")
 	}
 
+	fmt.Printf("p: %v\n", p)
 	user, err := users.UserFromRow(db.Db.QueryRow("SELECT * FROM users WHERE id = ?", p.Author))
 	if err != nil {
 		util.JSONError(w, http.StatusInternalServerError, "Failed to get project")
@@ -58,7 +59,7 @@ func project(w http.ResponseWriter, r *http.Request) {
 			ProfilePicture: user.ProfilePicture,
 			DisplayName:    user.DisplayName,
 		},
-		UploadTs:     p.UploadTs,
+		UploadTs:     *p.UploadTs,
 		Title:        *p.Title,
 		Description:  *p.Description,
 		Version:      nil,
