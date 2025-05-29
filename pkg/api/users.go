@@ -12,6 +12,7 @@ import (
 	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
+	"github.com/hatchdotlol/hatch-api/pkg/uploads"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
 	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
@@ -20,6 +21,7 @@ func UserRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Get("/{username}", user)
+	r.Get("/{username}/pfp", userPfp)
 	r.Get("/{username}/projects", userProjects)
 
 	return r
@@ -82,6 +84,19 @@ func user(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, string(resp))
 }
 
+func userPfp(w http.ResponseWriter, r *http.Request) {
+	username := chi.URLParam(r, "username")
+
+	user, err := users.UserByName(username, true)
+	if err != nil {
+		sentry.CaptureException(err)
+		util.JSONError(w, http.StatusNotFound, "User not found")
+		return
+	}
+
+	uploads.Download(user.ProfilePicture, w, r)
+}
+
 func userProjects(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
@@ -106,9 +121,13 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := user.Id
-	fmt.Printf("id: %v\n", id)
 
-	rows, err := db.Db.Query("SELECT * FROM projects WHERE author = ? LIMIT ?, ?", id, page*util.Config.PerPage, (page+1)*util.Config.PerPage)
+	rows, err := db.Db.Query(
+		"SELECT id, author, upload_ts, title, description, shared, rating, score FROM projects WHERE author = ? LIMIT ?, ?",
+		id,
+		page*util.Config.PerPage,
+		(page+1)*util.Config.PerPage,
+	)
 	if err != nil {
 		sentry.CaptureException(err)
 		util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
@@ -153,10 +172,9 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		projectResp = append(projectResp, models.ProjectResp{
 			Id: id,
 			Author: models.Author{
-				Id:             user.Id,
-				Username:       user.Name,
-				ProfilePicture: user.ProfilePicture,
-				DisplayName:    user.DisplayName,
+				Id:          user.Id,
+				Username:    user.Name,
+				DisplayName: user.DisplayName,
 			},
 			UploadTs:     uploadTs,
 			Title:        title,

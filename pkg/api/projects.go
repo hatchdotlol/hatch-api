@@ -65,10 +65,9 @@ func project(w http.ResponseWriter, r *http.Request) {
 	resp, _ := json.Marshal(models.ProjectResp{
 		Id: p.Id,
 		Author: models.Author{
-			Id:             user.Id,
-			Username:       user.Name,
-			ProfilePicture: user.ProfilePicture,
-			DisplayName:    user.DisplayName,
+			Id:          user.Id,
+			Username:    user.Name,
+			DisplayName: user.DisplayName,
 		},
 		UploadTs:     *p.UploadTs,
 		Title:        *p.Title,

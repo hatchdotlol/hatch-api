@@ -3,6 +3,7 @@ package uploads
 import (
 	"errors"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"os"
 	"os/exec"
@@ -76,6 +77,7 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 	if err != nil {
 		return nil, err
 	}
+	log.Println(string(mime))
 	if !strings.HasPrefix(strings.Fields(string(mime))[1], "image/") {
 		return nil, ErrUnsupported
 	}
@@ -144,7 +146,7 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 	if bucket == "pfps" {
 		if _, err := tx.Exec(
 			"UPDATE users SET profile_picture = ? WHERE id = ?",
-			fmt.Sprint("/uploads/", f.Id),
+			f.Id,
 			user.Id,
 		); err != nil {
 			return nil, err
@@ -152,7 +154,7 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 	} else if bucket == "thumbnails" {
 		if _, err := tx.Exec(
 			"UPDATE projects SET thumbnail = ? WHERE id = ?",
-			fmt.Sprint("/uploads/", f.Id),
+			f.Id,
 			user.Id,
 		); err != nil {
 			return nil, err

@@ -20,10 +20,9 @@ type UserResp struct {
 }
 
 type Author struct {
-	Id             int64   `json:"id"`
-	Username       string  `json:"username"`
-	ProfilePicture string  `json:"profilePicture"`
-	DisplayName    *string `json:"displayName,omitempty"`
+	Id          int64   `json:"id"`
+	Username    string  `json:"username"`
+	DisplayName *string `json:"displayName,omitempty"`
 }
 
 type ProjectResp struct {
