@@ -11,6 +11,7 @@ import (
 
 	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
+	"github.com/hatchdotlol/hatch-api/pkg/util"
 	"github.com/minio/minio-go/v7"
 )
 
@@ -36,7 +37,7 @@ func ImageDimensions(imagePath string) (*int, *int, error) {
 }
 
 func IngestImage(bucket string, file multipart.File, header *multipart.FileHeader, user *users.UserRow) (*db.File, error) {
-	id, err := GenerateId()
+	id, err := util.GenerateId(16)
 	if err != nil {
 		return nil, err
 	}

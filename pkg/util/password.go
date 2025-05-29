@@ -1,8 +1,11 @@
-package api
+package util
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"math"
 	"slices"
+	"strings"
 )
 
 func Entropy(password string) float64 {
@@ -42,4 +45,19 @@ func charset(password string) float64 {
 	}
 
 	return float64(charset)
+}
+
+func GenerateId(n int) (string, error) {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+
+	id := base64.URLEncoding.EncodeToString(b)
+	id = strings.ReplaceAll(id, "-", "a")
+	id = strings.ReplaceAll(id, "_", "b")
+	id = strings.ReplaceAll(id, "=", "c")
+
+	return id, err
 }

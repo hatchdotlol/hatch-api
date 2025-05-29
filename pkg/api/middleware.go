@@ -7,6 +7,7 @@ import (
 	"github.com/hatchdotlol/hatch-api/pkg/users"
 )
 
+// Check if a user exists from a token
 func GoodUser(w http.ResponseWriter, r *http.Request) *users.UserRow {
 	token := r.Header.Get("Token")
 
@@ -28,6 +29,7 @@ type userKey struct{}
 
 var User = userKey{}
 
+// Ensure a correct token exists
 func EnsureUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := GoodUser(w, r)
@@ -40,6 +42,7 @@ func EnsureUser(next http.Handler) http.Handler {
 	})
 }
 
+// Ensure the user from given token is verified
 func EnsureVerified(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := GoodUser(w, r)
@@ -47,8 +50,13 @@ func EnsureVerified(next http.Handler) http.Handler {
 			return
 		}
 
-		if u.Banned || !u.Verified {
+		if u.Banned {
 			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+
+		if !u.Verified {
+			http.Error(w, "Your email is not verified", http.StatusUnauthorized)
 			return
 		}
 

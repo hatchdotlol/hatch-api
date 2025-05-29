@@ -2,8 +2,6 @@ package uploads
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -43,21 +41,6 @@ func SaveToIngest(obj io.Reader, dir string) error {
 	}
 
 	return nil
-}
-
-func GenerateId() (string, error) {
-	b := make([]byte, 18)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
-	}
-
-	id := base64.URLEncoding.EncodeToString(b)
-	id = strings.ReplaceAll(id, "-", "a")
-	id = strings.ReplaceAll(id, "_", "b")
-	id = strings.ReplaceAll(id, "=", "c")
-
-	return id, err
 }
 
 func FileHash(path string) (*string, error) {

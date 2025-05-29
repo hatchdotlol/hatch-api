@@ -63,3 +63,50 @@ func UserFromRow(row *sql.Row) (*UserRow, error) {
 
 	return &user, nil
 }
+
+func (p *UserRow) Insert() error {
+	tx, err := db.Db.Begin()
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(
+		`INSERT INTO users (
+			name,
+			pw,
+			display_name,
+			country,
+			bio,
+			highlighted_projects,
+			profile_picture,
+			join_date,
+			banner_image,
+			followers,
+			following,
+			verified,
+			email,
+			banned,
+			theme
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		p.Name,
+		p.Pw,
+		p.DisplayName,
+		p.Country,
+		p.Bio,
+		p.HighlightedProjects,
+		p.ProfilePicture,
+		p.JoinDate,
+		p.BannerImage,
+		p.Followers,
+		p.Following,
+		p.Verified,
+		p.Email,
+		p.Banned,
+		p.Theme,
+	)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

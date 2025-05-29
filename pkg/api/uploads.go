@@ -91,10 +91,10 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	_, f, err := uploads.IngestProject(file, header, user)
+	_, err = uploads.IngestProject(file, header, user)
 	if err != nil {
 		if err == uploads.ErrAssetTooLarge {
-			http.Error(w, fmt.Sprint("Project contains asset that exceeds 15 MB: ", f), http.StatusBadRequest)
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
