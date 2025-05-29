@@ -15,7 +15,7 @@ func AuthRouter() *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Group(func(r chi.Router) {
-		r.Use(EnsureVerified)
+		r.Use(EnsureUser)
 		r.Get("/me", me)
 	})
 
@@ -37,8 +37,9 @@ func me(w http.ResponseWriter, r *http.Request) {
 		Verified:       user.Verified,
 		Theme:          user.Theme,
 		HatchTeam:      util.Config.Mods[user.Name],
+		Banned:         &user.Banned,
 	})
 
 	w.Header().Add("Content-Type", "application/json")
-	fmt.Fprintln(w, string(resp))
+	fmt.Fprint(w, string(resp))
 }

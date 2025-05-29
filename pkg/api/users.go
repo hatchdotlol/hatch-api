@@ -106,6 +106,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := user.Id
+	fmt.Printf("id: %v\n", id)
 
 	rows, err := db.Db.Query("SELECT * FROM projects WHERE author = ? LIMIT ?, ?", id, page*util.Config.PerPage, (page+1)*util.Config.PerPage)
 	if err != nil {
@@ -119,18 +120,17 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var (
-			projectId    int64
-			authorId     uint32
-			uploadTs     int64
-			title        string
-			description  string
-			shared       bool
-			rating       string
-			score        int64
-			thumbnailExt string
+			projectId   int64
+			authorId    uint32
+			uploadTs    int64
+			title       string
+			description string
+			shared      bool
+			rating      string
+			score       int64
 		)
 
-		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score, &thumbnailExt); err != nil {
+		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score); err != nil {
 			sentry.CaptureException(err)
 			util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 			return
@@ -150,8 +150,6 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		thumbnail := fmt.Sprintf("/uploads/thumb/%d.%s", projectId, thumbnailExt)
-
 		projectResp = append(projectResp, models.ProjectResp{
 			Id: id,
 			Author: models.Author{
@@ -165,7 +163,6 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 			Description:  description,
 			Version:      nil,
 			Rating:       rating,
-			Thumbnail:    thumbnail,
 			CommentCount: *commentCount,
 			Upvotes:      *upvotes,
 			Downvotes:    *downvotes,

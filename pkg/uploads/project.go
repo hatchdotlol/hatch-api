@@ -129,7 +129,7 @@ func uploadProject(file db.File, filePath string, assets []string) error {
 	defer os.RemoveAll(strings.Replace(filePath, "/original", "", 1))
 
 	// prune assets on scratch
-	fmt.Printf("assets to check: %v (%d)\n", assets, len(assets))
+	log.Printf("assets to check: %v (%d)\n", assets, len(assets))
 	pruned := []string{}
 	for _, a := range assets {
 		log.Println("checking", a)
