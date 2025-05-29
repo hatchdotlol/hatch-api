@@ -43,5 +43,28 @@ func GetOrCreateToken(user int64) (*string, error) {
 		return nil, err
 	}
 
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
 	return &newToken, nil
+}
+
+func RemoveTokens(user int64) error {
+	tx, err := db.Db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(
+		"DELETE FROM auth_tokens WHERE user = ?", user,
+	); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }

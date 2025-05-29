@@ -25,6 +25,8 @@ func AuthRouter() *chi.Mux {
 	r.Group(func(r chi.Router) {
 		r.Use(EnsureUser)
 		r.Get("/me", me)
+		r.Get("/logout", logout)
+		r.Get("/delete", delete)
 	})
 
 	return r
@@ -156,6 +158,18 @@ func login(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{"token": "%s"}`, *token)
 }
 
+func logout(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(User).(*users.UserRow)
+
+	if err := users.RemoveTokens(user.Id); err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to log out", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, "Logged out")
+}
+
 func me(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(User).(*users.UserRow)
 
@@ -176,4 +190,29 @@ func me(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprint(w, string(resp))
+}
+
+func delete(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(User).(*users.UserRow)
+
+	// check provided password
+	body := util.ReadBody(r)
+	if body != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	password := string(body)
+	if err := bcrypt.CompareHashAndPassword(
+		[]byte(user.Pw),
+		[]byte(password),
+	); err != nil {
+		if err != bcrypt.ErrMismatchedHashAndPassword {
+			sentry.CaptureException(err)
+		}
+		http.Error(w, "Invalid username/password", http.StatusBadRequest)
+		return
+	}
+
+	// TODO: delete account
 }
