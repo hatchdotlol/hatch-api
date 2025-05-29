@@ -26,7 +26,7 @@ func UploadRouter() *chi.Mux {
 
 func upload(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(5e6); err != nil {
-		http.Error(w, "Image exceeds 5 mb", http.StatusBadRequest)
+		http.Error(w, "Image exceeds 5 MB", http.StatusBadRequest)
 		return
 	}
 
@@ -37,6 +37,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		if err != http.ErrMissingFile {
 			sentry.CaptureException(err)
 		}
+
 		http.Error(w, "Invalid form", http.StatusBadRequest)
 		return
 	}
@@ -50,6 +51,11 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 	obj, err := uploads.IngestImage(bucket, file, header, user)
 	if err != nil {
+		if err == uploads.ErrUnsupported {
+			http.Error(w, "Unsupported file type", http.StatusBadRequest)
+			return
+		}
+
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to upload", http.StatusInternalServerError)
 		return
@@ -59,8 +65,8 @@ func upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func uploadProject(w http.ResponseWriter, r *http.Request) {
-	if err := r.ParseMultipartForm(500e6); err != nil {
-		http.Error(w, "Form exceeds 500 mb", http.StatusBadRequest)
+	if err := r.ParseMultipartForm(5e8); err != nil {
+		http.Error(w, "Form exceeds 500 MB", http.StatusBadRequest)
 		return
 	}
 
@@ -79,13 +85,19 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 		if err != http.ErrMissingFile {
 			sentry.CaptureException(err)
 		}
+
 		http.Error(w, "Invalid form", http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
 
-	_, err = uploads.IngestProject(file, header, user)
+	_, f, err := uploads.IngestProject(file, header, user)
 	if err != nil {
+		if err == uploads.ErrAssetTooLarge {
+			http.Error(w, fmt.Sprint("Project contains asset that exceeds 15 MB: ", f), http.StatusBadRequest)
+			return
+		}
+
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to ingest project", http.StatusInternalServerError)
 		return
@@ -97,6 +109,7 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 		if err != http.ErrMissingFile {
 			sentry.CaptureException(err)
 		}
+
 		http.Error(w, "Invalid form", http.StatusBadRequest)
 		return
 	}
@@ -104,6 +117,11 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 
 	_, err = uploads.IngestImage("thumbnails", thumbnail, thumbHeader, user)
 	if err != nil {
+		if err == uploads.ErrUnsupported {
+			http.Error(w, "Unsupported file type for thumbnail", http.StatusBadRequest)
+			return
+		}
+
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to ingest thumbnail", http.StatusInternalServerError)
 		return

@@ -3,7 +3,6 @@ package uploads
 import (
 	"errors"
 	"fmt"
-	"log"
 	"mime/multipart"
 	"os"
 	"os/exec"
@@ -77,7 +76,7 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 	if err != nil {
 		return nil, err
 	}
-	log.Println(string(mime))
+
 	if !strings.HasPrefix(strings.Fields(string(mime))[1], "image/") {
 		return nil, ErrUnsupported
 	}
