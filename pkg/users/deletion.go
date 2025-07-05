@@ -8,7 +8,7 @@ import (
 	"github.com/minio/minio-go/v7"
 )
 
-func ScheduleDeletion(user int64) error {
+func DeleteUser(user int64) error {
 	rows, err := db.Db.Query("SELECT id, buckets FROM uploads WHERE uploads = ?", user)
 	if err != nil {
 		return err

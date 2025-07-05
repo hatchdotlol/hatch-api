@@ -214,5 +214,11 @@ func delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: delete account
+	go func() {
+		if err := users.DeleteUser(user.Id); err != nil {
+			sentry.CaptureException(err)
+		}
+	}()
+
+	fmt.Fprint(w, "Account deletion scheduled. Please wait")
 }

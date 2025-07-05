@@ -128,12 +128,13 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		page*util.Config.PerPage,
 		(page+1)*util.Config.PerPage,
 	)
-	defer rows.Close()
+
 	if err != nil {
 		sentry.CaptureException(err)
 		util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
 		return
 	}
+	defer rows.Close()
 
 	projectResp := []models.ProjectResp{}
 
