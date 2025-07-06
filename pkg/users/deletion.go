@@ -78,5 +78,7 @@ func DeleteUser(user int64) error {
 		sentry.CaptureException(&rErr)
 	}
 
+	// TODO: delete user row when all other features are done
+
 	return nil
 }
