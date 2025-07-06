@@ -61,7 +61,8 @@ func Router() *chi.Mux {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 
-	r.Options("/*", func(w http.ResponseWriter, r *http.Request) { fmt.Fprint(w, "") })
+	r.Options("/*", func(w http.ResponseWriter, r *http.Request) {})
+	r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {})
 	r.Get("/", Root)
 
 	r.Mount("/users", UserRouter())

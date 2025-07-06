@@ -7,6 +7,7 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
+	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
 func AdminRouter() *chi.Mux {
@@ -32,10 +33,13 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 		if err := users.DeleteUser(user.Id); err != nil {
 			sentry.CaptureException(err)
 		}
+		sentry.CaptureMessage(fmt.Sprint(user.Name, " has deleted their account"))
 	}()
 
 	fmt.Fprint(w, "Account deletion scheduled. Please wait")
 }
+
+const banMessage = "***[%s](https://dev.hatch.lol/user?u=%s) was %sned by [%s](https://dev.hatch.lol/user?u=%s).*** 🔨"
 
 func banUser(w http.ResponseWriter, r *http.Request) {
 	user, err := users.UserByName(chi.URLParam(r, "username"), true)
@@ -52,5 +56,9 @@ func banUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	go func() {
+		you := r.Context().Value(User).(*users.UserRow)
+		util.LogMessage(fmt.Sprintf(banMessage, user.Name, user.Name, action, you.Name, you.Name))
+	}()
 	fmt.Fprintf(w, "Account %sned", action)
 }

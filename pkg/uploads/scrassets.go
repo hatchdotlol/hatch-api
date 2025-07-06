@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-var client = http.Client{
+var scratchClient = http.Client{
 	Timeout: time.Duration(10) * time.Second,
 }
 
@@ -18,14 +18,17 @@ func AssetExists(file string) (bool, error) {
 	if ok {
 		return true, nil
 	}
-	resp, err := client.Head(fmt.Sprintf("https://assets.scratch.mit.edu/internalapi/%s/get/", file))
+
+	resp, err := scratchClient.Head(fmt.Sprintf("https://assets.scratch.mit.edu/internalapi/%s/get/", file))
 	if err != nil {
 		return false, err
 	}
+
 	exists := resp.StatusCode == http.StatusOK
 	if exists {
 		// i love heuristics^tm
 		assetCache[file] = true
 	}
+
 	return exists, nil
 }
