@@ -20,6 +20,10 @@ import (
 func UserRouter() *chi.Mux {
 	r := chi.NewRouter()
 
+	r.Group(func(r chi.Router) {
+		r.Use(EnsureUser)
+		r.Post("/", updateProfile)
+	})
 	r.Get("/{username}", user)
 	r.Get("/{username}/pfp", userPfp)
 	r.Get("/{username}/projects", userProjects)
@@ -194,4 +198,20 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprintln(w, string(resp))
+}
+
+func updateProfile(w http.ResponseWriter, r *http.Request) {
+	var form models.RegisterForm
+
+	body := util.HttpBody(r)
+	if body == nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+	if err := json.Unmarshal(body, &form); err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	fmt.Fprintln(w, ":think:")
 }

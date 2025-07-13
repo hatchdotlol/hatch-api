@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func ReadBody(r *http.Request) []byte {
+func HttpBody(r *http.Request) []byte {
 	body := r.Body
 	defer body.Close()
 

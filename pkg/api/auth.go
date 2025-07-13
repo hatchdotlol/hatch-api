@@ -43,7 +43,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 
 	var form models.RegisterForm
 
-	body := util.ReadBody(r)
+	body := util.HttpBody(r)
 	if body == nil {
 		http.Error(w, "Invalid form", http.StatusBadRequest)
 		return
@@ -120,7 +120,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 func login(w http.ResponseWriter, r *http.Request) {
 	var form models.LoginForm
 
-	body := util.ReadBody(r)
+	body := util.HttpBody(r)
 	if body == nil {
 		http.Error(w, "Invalid form", http.StatusBadRequest)
 		return
@@ -196,7 +196,7 @@ func delete(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(User).(*users.UserRow)
 
 	// check provided password
-	body := util.ReadBody(r)
+	body := util.HttpBody(r)
 	if body != nil {
 		http.Error(w, "Invalid form", http.StatusBadRequest)
 		return
