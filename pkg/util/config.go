@@ -34,7 +34,6 @@ func InitConfig() {
 
 	Config = config{
 		StartTime:      time.Now().Unix(),
-		Version:        os.Getenv("VERSION"),
 		AdminKey:       os.Getenv("ADMIN_KEY"),
 		ResendKey:      os.Getenv("RESEND_KEY"),
 		Mods:           mods,
@@ -48,7 +47,6 @@ var Config config
 
 type config struct {
 	StartTime      int64
-	Version        string
 	AdminKey       string
 	ResendKey      string
 	Mods           map[string]bool

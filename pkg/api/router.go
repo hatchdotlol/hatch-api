@@ -22,9 +22,8 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	"website": "https://hatch.lol",
 	"api": "https://api.hatch.lol",
 	"forums": "https://forums.hatch.lol",
-	"email": "contact@hatch.lol",
-	"version": "%s"
-}`, util.Config.StartTime, util.Config.Version)
+	"email": "contact@hatch.lol"
+}`, util.Config.StartTime)
 }
 
 func Router() *chi.Mux {
