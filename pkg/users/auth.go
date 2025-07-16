@@ -18,7 +18,7 @@ func GetOrCreateToken(user int64) (*string, error) {
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}
-	if err == sql.ErrNoRows {
+	if err == nil {
 		return &token, nil
 	}
 

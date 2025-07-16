@@ -62,5 +62,5 @@ print("- Restarting API")
 
 ssh.exec_command("lsof -i tcp:8080 | awk 'NR!=1 {print $2}' | xargs kill")
 ssh.exec_command(
-    f"cd {directory} && source .env && chmod +x {api_loc} && {api_loc} >/dev/null 2>&1 &"
+    f"cd {directory} && source .env && chmod +x {api_loc} && {api_loc} > logs 2>&1 &"
 )

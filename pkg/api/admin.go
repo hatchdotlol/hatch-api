@@ -60,5 +60,6 @@ func banUser(w http.ResponseWriter, r *http.Request) {
 		you := r.Context().Value(User).(*users.UserRow)
 		util.LogMessage(fmt.Sprintf(banMessage, user.Name, user.Name, action, you.Name, you.Name))
 	}()
+
 	fmt.Fprintf(w, "Account %sned", action)
 }
