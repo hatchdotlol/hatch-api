@@ -7,7 +7,7 @@ type UserResp struct {
 	Country             string  `json:"country"`
 	Bio                 *string `json:"bio"`
 	HighlightedProjects []int64 `json:"highlightedProjects"`
-	ProfilePicture      string  `json:"profilePicture"`
+	ProfilePicture      string  `json:"-"`
 	JoinDate            string  `json:"joinDate"`
 	BannerImage         *string `json:"bannerImage"`
 	FollowerCount       int     `json:"followerCount"`
