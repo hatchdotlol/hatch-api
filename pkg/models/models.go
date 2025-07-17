@@ -33,7 +33,7 @@ type ProjectResp struct {
 	Description  string `json:"description"`
 	Version      *uint  `json:"version,omitempty"`
 	Rating       string `json:"rating"`
-	Thumbnail    string `json:"thumbnail"`
+	Thumbnail    string `json:"-"`
 	CommentCount int64  `json:"commentCount"`
 	Upvotes      int64  `json:"upvotes"`
 	Downvotes    int64  `json:"downvotes"`

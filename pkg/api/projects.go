@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
 	"github.com/hatchdotlol/hatch-api/pkg/uploads"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
-	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
 func ProjectRouter() *chi.Mux {
@@ -37,29 +37,29 @@ func ProjectRouter() *chi.Mux {
 func project(w http.ResponseWriter, r *http.Request) {
 	id_, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
-		util.JSONError(w, http.StatusBadRequest, "Bad request")
+		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
 	id := int64(id_)
 
 	p, err := projects.ProjectById(id)
 	if err != nil || !p.Shared {
-		util.JSONError(w, http.StatusNotFound, "Project not found")
+		http.Error(w, "Project not found", http.StatusNotFound)
 	}
 
 	upv, downv, err := projects.ProjectVotes(id)
 	if err != nil {
-		util.JSONError(w, http.StatusInternalServerError, "Failed to get project")
+		http.Error(w, "Failed to get project", http.StatusInternalServerError)
 	}
 
 	user, err := users.UserFromRow(db.Db.QueryRow("SELECT * FROM users WHERE id = ?", p.Author))
 	if err != nil {
-		util.JSONError(w, http.StatusInternalServerError, "Failed to get project")
+		http.Error(w, "Failed to get project", http.StatusInternalServerError)
 	}
 
 	commentCount, err := projects.CommentCount(p.Id)
 	if err != nil {
-		util.JSONError(w, http.StatusInternalServerError, "Failed to get project")
+		http.Error(w, "Failed to get project", http.StatusInternalServerError)
 	}
 
 	resp, _ := json.Marshal(models.ProjectResp{
@@ -93,6 +93,7 @@ func projectThumbnail(w http.ResponseWriter, r *http.Request) {
 
 	p, err := projects.ProjectById(id)
 	if err != nil || !p.Shared {
+		sentry.CaptureException(err)
 		http.Error(w, "Project not found", http.StatusNotFound)
 		return
 	}

@@ -37,7 +37,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 	user, err := users.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		util.JSONError(w, http.StatusNotFound, "User not found")
+		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
@@ -53,7 +53,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 	projectCount, err := projects.ProjectCount(user.Id)
 	if err != nil {
 		sentry.CaptureException(err)
-		util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 	}
 
 	var followerCount = 0
@@ -94,7 +94,7 @@ func userPfp(w http.ResponseWriter, r *http.Request) {
 	user, err := users.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		util.JSONError(w, http.StatusNotFound, "User not found")
+		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
@@ -110,7 +110,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		_page, err := strconv.Atoi(_page)
 		if err != nil {
 			sentry.CaptureException(err)
-			util.JSONError(w, http.StatusBadRequest, "Bad request")
+			http.Error(w, "Bad request", http.StatusBadRequest)
 			return
 		}
 		page = _page
@@ -121,7 +121,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	user, err := users.UserByName(username, true)
 	if err != nil {
 		sentry.CaptureException(err)
-		util.JSONError(w, http.StatusNotFound, "User not found")
+		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 	id := user.Id
@@ -135,7 +135,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		sentry.CaptureException(err)
-		util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
@@ -156,21 +156,21 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 
 		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score); err != nil {
 			sentry.CaptureException(err)
-			util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
 
 		commentCount, err := projects.CommentCount(projectId)
 		if err != nil {
 			sentry.CaptureException(err)
-			util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
 
 		upvotes, downvotes, err := projects.ProjectVotes(projectId)
 		if err != nil {
 			sentry.CaptureException(err)
-			util.JSONError(w, http.StatusInternalServerError, "Something went wrong")
+			http.Error(w, "Something went wrong", http.StatusInternalServerError)
 			return
 		}
 

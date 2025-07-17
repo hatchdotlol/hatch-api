@@ -1,14 +1,14 @@
-package users
+package projects
 
 import "github.com/hatchdotlol/hatch-api/pkg/db"
 
-func BanUser(user int64, ban bool) error {
+func UnshareProject(id int64, share bool) error {
 	tx, err := db.Db.Begin()
 	if err != nil {
 		return err
 	}
 
-	if _, err := tx.Exec("UPDATE users SET banned = ? WHERE id = ?", ban, user); err != nil {
+	if _, err := tx.Exec("UPDATE projects SET shared = ? WHERE id = ?", share, id); err != nil {
 		return err
 	}
 
