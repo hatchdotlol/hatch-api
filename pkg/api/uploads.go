@@ -132,7 +132,7 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 		Title:       &title,
 		Description: &desc,
 		Thumbnail:   thumbRow.Id,
-		File:        projectRow.Id,
+		File:        &projectRow.Id,
 	}
 
 	id, err := p.Insert()

@@ -16,7 +16,6 @@ func Download(id string, w http.ResponseWriter, r *http.Request) {
 	file, err := db.GetFile(id)
 
 	if err != nil {
-		sentry.CaptureException(err)
 		if err != sql.ErrNoRows {
 			sentry.CaptureException(err)
 		}

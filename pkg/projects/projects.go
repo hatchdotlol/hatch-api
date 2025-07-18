@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"github.com/hatchdotlol/hatch-api/pkg/db"
+	"github.com/hatchdotlol/hatch-api/pkg/models"
+	"github.com/hatchdotlol/hatch-api/pkg/users"
 )
 
 type Project struct {
@@ -16,7 +18,7 @@ type Project struct {
 	Rating      string  `json:"rating,omitempty"`
 	Score       int64   `json:"score,omitempty"`
 	Thumbnail   string  `json:"thumbnail,omitempty"`
-	File        string  `json:"file,omitempty"`
+	File        *string `json:"file,omitempty"`
 }
 
 func ProjectById(id int64) (*Project, error) {
@@ -94,4 +96,43 @@ func (p *Project) Insert() (int64, error) {
 	}
 
 	return insert.LastInsertId()
+}
+
+func ProjectInfoById(id int64) (*models.ProjectResp, error) {
+	p, err := ProjectById(id)
+	if err != nil || !p.Shared {
+		return nil, err
+	}
+
+	upv, downv, err := ProjectVotes(id)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := users.UserFromRow(db.Db.QueryRow("SELECT * FROM users WHERE id = ?", p.Author))
+	if err != nil {
+		return nil, err
+	}
+
+	commentCount, err := CommentCount(p.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &models.ProjectResp{
+		Id: p.Id,
+		Author: models.Author{
+			Id:          user.Id,
+			Username:    user.Name,
+			DisplayName: user.DisplayName,
+		},
+		UploadTs:     *p.UploadTs,
+		Title:        *p.Title,
+		Description:  *p.Description,
+		Version:      nil,
+		Rating:       p.Rating,
+		CommentCount: *commentCount,
+		Upvotes:      *upv,
+		Downvotes:    *downv,
+	}, nil
 }

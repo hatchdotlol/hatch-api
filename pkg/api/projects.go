@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,8 +10,6 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
-	"github.com/hatchdotlol/hatch-api/pkg/db"
-	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
 	"github.com/hatchdotlol/hatch-api/pkg/uploads"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
@@ -42,46 +41,24 @@ func project(w http.ResponseWriter, r *http.Request) {
 	}
 	id := int64(id_)
 
-	p, err := projects.ProjectById(id)
-	if err != nil || !p.Shared {
-		http.Error(w, "Project not found", http.StatusNotFound)
-	}
-
-	upv, downv, err := projects.ProjectVotes(id)
+	project, err := projects.ProjectInfoById(id)
 	if err != nil {
-		http.Error(w, "Failed to get project", http.StatusInternalServerError)
+		if err == sql.ErrNoRows {
+			http.Error(w, "Project not found", http.StatusNotFound)
+			return
+		} else {
+			sentry.CaptureException(err)
+			http.Error(w, "Failed to get project info", http.StatusInternalServerError)
+			return
+		}
 	}
-
-	user, err := users.UserFromRow(db.Db.QueryRow("SELECT * FROM users WHERE id = ?", p.Author))
-	if err != nil {
-		http.Error(w, "Failed to get project", http.StatusInternalServerError)
-	}
-
-	commentCount, err := projects.CommentCount(p.Id)
-	if err != nil {
-		http.Error(w, "Failed to get project", http.StatusInternalServerError)
-	}
-
-	resp, _ := json.Marshal(models.ProjectResp{
-		Id: p.Id,
-		Author: models.Author{
-			Id:          user.Id,
-			Username:    user.Name,
-			DisplayName: user.DisplayName,
-		},
-		UploadTs:     *p.UploadTs,
-		Title:        *p.Title,
-		Description:  *p.Description,
-		Version:      nil,
-		Rating:       p.Rating,
-		CommentCount: *commentCount,
-		Upvotes:      *upv,
-		Downvotes:    *downv,
-	})
+	resp, _ := json.Marshal(project)
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprintln(w, string(resp))
 }
+
+// TODO: fallback on thumbnail or projects stored with v1 api
 
 func projectThumbnail(w http.ResponseWriter, r *http.Request) {
 	id_, err := strconv.Atoi(chi.URLParam(r, "id"))
@@ -122,5 +99,5 @@ func projectContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uploads.Download(p.File, w, r)
+	uploads.Download(*p.File, w, r)
 }
