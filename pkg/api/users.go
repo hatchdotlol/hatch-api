@@ -98,7 +98,7 @@ func userPfp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uploads.Download(user.ProfilePicture, w, r)
+	uploads.Download(&user.ProfilePicture, nil, w, r)
 }
 
 func userProjects(w http.ResponseWriter, r *http.Request) {

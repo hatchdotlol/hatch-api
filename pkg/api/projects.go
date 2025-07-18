@@ -75,7 +75,7 @@ func projectThumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uploads.Download(p.Thumbnail, w, r)
+	uploads.Download(&p.Thumbnail, &id, w, r)
 }
 
 func projectContent(w http.ResponseWriter, r *http.Request) {
@@ -99,5 +99,5 @@ func projectContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	uploads.Download(*p.File, w, r)
+	uploads.Download(p.File, &id, w, r)
 }

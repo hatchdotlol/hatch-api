@@ -20,7 +20,7 @@ func Root(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `{
 	"startTime": "%d",
 	"website": "https://hatch.lol",
-	"api": "https://api.hatch.lol",
+	"api": "https://apiv2.hatch.lol",
 	"forums": "https://forums.hatch.lol",
 	"email": "contact@hatch.lol"
 }`, util.Config.StartTime)
