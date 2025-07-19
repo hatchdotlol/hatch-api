@@ -23,6 +23,7 @@ func UserRouter() *chi.Mux {
 	r.Group(func(r chi.Router) {
 		r.Use(EnsureUser)
 		r.Post("/", updateProfile)
+		r.Post("/{username}/{action:follow|unfollow}", followUser)
 	})
 	r.Get("/{username}", user)
 	r.Get("/{username}/pfp", userPfp)
@@ -214,4 +215,22 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintln(w, ":think:")
+}
+
+func followUser(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(User).(*users.UserRow)
+	action := chi.URLParam(r, "action")
+	followee := chi.URLParam(r, "username")
+
+	if err := users.Follow(followee, user.Id, action == "follow"); err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, fmt.Sprintf("Failed to %s %s", action, followee), http.StatusInternalServerError)
+		return
+	}
+
+	Action := "Followed"
+	if action == "unfollow" {
+		Action = "Unfollowed"
+	}
+	fmt.Fprintf(w, "%s %s", Action, followee)
 }
