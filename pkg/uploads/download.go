@@ -30,6 +30,7 @@ func Download(id *string, projectId *int64, w http.ResponseWriter, r *http.Reque
 			"gif":
 			{
 				legacyDownload(*projectId, id, w)
+				return
 			}
 		}
 	}

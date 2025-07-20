@@ -103,30 +103,10 @@ func userPfp(w http.ResponseWriter, r *http.Request) {
 	uploads.Download(&user.ProfilePicture, nil, w, r)
 }
 
-func getPage(r *http.Request) (int, error) {
-	var page int
-
-	if _page := r.URL.Query().Get("page"); _page != "" {
-		_page, err := strconv.Atoi(_page)
-		if err != nil {
-			return -1, err
-		}
-		page = _page
-	} else {
-		page = 0
-	}
-
-	return page, nil
-}
-
 func userProjects(w http.ResponseWriter, r *http.Request) {
 	username := chi.URLParam(r, "username")
 
-	page, err := getPage(r)
-	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
+	page := util.Page(r)
 
 	user, err := users.UserByName(username, true)
 	if err != nil {
@@ -250,12 +230,6 @@ func userPeople(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User not found", http.StatusNotFound)
 	}
 
-	page, err := getPage(r)
-	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-
 	f := user.Followers
 	if group == "following" {
 		f = user.Following
@@ -268,7 +242,7 @@ func userPeople(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	people, err := users.UsersFromIds(strings.TrimRight(*f, ","), page)
+	people, err := users.UsersFromIds(strings.TrimRight(*f, ","), util.Page(r))
 	if err != nil {
 		fmt.Print(err)
 		sentry.CaptureException(err)

@@ -3,6 +3,7 @@ package util
 import (
 	"io"
 	"net/http"
+	"strconv"
 )
 
 func HttpBody(r *http.Request) []byte {
@@ -15,4 +16,20 @@ func HttpBody(r *http.Request) []byte {
 	}
 
 	return bodyb
+}
+
+func Page(r *http.Request) int {
+	var page int
+
+	if _page := r.URL.Query().Get("page"); _page != "" {
+		_page, err := strconv.Atoi(_page)
+		if err != nil {
+			return 0
+		}
+		page = _page
+	} else {
+		page = 0
+	}
+
+	return page
 }
