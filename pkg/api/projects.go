@@ -10,9 +10,11 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/hatchdotlol/hatch-api/pkg/comments"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
 	"github.com/hatchdotlol/hatch-api/pkg/uploads"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
+	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
 func ProjectRouter() *chi.Mux {
@@ -20,6 +22,7 @@ func ProjectRouter() *chi.Mux {
 
 	r.Get("/{id}", project)
 	r.Get("/{id}/thumbnail", projectThumbnail)
+	r.Get("/{id}/comments", projectComments)
 
 	// pass user context and ignore errors
 	r.With(func(h http.Handler) http.Handler {
@@ -100,4 +103,20 @@ func projectContent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	uploads.Download(p.File, &id, w, r)
+}
+
+func projectComments(w http.ResponseWriter, r *http.Request) {
+	page := util.Page(r)
+
+	comments, err := comments.Comments(comments.Project, chi.URLParam(r, "id"), page, nil)
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to get comments", http.StatusInternalServerError)
+		return
+	}
+
+	resp, _ := json.Marshal(comments)
+
+	w.Header().Add("Content-Type", "application/json")
+	fmt.Fprint(w, string(resp))
 }

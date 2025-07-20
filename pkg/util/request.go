@@ -18,6 +18,7 @@ func HttpBody(r *http.Request) []byte {
 	return bodyb
 }
 
+// read the ?page query param
 func Page(r *http.Request) int {
 	var page int
 

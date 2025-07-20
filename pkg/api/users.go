@@ -9,6 +9,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/hatchdotlol/hatch-api/pkg/comments"
 	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
@@ -29,6 +30,7 @@ func UserRouter() *chi.Mux {
 	r.Get("/{username}/pfp", userPfp)
 	r.Get("/{username}/projects", userProjects)
 	r.Get("/{username}/{group:followers|following}", userPeople)
+	r.Get("/{username}/comments", userComments)
 
 	return r
 }
@@ -252,5 +254,21 @@ func userPeople(w http.ResponseWriter, r *http.Request) {
 
 	resp, _ := json.Marshal(people)
 
+	fmt.Fprint(w, string(resp))
+}
+
+func userComments(w http.ResponseWriter, r *http.Request) {
+	page := util.Page(r)
+
+	comments, err := comments.Comments(comments.User, chi.URLParam(r, "id"), page, nil)
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to get comments", http.StatusInternalServerError)
+		return
+	}
+
+	resp, _ := json.Marshal(comments)
+
+	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprint(w, string(resp))
 }
