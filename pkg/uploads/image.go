@@ -36,7 +36,7 @@ func ImageDimensions(imagePath string) (*int, *int, error) {
 	return &width, &height, nil
 }
 
-func IngestImage(bucket string, file multipart.File, header *multipart.FileHeader, user *users.UserRow) (*db.File, error) {
+func IngestImage(bucket string, file multipart.File, header *multipart.FileHeader, user *users.User) (*db.File, error) {
 	id, err := util.GenerateId(16)
 	if err != nil {
 		return nil, err

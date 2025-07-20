@@ -28,6 +28,7 @@ func UserRouter() *chi.Mux {
 	r.Get("/{username}", user)
 	r.Get("/{username}/pfp", userPfp)
 	r.Get("/{username}/projects", userProjects)
+	r.Get("/{username}/{group:followers|following}", userPeople)
 
 	return r
 }
@@ -102,21 +103,29 @@ func userPfp(w http.ResponseWriter, r *http.Request) {
 	uploads.Download(&user.ProfilePicture, nil, w, r)
 }
 
-func userProjects(w http.ResponseWriter, r *http.Request) {
-	username := chi.URLParam(r, "username")
-
+func getPage(r *http.Request) (int, error) {
 	var page int
 
 	if _page := r.URL.Query().Get("page"); _page != "" {
 		_page, err := strconv.Atoi(_page)
 		if err != nil {
-			sentry.CaptureException(err)
-			http.Error(w, "Bad request", http.StatusBadRequest)
-			return
+			return -1, err
 		}
 		page = _page
 	} else {
 		page = 0
+	}
+
+	return page, nil
+}
+
+func userProjects(w http.ResponseWriter, r *http.Request) {
+	username := chi.URLParam(r, "username")
+
+	page, err := getPage(r)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
 	}
 
 	user, err := users.UserByName(username, true)
@@ -193,9 +202,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	resp, _ := json.Marshal(models.ProjectsResp{
-		Projects: projectResp,
-	})
+	resp, _ := json.Marshal(projectResp)
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprintln(w, string(resp))
@@ -218,7 +225,7 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func followUser(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value(User).(*users.UserRow)
+	user := r.Context().Value(User).(*users.User)
 	action := chi.URLParam(r, "action")
 	followee := chi.URLParam(r, "username")
 
@@ -233,4 +240,37 @@ func followUser(w http.ResponseWriter, r *http.Request) {
 		Action = "Unfollowed"
 	}
 	fmt.Fprintf(w, "%s %s", Action, followee)
+}
+
+func userPeople(w http.ResponseWriter, r *http.Request) {
+	group := chi.URLParam(r, "group")
+
+	user, err := users.UserByName(chi.URLParam(r, "username"), true)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+	}
+
+	page, err := getPage(r)
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	f := user.Followers
+	if group == "following" {
+		f = user.Following
+	}
+
+	people, err := users.UsersFromIds(*f, page)
+	if err != nil {
+		fmt.Print(err)
+		sentry.CaptureException(err)
+		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		return
+	}
+
+	resp, _ := json.Marshal(people)
+
+	w.Header().Add("Content-Type", "application/json")
+	fmt.Fprintln(w, string(resp))
 }

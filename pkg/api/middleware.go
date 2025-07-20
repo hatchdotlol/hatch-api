@@ -9,7 +9,7 @@ import (
 )
 
 // Check if a user exists from a token
-func GoodUser(w http.ResponseWriter, r *http.Request) *users.UserRow {
+func GoodUser(w http.ResponseWriter, r *http.Request) *users.User {
 	token := r.Header.Get("Token")
 
 	if token == "" {

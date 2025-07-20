@@ -33,10 +33,10 @@ func ProjectById(id int64) (*Project, error) {
 }
 
 func CommentCount(projectId int64) (*int64, error) {
-	row := db.Db.QueryRow("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE", projectId)
-
 	var commentCount int64
-	if err := row.Scan(&commentCount); err != nil {
+
+	err := db.Db.QueryRow("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE", projectId).Scan(&commentCount)
+	if err != nil {
 		return nil, err
 	}
 
@@ -44,10 +44,10 @@ func CommentCount(projectId int64) (*int64, error) {
 }
 
 func ProjectCount(userId int64) (*int64, error) {
-	row := db.Db.QueryRow("SELECT COUNT(*) FROM projects WHERE author = ?", userId)
-
 	var projectCount int64
-	if err := row.Scan(&projectCount); err != nil {
+
+	err := db.Db.QueryRow("SELECT COUNT(*) FROM projects WHERE author = ?", userId).Scan(&projectCount)
+	if err != nil {
 		return nil, err
 	}
 
@@ -55,17 +55,17 @@ func ProjectCount(userId int64) (*int64, error) {
 }
 
 func ProjectVotes(projectId int64) (*int64, *int64, error) {
-	row := db.Db.QueryRow("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1", projectId)
-
 	var downvotes int64
-	if err := row.Scan(&downvotes); err != nil {
+
+	err := db.Db.QueryRow("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1", projectId).Scan(&downvotes)
+	if err != nil {
 		return nil, nil, err
 	}
 
-	row = db.Db.QueryRow("SELECT COUNT(*) FROM votes WHERE type = 1 AND project = ?1", projectId)
-
 	var upvotes int64
-	if err := row.Scan(&upvotes); err != nil {
+
+	err = db.Db.QueryRow("SELECT COUNT(*) FROM votes WHERE type = 1 AND project = ?1", projectId).Scan(&upvotes)
+	if err != nil {
 		return nil, nil, err
 	}
 

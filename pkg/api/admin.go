@@ -60,7 +60,7 @@ func banUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		you := r.Context().Value(User).(*users.UserRow)
+		you := r.Context().Value(User).(*users.User)
 		util.LogMessage(fmt.Sprintf(banMessage, user.Name, user.Name, action, you.Name, you.Name))
 	}()
 
@@ -92,7 +92,7 @@ func unshareProject(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go func() {
-		you := r.Context().Value(User).(*users.UserRow)
+		you := r.Context().Value(User).(*users.User)
 		util.LogMessage(fmt.Sprintf(unshareMessage, *project.Title, project.Id, action, you.Name, you.Name))
 	}()
 

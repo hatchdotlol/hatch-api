@@ -24,7 +24,7 @@ var ErrAssetTooLarge = errors.New("project contains asset that is too large")
 
 var allowedAssetExts = []string{".png", ".jpg", ".jpeg", ".gif", ".bmp", ".mp3", ".wav", ".ogg"}
 
-func IngestProject(file multipart.File, header *multipart.FileHeader, user *users.UserRow) (*db.File, error) {
+func IngestProject(file multipart.File, header *multipart.FileHeader, user *users.User) (*db.File, error) {
 	id, err := util.GenerateId(16)
 	if err != nil {
 		return nil, err

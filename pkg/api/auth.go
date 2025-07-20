@@ -88,7 +88,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	theme := "#ff5d59"
-	u := users.UserRow{
+	u := users.User{
 		Name:                form.Username,
 		Pw:                  string(hash),
 		DisplayName:         &form.Username,
@@ -159,7 +159,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value(User).(*users.UserRow)
+	user := r.Context().Value(User).(*users.User)
 
 	if err := users.RemoveTokens(user.Id); err != nil {
 		sentry.CaptureException(err)
@@ -171,7 +171,7 @@ func logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func me(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value(User).(*users.UserRow)
+	user := r.Context().Value(User).(*users.User)
 
 	resp, _ := json.Marshal(models.UserResp{
 		Id:             user.Id,
@@ -193,7 +193,7 @@ func me(w http.ResponseWriter, r *http.Request) {
 }
 
 func delete(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value(User).(*users.UserRow)
+	user := r.Context().Value(User).(*users.User)
 
 	// check provided password
 	body := util.HttpBody(r)

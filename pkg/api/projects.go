@@ -86,7 +86,7 @@ func projectContent(w http.ResponseWriter, r *http.Request) {
 	}
 	id := int64(id_)
 
-	user := r.Context().Value(User).(*users.UserRow)
+	user := r.Context().Value(User).(*users.User)
 
 	p, err := projects.ProjectById(id)
 	if err != nil || !p.Shared {

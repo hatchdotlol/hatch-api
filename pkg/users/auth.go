@@ -10,10 +10,9 @@ import (
 
 func GetOrCreateToken(user int64) (*string, error) {
 	// send token if exists
-	authToken := db.Db.QueryRow("SELECT token FROM auth_tokens WHERE user = ?", user)
-
 	var token string
-	err := authToken.Scan(&token)
+
+	err := db.Db.QueryRow("SELECT token FROM auth_tokens WHERE user = ?", user).Scan(&token)
 
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
