@@ -87,7 +87,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 	})
 
 	w.Header().Add("Content-Type", "application/json")
-	fmt.Fprintln(w, string(resp))
+	fmt.Fprint(w, string(resp))
 }
 
 func userPfp(w http.ResponseWriter, r *http.Request) {
@@ -205,7 +205,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 	resp, _ := json.Marshal(projectResp)
 
 	w.Header().Add("Content-Type", "application/json")
-	fmt.Fprintln(w, string(resp))
+	fmt.Fprint(w, string(resp))
 }
 
 func updateProfile(w http.ResponseWriter, r *http.Request) {
@@ -221,7 +221,7 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintln(w, ":think:")
+	fmt.Fprint(w, ":think:")
 }
 
 func followUser(w http.ResponseWriter, r *http.Request) {
@@ -261,7 +261,14 @@ func userPeople(w http.ResponseWriter, r *http.Request) {
 		f = user.Following
 	}
 
-	people, err := users.UsersFromIds(*f, page)
+	w.Header().Add("Content-Type", "application/json")
+
+	if f == nil || *f == "" {
+		fmt.Fprint(w, "[]")
+		return
+	}
+
+	people, err := users.UsersFromIds(strings.TrimRight(*f, ","), page)
 	if err != nil {
 		fmt.Print(err)
 		sentry.CaptureException(err)
@@ -271,6 +278,5 @@ func userPeople(w http.ResponseWriter, r *http.Request) {
 
 	resp, _ := json.Marshal(people)
 
-	w.Header().Add("Content-Type", "application/json")
-	fmt.Fprintln(w, string(resp))
+	fmt.Fprint(w, string(resp))
 }

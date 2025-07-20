@@ -16,7 +16,7 @@ type UserResp struct {
 	Theme               *string `json:"theme"`
 	ProjectCount        int64   `json:"projectCount"`
 	HatchTeam           bool    `json:"hatchTeam"`
-	Banned              *bool   `json:"banned"`
+	Banned              *bool   `json:"banned,omitempty"`
 }
 
 type Author struct {

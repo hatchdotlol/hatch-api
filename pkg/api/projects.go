@@ -55,7 +55,7 @@ func project(w http.ResponseWriter, r *http.Request) {
 	resp, _ := json.Marshal(project)
 
 	w.Header().Add("Content-Type", "application/json")
-	fmt.Fprintln(w, string(resp))
+	fmt.Fprint(w, string(resp))
 }
 
 // TODO: fallback on thumbnail or projects stored with v1 api
