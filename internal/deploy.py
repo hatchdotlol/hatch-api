@@ -29,19 +29,24 @@ subprocess.check_call(
 
 print("- Uploading to server")
 
-password = getpass("Password: ")
-
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-ssh.connect(host, port=22, username=user, password=password)
+connected = False
 
+while not connected:
+    try:
+        password = getpass("Password: ")
+        ssh.connect(host, port=22, username=user, password=password)
+        connected = True
+    except paramiko.ssh_exception.AuthenticationException:
+        pass
 
 def prin(p, t):
     progress = p / t
     arrow = "#" * int(round(progress * 50))
     spaces = " " * (50 - len(arrow))
-    sys.stdout.write(f"\r{arrow}{spaces} {int(progress * 100)}%")
+    sys.stdout.write(f"\r{arrow}{spaces} {p/1e6:.2f} mb/{t/1e6:.2f} mb ({int(progress * 100)}%)")
     sys.stdout.flush()
 
     if p == t:
