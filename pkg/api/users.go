@@ -10,7 +10,6 @@ import (
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/comments"
-	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
 	"github.com/hatchdotlol/hatch-api/pkg/uploads"
@@ -25,12 +24,15 @@ func UserRouter() *chi.Mux {
 		r.Use(EnsureUser)
 		r.Post("/", updateProfile)
 		r.Post("/{username}/{action:follow|unfollow}", followUser)
+		r.Post("/{username}/comments", addUserComment)
 	})
 	r.Get("/{username}", user)
 	r.Get("/{username}/pfp", userPfp)
 	r.Get("/{username}/projects", userProjects)
 	r.Get("/{username}/{group:followers|following}", userPeople)
-	r.Get("/{username}/comments", userComments)
+	r.Get("/{id}/comments", userComments)
+	r.Get("/{id}/comments/{commentId}", userComment)
+	r.Get("/{id}/comments/{commentId}/replies", userCommentReplies)
 
 	return r
 }
@@ -70,7 +72,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 		followerCount = len(strings.Split(*user.Following, ","))
 	}
 
-	resp, _ := json.Marshal(models.UserResp{
+	resp, _ := json.Marshal(users.UserJSON{
 		Id:                  user.Id,
 		Name:                user.Name,
 		DisplayName:         user.DisplayName,
@@ -116,82 +118,22 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
-	id := user.Id
 
-	rows, err := db.Db.Query(
-		"SELECT id, author, upload_ts, title, description, shared, rating, score FROM projects WHERE author = ? LIMIT ?, ?",
-		id,
-		page*util.Config.PerPage,
-		(page+1)*util.Config.PerPage,
-	)
-
+	projects, err := projects.UserProjects(*user, page)
 	if err != nil {
 		sentry.CaptureException(err)
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		http.Error(w, "Failed to get projects", http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
 
-	projectResp := []models.ProjectResp{}
-
-	for rows.Next() {
-		var (
-			projectId   int64
-			authorId    uint32
-			uploadTs    int64
-			title       string
-			description string
-			shared      bool
-			rating      string
-			score       int64
-		)
-
-		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score); err != nil {
-			sentry.CaptureException(err)
-			http.Error(w, "Something went wrong", http.StatusInternalServerError)
-			return
-		}
-
-		commentCount, err := projects.CommentCount(projectId)
-		if err != nil {
-			sentry.CaptureException(err)
-			http.Error(w, "Something went wrong", http.StatusInternalServerError)
-			return
-		}
-
-		upvotes, downvotes, err := projects.ProjectVotes(projectId)
-		if err != nil {
-			sentry.CaptureException(err)
-			http.Error(w, "Something went wrong", http.StatusInternalServerError)
-			return
-		}
-
-		projectResp = append(projectResp, models.ProjectResp{
-			Id: id,
-			Author: models.Author{
-				Id:          user.Id,
-				Username:    user.Name,
-				DisplayName: user.DisplayName,
-			},
-			UploadTs:     uploadTs,
-			Title:        title,
-			Description:  description,
-			Version:      nil,
-			Rating:       rating,
-			CommentCount: *commentCount,
-			Upvotes:      *upvotes,
-			Downvotes:    *downvotes,
-		})
-	}
-
-	resp, _ := json.Marshal(projectResp)
+	resp, _ := json.Marshal(projects)
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprint(w, string(resp))
 }
 
 func updateProfile(w http.ResponseWriter, r *http.Request) {
-	var form models.RegisterForm
+	var form models.Register
 
 	body := util.HttpBody(r)
 	if body == nil {
@@ -246,9 +188,8 @@ func userPeople(w http.ResponseWriter, r *http.Request) {
 
 	people, err := users.UsersFromIds(strings.TrimRight(*f, ","), util.Page(r))
 	if err != nil {
-		fmt.Print(err)
 		sentry.CaptureException(err)
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		http.Error(w, fmt.Sprint("Failed to get ", group), http.StatusInternalServerError)
 		return
 	}
 
@@ -257,10 +198,24 @@ func userPeople(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(resp))
 }
 
+func userComment(w http.ResponseWriter, r *http.Request) {
+	comment, err := comments.CommentById(comments.User, chi.URLParam(r, "id"), chi.URLParam(r, "commentId"))
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+
+	resp, _ := json.Marshal(comment)
+
+	w.Header().Add("Content-Type", "application/json")
+	fmt.Fprint(w, string(resp))
+}
+
 func userComments(w http.ResponseWriter, r *http.Request) {
 	page := util.Page(r)
 
-	comments, err := comments.Comments(comments.User, chi.URLParam(r, "id"), page, nil)
+	comments, err := comments.Comments(comments.User, chi.URLParam(r, "id"), page)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to get comments", http.StatusInternalServerError)
@@ -271,4 +226,57 @@ func userComments(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Add("Content-Type", "application/json")
 	fmt.Fprint(w, string(resp))
+}
+
+func userCommentReplies(w http.ResponseWriter, r *http.Request) {
+	page := util.Page(r)
+
+	comments, err := comments.Replies(comments.User, chi.URLParam(r, "id"), chi.URLParam(r, "commentId"), page)
+	if err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to get replies", http.StatusInternalServerError)
+		return
+	}
+
+	resp, _ := json.Marshal(comments)
+
+	w.Header().Add("Content-Type", "application/json")
+	fmt.Fprint(w, string(resp))
+}
+
+func addUserComment(w http.ResponseWriter, r *http.Request) {
+	you := r.Context().Value(User).(*users.User)
+
+	user, err := users.UserByName(chi.URLParam(r, "username"), true)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+	}
+
+	var form models.AddComment
+
+	body := util.HttpBody(r)
+	if body == nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+	if err := json.Unmarshal(body, &form); err != nil {
+		http.Error(w, "Invalid form", http.StatusBadRequest)
+		return
+	}
+
+	comment := comments.Comment{
+		Content:  form.Content,
+		Author:   you.Id,
+		ReplyTo:  form.ReplyTo,
+		Location: comments.User,
+		Resource: user.Id,
+	}
+
+	if err := comment.Insert(); err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to add comment", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, "Comment added")
 }

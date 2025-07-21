@@ -1,40 +1,22 @@
 package models
 
-type UserResp struct {
-	Id                  int64   `json:"id"`
-	Name                string  `json:"name"`
-	DisplayName         *string `json:"displayName"`
-	Country             string  `json:"country"`
-	Bio                 *string `json:"bio"`
-	HighlightedProjects []int64 `json:"highlightedProjects"`
-	ProfilePicture      string  `json:"-"`
-	JoinDate            string  `json:"joinDate"`
-	BannerImage         *string `json:"bannerImage"`
-	FollowerCount       int     `json:"followerCount"`
-	FollowingCount      int     `json:"followingCount"`
-	Verified            bool    `json:"verified"`
-	Theme               *string `json:"theme"`
-	ProjectCount        int64   `json:"projectCount"`
-	HatchTeam           bool    `json:"hatchTeam"`
-	Banned              *bool   `json:"banned,omitempty"`
+type Register struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
 }
 
-type Author struct {
-	Id          int64   `json:"id"`
-	Username    string  `json:"username"`
-	DisplayName *string `json:"displayName,omitempty"`
+type Login struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
-type ProjectResp struct {
-	Id           int64  `json:"id"`
-	Author       Author `json:"author"`
-	UploadTs     int64  `json:"uploadTs"`
-	Title        string `json:"title"`
-	Description  string `json:"description"`
-	Version      *uint  `json:"version,omitempty"`
-	Rating       string `json:"rating"`
-	Thumbnail    string `json:"-"`
-	CommentCount int64  `json:"commentCount"`
-	Upvotes      int64  `json:"upvotes"`
-	Downvotes    int64  `json:"downvotes"`
+type UserInfo struct {
+	Bio     string
+	Country string
+}
+
+type AddComment struct {
+	Content string `json:"content"`
+	ReplyTo *int64 `json:"replyTo"`
 }

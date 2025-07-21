@@ -4,8 +4,8 @@ import (
 	"time"
 
 	"github.com/hatchdotlol/hatch-api/pkg/db"
-	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
+	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
 type Project struct {
@@ -19,6 +19,26 @@ type Project struct {
 	Score       int64   `json:"score,omitempty"`
 	Thumbnail   string  `json:"thumbnail,omitempty"`
 	File        *string `json:"file,omitempty"`
+}
+
+type Author struct {
+	Id          int64   `json:"id"`
+	Username    string  `json:"username"`
+	DisplayName *string `json:"displayName,omitempty"`
+}
+
+type ProjectJSON struct {
+	Id           int64  `json:"id"`
+	Author       Author `json:"author"`
+	UploadTs     int64  `json:"uploadTs"`
+	Title        string `json:"title"`
+	Description  string `json:"description"`
+	Version      *uint  `json:"version,omitempty"`
+	Rating       string `json:"rating"`
+	Thumbnail    string `json:"-"`
+	CommentCount int64  `json:"commentCount"`
+	Upvotes      int64  `json:"upvotes"`
+	Downvotes    int64  `json:"downvotes"`
 }
 
 func ProjectById(id int64) (*Project, error) {
@@ -98,7 +118,7 @@ func (p *Project) Insert() (int64, error) {
 	return insert.LastInsertId()
 }
 
-func ProjectInfoById(id int64) (*models.ProjectResp, error) {
+func ProjectInfoById(id int64) (*ProjectJSON, error) {
 	p, err := ProjectById(id)
 	if err != nil || !p.Shared {
 		return nil, err
@@ -109,7 +129,7 @@ func ProjectInfoById(id int64) (*models.ProjectResp, error) {
 		return nil, err
 	}
 
-	user, err := users.UserFromRow(db.Db.QueryRow("SELECT * FROM users WHERE id = ?", p.Author))
+	user, err := users.UserById(p.Author)
 	if err != nil {
 		return nil, err
 	}
@@ -119,9 +139,9 @@ func ProjectInfoById(id int64) (*models.ProjectResp, error) {
 		return nil, err
 	}
 
-	return &models.ProjectResp{
+	return &ProjectJSON{
 		Id: p.Id,
-		Author: models.Author{
+		Author: Author{
 			Id:          user.Id,
 			Username:    user.Name,
 			DisplayName: user.DisplayName,
@@ -135,4 +155,66 @@ func ProjectInfoById(id int64) (*models.ProjectResp, error) {
 		Upvotes:      *upv,
 		Downvotes:    *downv,
 	}, nil
+}
+
+func UserProjects(user users.User, page int) (*[]ProjectJSON, error) {
+	rows, err := db.Db.Query(
+		"SELECT id, author, upload_ts, title, description, shared, rating, score FROM projects WHERE author = ? LIMIT ?, ?",
+		user,
+		page*util.Config.PerPage,
+		(page+1)*util.Config.PerPage,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	projects := []ProjectJSON{}
+
+	for rows.Next() {
+		var (
+			projectId   int64
+			authorId    uint32
+			uploadTs    int64
+			title       string
+			description string
+			shared      bool
+			rating      string
+			score       int64
+		)
+
+		if err := rows.Scan(&projectId, &authorId, &uploadTs, &title, &description, &shared, &rating, &score); err != nil {
+			return nil, err
+		}
+
+		commentCount, err := CommentCount(projectId)
+		if err != nil {
+			return nil, err
+		}
+
+		upvotes, downvotes, err := ProjectVotes(projectId)
+		if err != nil {
+			return nil, err
+		}
+
+		projects = append(projects, ProjectJSON{
+			Id: projectId,
+			Author: Author{
+				Id:          int64(authorId),
+				Username:    user.Name,
+				DisplayName: user.DisplayName,
+			},
+			UploadTs:     uploadTs,
+			Title:        title,
+			Description:  description,
+			Version:      nil,
+			Rating:       rating,
+			CommentCount: *commentCount,
+			Upvotes:      *upvotes,
+			Downvotes:    *downvotes,
+		})
+	}
+
+	return &projects, nil
 }

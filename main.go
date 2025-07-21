@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/getsentry/sentry-go"
-	api "github.com/hatchdotlol/hatch-api/pkg/api"
+	"github.com/hatchdotlol/hatch-api/pkg/api"
 )
 
 func main() {

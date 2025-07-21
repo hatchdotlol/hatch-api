@@ -41,7 +41,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var form models.RegisterForm
+	var form models.Register
 
 	body := util.HttpBody(r)
 	if body == nil {
@@ -118,7 +118,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
-	var form models.LoginForm
+	var form models.Login
 
 	body := util.HttpBody(r)
 	if body == nil {
@@ -140,6 +140,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		[]byte(u.Pw),
 		[]byte(form.Password),
 	); err != nil {
+		log.Print(err)
 		if err != bcrypt.ErrMismatchedHashAndPassword {
 			sentry.CaptureException(err)
 		}
@@ -173,7 +174,7 @@ func logout(w http.ResponseWriter, r *http.Request) {
 func me(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(User).(*users.User)
 
-	resp, _ := json.Marshal(models.UserResp{
+	resp, _ := json.Marshal(users.UserJSON{
 		Id:             user.Id,
 		Name:           user.Name,
 		DisplayName:    user.DisplayName,

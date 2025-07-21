@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/hatchdotlol/hatch-api/pkg/db"
-	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
@@ -28,6 +27,25 @@ type User struct {
 	Theme               *string
 }
 
+type UserJSON struct {
+	Id                  int64   `json:"id"`
+	Name                string  `json:"name"`
+	DisplayName         *string `json:"displayName"`
+	Country             string  `json:"country"`
+	Bio                 *string `json:"bio"`
+	HighlightedProjects []int64 `json:"highlightedProjects"`
+	ProfilePicture      string  `json:"-"`
+	JoinDate            string  `json:"joinDate"`
+	BannerImage         *string `json:"bannerImage"`
+	FollowerCount       int     `json:"followerCount"`
+	FollowingCount      int     `json:"followingCount"`
+	Verified            bool    `json:"verified"`
+	Theme               *string `json:"theme"`
+	ProjectCount        int64   `json:"projectCount"`
+	HatchTeam           bool    `json:"hatchTeam"`
+	Banned              *bool   `json:"banned,omitempty"`
+}
+
 func UserByName(name string, nocase bool) (*User, error) {
 	var sqls string
 	if nocase {
@@ -48,13 +66,12 @@ func UserByName(name string, nocase bool) (*User, error) {
 
 func UserByToken(token string) (*User, error) {
 	row := db.Db.QueryRow("SELECT * FROM users WHERE id = (SELECT user FROM auth_tokens WHERE token = ?)", token)
+	return UserFromRow(row)
+}
 
-	user, err := UserFromRow(row)
-	if err != nil {
-		return nil, err
-	}
-
-	return user, nil
+func UserById(id int64) (*User, error) {
+	row := db.Db.QueryRow("SELECT * FROM users WHERE id = ?", id)
+	return UserFromRow(row)
 }
 
 func UserFromRow(row *sql.Row) (*User, error) {
@@ -129,7 +146,7 @@ func (p *User) Insert() error {
 }
 
 // userString is a comma separated list of user ids
-func UsersFromIds(userString string, page int) (*[]models.UserResp, error) {
+func UsersFromIds(userString string, page int) (*[]UserJSON, error) {
 	rows, err := db.Db.Query(
 		fmt.Sprintf("SELECT * FROM users WHERE id in (%s) LIMIT ?, ?", userString),
 		page*util.Config.PerPage,
@@ -146,10 +163,10 @@ func UsersFromIds(userString string, page int) (*[]models.UserResp, error) {
 		return nil, err
 	}
 
-	followers := []models.UserResp{}
+	followers := []UserJSON{}
 
 	for _, f := range *users {
-		followers = append(followers, models.UserResp{
+		followers = append(followers, UserJSON{
 			Id:             f.Id,
 			Name:           f.Name,
 			DisplayName:    f.DisplayName,
