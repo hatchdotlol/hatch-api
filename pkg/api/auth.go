@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/mail"
 	"regexp"
@@ -140,7 +139,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 		[]byte(u.Pw),
 		[]byte(form.Password),
 	); err != nil {
-		log.Print(err)
 		if err != bcrypt.ErrMismatchedHashAndPassword {
 			sentry.CaptureException(err)
 		}
@@ -150,7 +148,6 @@ func login(w http.ResponseWriter, r *http.Request) {
 
 	token, err := users.GetOrCreateToken(u.Id)
 	if err != nil {
-		log.Print(err)
 		sentry.CaptureException(err)
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return

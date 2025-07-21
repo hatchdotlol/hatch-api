@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"mime/multipart"
 	"os"
 	"os/exec"
@@ -129,10 +128,8 @@ func uploadProject(file db.File, filePath string, assets []string) error {
 	defer os.RemoveAll(strings.Replace(filePath, "/original", "", 1))
 
 	// prune assets on scratch
-	log.Printf("assets to check: %v (%d)\n", assets, len(assets))
 	pruned := []string{}
 	for _, a := range assets {
-		log.Println("checking", a)
 		exists, err := AssetExists(a)
 		if err != nil {
 			continue

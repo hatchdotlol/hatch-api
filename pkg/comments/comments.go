@@ -188,10 +188,3 @@ func (c *Comment) Insert() error {
 
 	return nil
 }
-
-// func AddComment(location Location, resource any, replyTo *int64) error {
-
-// 	if _, err = tx.Exec("INSERT INTO comments"); err != nil {
-// 		return err
-// 	}
-// }
