@@ -29,7 +29,7 @@ type EmailTmplVars struct {
 	Token     string
 }
 
-//go:embed templates/*
+//go:embed templates
 var templates embed.FS
 
 func SendEmail(tmplName, toName, toAddress, token string) error {

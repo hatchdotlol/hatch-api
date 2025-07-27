@@ -142,6 +142,10 @@ func (p *User) Insert() error {
 		return err
 	}
 
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
 	return nil
 }
 

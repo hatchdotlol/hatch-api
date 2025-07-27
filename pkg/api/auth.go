@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
+	"github.com/hatchdotlol/hatch-api/pkg/emails"
 	"github.com/hatchdotlol/hatch-api/pkg/models"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
 	"github.com/hatchdotlol/hatch-api/pkg/util"
@@ -32,6 +34,8 @@ func AuthRouter() *chi.Mux {
 }
 
 var validUsername = regexp.MustCompile(`^[\w-]+$`)
+
+const registerMessage = "*[%s](https://dev.hatch.lol/user?u=%s) has registered.* 👤"
 
 func register(w http.ResponseWriter, r *http.Request) {
 	adminKey := r.Header.Get("Admin-Key")
@@ -69,7 +73,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user, err := users.UserByName(form.Username, true)
-	if err != nil {
+	if err != nil && err != sql.ErrNoRows {
 		sentry.CaptureException(err)
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
@@ -111,7 +115,13 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: email verif
+	go func() {
+		util.LogMessage(fmt.Sprintf(registerMessage, form.Username, form.Username))
+		if err := emails.SendVerificationEmail(form.Username, form.Email); err != nil {
+			util.LogMessage(fmt.Sprintf("We could not send a verification email to %s.", form.Username))
+			sentry.CaptureException(err)
+		}
+	}()
 
 	fmt.Fprint(w, "Welcome")
 }
