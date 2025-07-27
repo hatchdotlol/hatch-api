@@ -3,6 +3,7 @@ package util
 import (
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,14 +33,26 @@ func InitConfig() {
 		reportWebhook = w
 	}
 
+	port, _ := strconv.Atoi(os.Getenv("EMAIL_SMTP_PORT"))
+
 	Config = config{
 		StartTime:      time.Now().Unix(),
 		AdminKey:       os.Getenv("ADMIN_KEY"),
-		ResendKey:      os.Getenv("RESEND_KEY"),
 		Mods:           mods,
 		LoggingWebhook: &loggingWebhook,
 		ReportWebhook:  &reportWebhook,
 		PerPage:        50,
+		Mail: &mail{
+			PlatformName:      os.Getenv("EMAIL_PLATFORM_NAME"),
+			PlatformLogo:      os.Getenv("EMAIL_PLATFORM_LOGO"),
+			PlatformFrontend:  os.Getenv("EMAIL_PLATFORM_FRONTEND"),
+			FromName:          os.Getenv("EMAIL_FROM_NAME"),
+			FromAddress:       os.Getenv("EMAIL_FROM_ADDRESS"),
+			EmailSMTPHost:     os.Getenv("EMAIL_SMTP_HOST"),
+			EmailSMTPPort:     port,
+			EmailSMTPUsername: os.Getenv("EMAIL_SMTP_USERNAME"),
+			EmailSMTPPassword: os.Getenv("EMAIL_SMTP_PASSWORD"),
+		},
 	}
 }
 
@@ -48,9 +61,21 @@ var Config config
 type config struct {
 	StartTime      int64
 	AdminKey       string
-	ResendKey      string
 	Mods           map[string]bool
 	LoggingWebhook *string
 	ReportWebhook  *string
 	PerPage        int
+	Mail           *mail
+}
+
+type mail struct {
+	PlatformName      string
+	PlatformLogo      string
+	PlatformFrontend  string
+	FromName          string
+	FromAddress       string
+	EmailSMTPHost     string
+	EmailSMTPPort     int
+	EmailSMTPUsername string
+	EmailSMTPPassword string
 }
