@@ -1,11 +1,14 @@
 package emails
 
 import (
+	"errors"
 	"time"
 
 	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
+
+var ErrVerificationSent = errors.New("verification email already sent")
 
 func SendVerificationEmail(name, email string) error {
 	token, err := util.GenerateId(16)

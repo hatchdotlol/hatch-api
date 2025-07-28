@@ -16,14 +16,7 @@ import (
 
 func Root(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-
-	fmt.Fprintf(w, `{
-	"startTime": "%d",
-	"website": "https://hatch.lol",
-	"api": "https://apiv2.hatch.lol",
-	"forums": "https://forums.hatch.lol",
-	"email": "contact@hatch.lol"
-}`, util.Config.StartTime)
+	fmt.Fprintf(w, `{"startTime": "%d"}`, util.Config.StartTime)
 }
 
 func Router() *chi.Mux {
