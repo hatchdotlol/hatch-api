@@ -33,10 +33,6 @@ func InitDB() error {
 		return err
 	}
 
-	if _, err := db.Exec("PRAGMA journal_mode=WAL"); err != nil {
-		return err
-	}
-
 	Db = db
 
 	return nil
