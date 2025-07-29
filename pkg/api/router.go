@@ -2,14 +2,10 @@ package api
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-	"os"
 
-	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/hatchdotlol/hatch-api/pkg/db"
 	"github.com/hatchdotlol/hatch-api/pkg/util"
 	"github.com/rs/cors"
 )
@@ -20,24 +16,6 @@ func Root(w http.ResponseWriter, r *http.Request) {
 }
 
 func Router() *chi.Mux {
-	util.InitConfig()
-
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn: os.Getenv("SENTRY_DSN"),
-	}); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := db.InitDB(); err != nil {
-		sentry.CaptureException(err)
-		log.Fatal(err)
-	}
-
-	if err := db.InitS3(); err != nil {
-		sentry.CaptureException(err)
-		log.Fatal(err)
-	}
-
 	r := chi.NewRouter()
 
 	cors := cors.New(cors.Options{

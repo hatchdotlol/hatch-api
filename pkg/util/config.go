@@ -6,13 +6,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/joho/godotenv"
 )
 
 func InitConfig() {
-	godotenv.Load()
-
 	_mods := strings.Split(os.Getenv("MODS"), ",")
 	mods := make(map[string]bool)
 	for _, m := range _mods {
