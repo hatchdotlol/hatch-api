@@ -84,7 +84,7 @@ func Download(id *string, projectId *int64, w http.ResponseWriter, r *http.Reque
 	w.Header().Set("ETag", file.Id)
 	w.Header().Set("Cache-Control", "public, max-age=31536000")
 
-	_, err = io.Copy(w, obj)
+	_, err = io.Copy(w, &obj)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to send file", http.StatusInternalServerError)
@@ -95,8 +95,8 @@ func Download(id *string, projectId *int64, w http.ResponseWriter, r *http.Reque
 func legacyDownload(id int64, thumbnailExt *string, w http.ResponseWriter) {
 	var (
 		filename string
-		obj      *minio.Object
-		info     *minio.ObjectInfo
+		obj      minio.Object
+		info     minio.ObjectInfo
 		err      error
 	)
 	if thumbnailExt == nil {
@@ -124,7 +124,7 @@ func legacyDownload(id int64, thumbnailExt *string, w http.ResponseWriter) {
 	w.Header().Set("ETag", info.ETag)
 	w.Header().Set("Cache-Control", "public, max-age=31536000")
 
-	_, err = io.Copy(w, obj)
+	_, err = io.Copy(w, &obj)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to send file", http.StatusInternalServerError)

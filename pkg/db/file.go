@@ -44,13 +44,13 @@ func (f *File) Index() error {
 	return nil
 }
 
-func GetFile(id string) (*File, error) {
+func GetFile(id string) (File, error) {
 	row := Db.QueryRow("SELECT * FROM uploads WHERE id = ?", id)
 
 	var file File
 	if err := row.Scan(&file.Id, &file.Bucket, &file.Hash, &file.Filename, &file.Mime, &file.Uploader, &file.UploadTs, &file.Width, &file.Height); err != nil {
-		return nil, err
+		return File{}, err
 	}
 
-	return &file, nil
+	return file, nil
 }

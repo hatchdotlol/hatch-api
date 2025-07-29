@@ -17,7 +17,7 @@ import (
 
 var ErrUnsupported = errors.New("unsupported file type")
 
-func ImageDimensions(imagePath string) (*int, *int, error) {
+func ImageDimensions(imagePath string) (int, int, error) {
 	out, err := exec.Command(
 		"magick",
 		"identify",
@@ -26,43 +26,43 @@ func ImageDimensions(imagePath string) (*int, *int, error) {
 		imagePath,
 	).Output()
 	if err != nil {
-		return nil, nil, err
+		return 0, 0, err
 	}
 
 	outSlice := strings.Split(string(out), ",")
 	width, _ := strconv.Atoi(outSlice[0])
 	height, _ := strconv.Atoi(outSlice[1])
 
-	return &width, &height, nil
+	return width, height, nil
 }
 
-func IngestImage(bucket string, file multipart.File, header *multipart.FileHeader, user *users.User) (*db.File, error) {
+func IngestImage(bucket string, file multipart.File, header *multipart.FileHeader, user *users.User) (db.File, error) {
 	id, err := util.GenerateId(16)
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	ingestDir, err := os.MkdirTemp("/tmp", "ingest")
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 	defer os.RemoveAll(ingestDir)
 
 	if err := SaveToIngest(file, ingestDir); err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	filePath := fmt.Sprint(ingestDir, "/original")
 
 	hash, err := FileHash(filePath)
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	f := db.File{
 		Id:       id,
 		Bucket:   bucket,
-		Hash:     *hash,
+		Hash:     hash,
 		Filename: header.Filename,
 		Uploader: user.Id,
 		Width:    nil,
@@ -75,20 +75,20 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 		filePath,
 	).Output()
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	if !strings.HasPrefix(strings.Fields(string(mime))[1], "image/") {
-		return nil, ErrUnsupported
+		return db.File{}, ErrUnsupported
 	}
 
 	width, height, err := ImageDimensions(filePath)
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
-	f.Width = width
-	f.Height = height
+	f.Width = &width
+	f.Height = &height
 
 	frames, err := exec.Command(
 		"magick",
@@ -98,7 +98,7 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 		filePath,
 	).Output()
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	format := "webp"
@@ -124,23 +124,23 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 		"-strip",
 		finalPath,
 	).Run(); err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	info, err := db.Uploads.FPutObject(ctx, f.Bucket, f.Hash, finalPath, minio.PutObjectOptions{ContentType: f.Mime})
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	f.Size = &info.Size
 
 	if err := f.Index(); err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	tx, err := db.Db.Begin()
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	if bucket == "pfps" {
@@ -149,7 +149,7 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 			f.Id,
 			user.Id,
 		); err != nil {
-			return nil, err
+			return db.File{}, err
 		}
 	} else if bucket == "thumbnails" {
 		if _, err := tx.Exec(
@@ -157,13 +157,13 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 			f.Id,
 			user.Id,
 		); err != nil {
-			return nil, err
+			return db.File{}, err
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
-	return &f, nil
+	return f, nil
 }

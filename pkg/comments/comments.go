@@ -37,7 +37,7 @@ type CommentJSON struct {
 	HasReplies bool            `json:"hasReplies"`
 }
 
-func CommentById(location Location, resource any, id any) (*CommentJSON, error) {
+func CommentById(location Location, resource any, id any) (CommentJSON, error) {
 	row := db.Db.QueryRow(
 		"SELECT id, content, author, post_ts, reply_to FROM comments WHERE location = ? AND resource_id = ? AND visible = TRUE AND id = ?",
 		location,
@@ -49,12 +49,12 @@ func CommentById(location Location, resource any, id any) (*CommentJSON, error) 
 	var authorId int64
 
 	if err := row.Scan(&comment.Id, &comment.Content, &authorId, &comment.PostDate, &comment.ReplyTo); err != nil {
-		return nil, err
+		return CommentJSON{}, err
 	}
 
 	author, err := users.UserById(authorId)
 	if err != nil {
-		return nil, err
+		return CommentJSON{}, err
 	}
 
 	comment.Author = projects.Author{
@@ -64,7 +64,7 @@ func CommentById(location Location, resource any, id any) (*CommentJSON, error) 
 	}
 	comment.HasReplies = HasReplies(location, resource, comment.Id)
 
-	return &comment, nil
+	return comment, nil
 }
 
 // resource should be int64 but since parsing the resource is

@@ -9,18 +9,18 @@ import (
 )
 
 // Check if a user exists from a token
-func GoodUser(w http.ResponseWriter, r *http.Request) *users.User {
+func GoodUser(w http.ResponseWriter, r *http.Request) users.User {
 	token := r.Header.Get("Token")
 
 	if token == "" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return nil
+		return users.User{}
 	}
 
 	u, err := users.UserByToken(token)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return nil
+		return users.User{}
 	}
 
 	return u
@@ -34,7 +34,7 @@ var User = userKey{}
 func EnsureUser(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := GoodUser(w, r)
-		if u == nil {
+		if u == (users.User{}) {
 			return
 		}
 
@@ -47,7 +47,7 @@ func EnsureUser(next http.Handler) http.Handler {
 func EnsureVerified(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := GoodUser(w, r)
-		if u == nil {
+		if u == (users.User{}) {
 			return
 		}
 
@@ -70,7 +70,7 @@ func EnsureVerified(next http.Handler) http.Handler {
 func EnsureMod(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		u := GoodUser(w, r)
-		if u == nil {
+		if u == (users.User{}) {
 			return
 		}
 

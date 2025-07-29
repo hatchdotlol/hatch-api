@@ -78,7 +78,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
 		return
 	}
-	if user != nil {
+	if user != (users.User{}) {
 		http.Error(w, "That username already exists", http.StatusBadRequest)
 		return
 	}
@@ -163,7 +163,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Fprintf(w, `{"token": "%s"}`, *token)
+	fmt.Fprintf(w, `{"token": "%s"}`, token)
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {

@@ -69,7 +69,7 @@ func Follow(user string, follower int64, follow bool) error {
 	following := strings.FieldsFunc(_following, commaSplit)
 
 	if follow {
-		following = append(following, strconv.Itoa(int((*followerUser).Id)))
+		following = append(following, strconv.Itoa(int(followerUser.Id)))
 		slices.Sort(following)
 		following = slices.Compact(following)
 	} else {

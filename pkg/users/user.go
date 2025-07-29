@@ -46,7 +46,7 @@ type UserJSON struct {
 	Banned              *bool   `json:"banned,omitempty"`
 }
 
-func UserByName(name string, nocase bool) (*User, error) {
+func UserByName(name string, nocase bool) (User, error) {
 	var sqls string
 	if nocase {
 		sqls = "SELECT * FROM users WHERE name = ? COLLATE nocase LIMIT 1"
@@ -58,33 +58,33 @@ func UserByName(name string, nocase bool) (*User, error) {
 
 	user, err := UserFromRow(row)
 	if err != nil {
-		return nil, err
+		return User{}, err
 	}
 
 	return user, nil
 }
 
-func UserByToken(token string) (*User, error) {
+func UserByToken(token string) (User, error) {
 	row := db.Db.QueryRow("SELECT * FROM users WHERE id = (SELECT user FROM auth_tokens WHERE token = ?)", token)
 	return UserFromRow(row)
 }
 
-func UserById(id int64) (*User, error) {
+func UserById(id int64) (User, error) {
 	row := db.Db.QueryRow("SELECT * FROM users WHERE id = ?", id)
 	return UserFromRow(row)
 }
 
-func UserFromRow(row *sql.Row) (*User, error) {
+func UserFromRow(row *sql.Row) (User, error) {
 	var user User
 
 	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme); err != nil {
-		return nil, err
+		return User{}, err
 	}
 
-	return &user, nil
+	return user, nil
 }
 
-func UsersFromRows(rows *sql.Rows) (*[]User, error) {
+func UsersFromRows(rows *sql.Rows) ([]User, error) {
 	var users []User
 
 	for rows.Next() {
@@ -95,7 +95,7 @@ func UsersFromRows(rows *sql.Rows) (*[]User, error) {
 		users = append(users, user)
 	}
 
-	return &users, nil
+	return users, nil
 }
 
 func (p *User) Insert() error {
@@ -150,7 +150,7 @@ func (p *User) Insert() error {
 }
 
 // userString is a comma separated list of user ids
-func UsersFromIds(userString string, page int) (*[]UserJSON, error) {
+func UsersFromIds(userString string, page int) ([]UserJSON, error) {
 	rows, err := db.Db.Query(
 		fmt.Sprintf("SELECT * FROM users WHERE id in (%s) LIMIT ?, ?", userString),
 		page*util.Config.PerPage,
@@ -169,7 +169,7 @@ func UsersFromIds(userString string, page int) (*[]UserJSON, error) {
 
 	followers := []UserJSON{}
 
-	for _, f := range *users {
+	for _, f := range users {
 		followers = append(followers, UserJSON{
 			Id:             f.Id,
 			Name:           f.Name,
@@ -182,5 +182,5 @@ func UsersFromIds(userString string, page int) (*[]UserJSON, error) {
 		})
 	}
 
-	return &followers, nil
+	return followers, nil
 }

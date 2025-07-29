@@ -86,7 +86,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 		FollowingCount:      followingCount,
 		Verified:            user.Verified,
 		Theme:               user.Theme,
-		ProjectCount:        *projectCount,
+		ProjectCount:        projectCount,
 		HatchTeam:           util.Config.Mods[user.Name],
 	})
 
@@ -119,7 +119,7 @@ func userProjects(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	projects, err := projects.UserProjects(*user, page)
+	projects, err := projects.UserProjects(user, page)
 	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to get projects", http.StatusInternalServerError)

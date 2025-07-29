@@ -8,28 +8,28 @@ import (
 	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
-func GetOrCreateToken(user int64) (*string, error) {
+func GetOrCreateToken(user int64) (string, error) {
 	// send token if exists
 	var token string
 
 	err := db.Db.QueryRow("SELECT token FROM auth_tokens WHERE user = ?", user).Scan(&token)
 
 	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+		return "", err
 	}
 	if err == nil {
-		return &token, nil
+		return token, nil
 	}
 
 	tx, err := db.Db.Begin()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	// create new auth token to expire in 1 week
 	newToken, err := util.GenerateId(20)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	_, err = tx.Exec(
@@ -39,14 +39,14 @@ func GetOrCreateToken(user int64) (*string, error) {
 		time.Now().Add(time.Duration(604800*time.Second)).Unix(),
 	)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return nil, err
+		return "", err
 	}
 
-	return &newToken, nil
+	return newToken, nil
 }
 
 func RemoveTokens(user int64) error {

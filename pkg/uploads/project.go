@@ -23,26 +23,26 @@ var ErrAssetTooLarge = errors.New("project contains asset that is too large")
 
 var allowedAssetExts = []string{".png", ".jpg", ".jpeg", ".gif", ".bmp", ".mp3", ".wav", ".ogg"}
 
-func IngestProject(file multipart.File, header *multipart.FileHeader, user *users.User) (*db.File, error) {
+func IngestProject(file multipart.File, header *multipart.FileHeader, user *users.User) (db.File, error) {
 	id, err := util.GenerateId(16)
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	ingestDir, err := os.MkdirTemp("/tmp", "ingest")
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	if err := SaveToIngest(file, ingestDir); err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	filePath := fmt.Sprint(ingestDir, "/original")
 
 	hash, err := FileHash(filePath)
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	mime, err := exec.Command(
@@ -51,16 +51,16 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 		filePath,
 	).Output()
 	if err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 	if strings.Fields(string(mime))[1] != "application/zip" {
-		return nil, ErrUnsupported
+		return db.File{}, ErrUnsupported
 	}
 
 	f := db.File{
 		Id:       id,
 		Bucket:   "projects",
-		Hash:     *hash,
+		Hash:     hash,
 		Filename: header.Filename,
 		Mime:     "application/zip",
 		Uploader: user.Id,
@@ -78,7 +78,7 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 	unzip.Stdout = &out
 
 	if err := unzip.Run(); err != nil {
-		return nil, err
+		return db.File{}, err
 	}
 
 	scanner := bufio.NewScanner(&out)
@@ -108,7 +108,7 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 
 		// must be <=15 mb
 		if size > 15000000 {
-			return nil, fmt.Errorf("project contains asset that is too large: %s", file)
+			return db.File{}, fmt.Errorf("project contains asset that is too large: %s", file)
 		}
 
 		assets = append(assets, file)
@@ -120,7 +120,7 @@ func IngestProject(file multipart.File, header *multipart.FileHeader, user *user
 		}
 	}()
 
-	return &f, nil
+	return f, nil
 }
 
 // prune scratch assets from project and upload

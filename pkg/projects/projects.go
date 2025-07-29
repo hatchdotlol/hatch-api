@@ -41,61 +41,61 @@ type ProjectJSON struct {
 	Downvotes    int64  `json:"downvotes"`
 }
 
-func ProjectById(id int64) (*Project, error) {
+func ProjectById(id int64) (Project, error) {
 	row := db.Db.QueryRow("SELECT * FROM projects WHERE id = ?", id)
 
 	var p Project
 	if err := row.Scan(&p.Id, &p.Author, &p.UploadTs, &p.Title, &p.Description, &p.Shared, &p.Rating, &p.Score, &p.Thumbnail, &p.File); err != nil {
-		return nil, err
+		return Project{}, err
 	}
 
-	return &p, nil
+	return p, nil
 }
 
-func CommentCount(projectId int64) (*int64, error) {
+func CommentCount(projectId int64) (int64, error) {
 	var commentCount int64
 
 	err := db.Db.QueryRow("SELECT COUNT(*) FROM comments WHERE location = 0 AND resource_id = ? AND visible = TRUE", projectId).Scan(&commentCount)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return &commentCount, nil
+	return commentCount, nil
 }
 
-func ProjectCount(userId int64) (*int64, error) {
+func ProjectCount(userId int64) (int64, error) {
 	var projectCount int64
 
 	err := db.Db.QueryRow("SELECT COUNT(*) FROM projects WHERE author = ?", userId).Scan(&projectCount)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
-	return &projectCount, nil
+	return projectCount, nil
 }
 
-func ProjectVotes(projectId int64) (*int64, *int64, error) {
+func ProjectVotes(projectId int64) (int64, int64, error) {
 	var downvotes int64
 
 	err := db.Db.QueryRow("SELECT COUNT(*) FROM votes WHERE type = 0 AND project = ?1", projectId).Scan(&downvotes)
 	if err != nil {
-		return nil, nil, err
+		return 0, 0, err
 	}
 
 	var upvotes int64
 
 	err = db.Db.QueryRow("SELECT COUNT(*) FROM votes WHERE type = 1 AND project = ?1", projectId).Scan(&upvotes)
 	if err != nil {
-		return nil, nil, err
+		return 0, 0, err
 	}
 
-	return &upvotes, &downvotes, nil
+	return upvotes, downvotes, nil
 }
 
 func (p *Project) Insert() (int64, error) {
 	tx, err := db.Db.Begin()
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	insert, err := tx.Exec(
@@ -108,38 +108,38 @@ func (p *Project) Insert() (int64, error) {
 		p.File,
 	)
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	return insert.LastInsertId()
 }
 
-func ProjectInfoById(id int64) (*ProjectJSON, error) {
+func ProjectInfoById(id int64) (ProjectJSON, error) {
 	p, err := ProjectById(id)
 	if err != nil || !p.Shared {
-		return nil, err
+		return ProjectJSON{}, err
 	}
 
 	upv, downv, err := ProjectVotes(id)
 	if err != nil {
-		return nil, err
+		return ProjectJSON{}, err
 	}
 
 	user, err := users.UserById(p.Author)
 	if err != nil {
-		return nil, err
+		return ProjectJSON{}, err
 	}
 
 	commentCount, err := CommentCount(p.Id)
 	if err != nil {
-		return nil, err
+		return ProjectJSON{}, err
 	}
 
-	return &ProjectJSON{
+	return ProjectJSON{
 		Id: p.Id,
 		Author: Author{
 			Id:          user.Id,
@@ -151,13 +151,13 @@ func ProjectInfoById(id int64) (*ProjectJSON, error) {
 		Description:  *p.Description,
 		Version:      nil,
 		Rating:       p.Rating,
-		CommentCount: *commentCount,
-		Upvotes:      *upv,
-		Downvotes:    *downv,
+		CommentCount: commentCount,
+		Upvotes:      upv,
+		Downvotes:    downv,
 	}, nil
 }
 
-func UserProjects(user users.User, page int) (*[]ProjectJSON, error) {
+func UserProjects(user users.User, page int) ([]ProjectJSON, error) {
 	rows, err := db.Db.Query(
 		"SELECT id, author, upload_ts, title, description, shared, rating, score FROM projects WHERE author = ? LIMIT ?, ?",
 		user,
@@ -170,7 +170,7 @@ func UserProjects(user users.User, page int) (*[]ProjectJSON, error) {
 	}
 	defer rows.Close()
 
-	projects := []ProjectJSON{}
+	var projects []ProjectJSON
 
 	for rows.Next() {
 		var (
@@ -210,11 +210,11 @@ func UserProjects(user users.User, page int) (*[]ProjectJSON, error) {
 			Description:  description,
 			Version:      nil,
 			Rating:       rating,
-			CommentCount: *commentCount,
-			Upvotes:      *upvotes,
-			Downvotes:    *downvotes,
+			CommentCount: commentCount,
+			Upvotes:      upvotes,
+			Downvotes:    downvotes,
 		})
 	}
 
-	return &projects, nil
+	return projects, nil
 }
