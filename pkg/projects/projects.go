@@ -1,6 +1,7 @@
 package projects
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/hatchdotlol/hatch-api/pkg/db"
@@ -90,6 +91,75 @@ func ProjectVotes(projectId int64) (int64, int64, error) {
 	}
 
 	return upvotes, downvotes, nil
+}
+
+func VoteProject(projectId int64, userId int64, upvote bool) error {
+	var upvoted bool
+	err := db.Db.QueryRow("SELECT type FROM votes WHERE user = ? AND project = ? LIMIT 1", userId, projectId).Scan(&upvoted)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			if err := setVote(projectId, userId, upvote); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	}
+
+	if err := changeVote(projectId, userId, upvoted, upvote); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func setVote(projectId int64, userId int64, upvote bool) error {
+	tx, err := db.Db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err = tx.Exec(
+		"INSERT INTO votes (user, project, type) VALUES (?, ?, ?)",
+		userId, projectId, upvote,
+	); err != nil {
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func changeVote(projectId int64, userId int64, upvote bool, setUpvote bool) error {
+	tx, err := db.Db.Begin()
+	if err != nil {
+		return err
+	}
+
+	if _, err = tx.Exec(
+		"DELETE FROM votes WHERE user = ? AND project = ? AND type = ?",
+		userId, projectId, upvote,
+	); err != nil {
+		return err
+	}
+
+	if upvote != setUpvote {
+		if _, err = tx.Exec(
+			"INSERT INTO votes (user, project, type) VALUES (?, ?, ?)",
+			userId, projectId, upvote,
+		); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (p *Project) Insert() (int64, error) {

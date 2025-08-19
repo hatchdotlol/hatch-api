@@ -24,6 +24,7 @@ func ProjectRouter() *chi.Mux {
 	r.Group(func(r chi.Router) {
 		r.Use(EnsureUser)
 		r.Post("/{id}/comments", addProjectComment)
+		r.Post("/{id}/{action:upvote|downvote}", vote)
 	})
 	r.Get("/{id}", project)
 	r.Get("/{id}/thumbnail", projectThumbnail)
@@ -170,7 +171,7 @@ func addProjectComment(w http.ResponseWriter, r *http.Request) {
 
 	project, err := projects.ProjectById(id)
 	if err != nil {
-		http.Error(w, "User not found", http.StatusNotFound)
+		http.Error(w, "Project not found", http.StatusNotFound)
 	}
 
 	var form models.AddComment
@@ -200,4 +201,32 @@ func addProjectComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprint(w, "Comment added")
+}
+
+func vote(w http.ResponseWriter, r *http.Request) {
+	you := r.Context().Value(User).(*users.User)
+
+	id_, err := strconv.Atoi(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	id := int64(id_)
+
+	project, err := projects.ProjectById(id)
+	if err != nil {
+		http.Error(w, "Project not found", http.StatusNotFound)
+	}
+
+	if err := projects.VoteProject(
+		project.Id,
+		you.Id,
+		chi.URLParam(r, "action") == "upvote",
+	); err != nil {
+		sentry.CaptureException(err)
+		http.Error(w, "Failed to vote on project", http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprint(w, "Vote added")
 }
