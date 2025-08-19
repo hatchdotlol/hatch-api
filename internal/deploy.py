@@ -8,7 +8,7 @@ import requests
 import paramiko
 
 user = "aj"
-host = "192.168.1.6"
+host = "192.168.1.5"
 
 directory = f"/home/{user}/deploy"
 file = f"hatch-api-{subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode().strip()}-{str(random.random())[2:]}"

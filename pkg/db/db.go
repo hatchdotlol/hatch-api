@@ -28,9 +28,15 @@ func InitDB() error {
 		return err
 	}
 
-	_, err = migrate.NewWithSourceInstance("iofs", d, fmt.Sprintf("sqlite3://%s", os.Getenv("DB_PATH")))
+	m, err := migrate.NewWithSourceInstance("iofs", d, fmt.Sprintf("sqlite3://%s", os.Getenv("DB_PATH")))
 	if err != nil {
 		return err
+	}
+
+	if err := m.Up(); err != nil {
+		if err != migrate.ErrNoChange {
+			return err
+		}
 	}
 
 	Db = db
