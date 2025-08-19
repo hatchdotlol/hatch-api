@@ -49,7 +49,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		bucket = "thumbnails"
 	}
 
-	obj, err := uploads.IngestImage(bucket, file, header, user)
+	obj, err := uploads.IngestImage(bucket, file, header, &user)
 	if err != nil {
 		if err == uploads.ErrUnsupported {
 			http.Error(w, "Unsupported file type", http.StatusBadRequest)
@@ -91,7 +91,7 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	projectRow, err := uploads.IngestProject(file, header, user)
+	projectRow, err := uploads.IngestProject(file, header, &user)
 	if err != nil {
 		if err == uploads.ErrAssetTooLarge {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -115,7 +115,7 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 	}
 	defer thumbnail.Close()
 
-	thumbRow, err := uploads.IngestImage("thumbnails", thumbnail, thumbHeader, user)
+	thumbRow, err := uploads.IngestImage("thumbnails", thumbnail, thumbHeader, &user)
 	if err != nil {
 		if err == uploads.ErrUnsupported {
 			http.Error(w, "Unsupported file type for thumbnail", http.StatusBadRequest)

@@ -105,7 +105,7 @@ func projectContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if user == nil && p.Rating == "13+" {
+	if user == (users.User{}) && p.Rating == "13+" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
