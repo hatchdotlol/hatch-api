@@ -40,6 +40,7 @@ func Router() *chi.Mux {
 	r.Mount("/uploads", UploadRouter())
 	r.Mount("/auth", AuthRouter())
 	r.Mount("/admin", AdminRouter())
+	r.Mount("/ws", NotificationRouter())
 
 	return r
 }
