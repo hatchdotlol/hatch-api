@@ -149,7 +149,7 @@ func updateProfile(w http.ResponseWriter, r *http.Request) {
 }
 
 func followUser(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value(User).(*users.User)
+	user := r.Context().Value(User).(users.User)
 	action := chi.URLParam(r, "action")
 	followee := chi.URLParam(r, "username")
 
@@ -245,7 +245,7 @@ func userCommentReplies(w http.ResponseWriter, r *http.Request) {
 }
 
 func addUserComment(w http.ResponseWriter, r *http.Request) {
-	you := r.Context().Value(User).(*users.User)
+	you := r.Context().Value(User).(users.User)
 
 	user, err := users.UserByName(chi.URLParam(r, "username"), true)
 	if err != nil {

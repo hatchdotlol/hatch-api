@@ -30,7 +30,7 @@ func upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := r.Context().Value(User).(*users.User)
+	user := r.Context().Value(User).(users.User)
 
 	file, header, err := r.FormFile("file")
 	if err != nil {
@@ -77,7 +77,7 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := r.Context().Value(User).(*users.User)
+	user := r.Context().Value(User).(users.User)
 
 	// ingest project
 	file, header, err := r.FormFile("file")

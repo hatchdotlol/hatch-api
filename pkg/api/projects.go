@@ -97,7 +97,7 @@ func projectContent(w http.ResponseWriter, r *http.Request) {
 	}
 	id := int64(id_)
 
-	user := r.Context().Value(User).(*users.User)
+	user := r.Context().Value(User).(users.User)
 
 	p, err := projects.ProjectById(id)
 	if err != nil || !p.Shared {
@@ -160,7 +160,7 @@ func projectCommentReplies(w http.ResponseWriter, r *http.Request) {
 }
 
 func addProjectComment(w http.ResponseWriter, r *http.Request) {
-	you := r.Context().Value(User).(*users.User)
+	you := r.Context().Value(User).(users.User)
 
 	id_, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {
@@ -204,7 +204,7 @@ func addProjectComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func vote(w http.ResponseWriter, r *http.Request) {
-	you := r.Context().Value(User).(*users.User)
+	you := r.Context().Value(User).(users.User)
 
 	id_, err := strconv.Atoi(chi.URLParam(r, "id"))
 	if err != nil {

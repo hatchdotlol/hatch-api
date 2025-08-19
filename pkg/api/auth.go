@@ -167,7 +167,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value(User).(*users.User)
+	user := r.Context().Value(User).(users.User)
 
 	if err := users.RemoveTokens(user.Id); err != nil {
 		sentry.CaptureException(err)
@@ -179,7 +179,7 @@ func logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func me(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value(User).(*users.User)
+	user := r.Context().Value(User).(users.User)
 
 	resp, _ := json.Marshal(users.UserJSON{
 		Id:             user.Id,
@@ -201,7 +201,7 @@ func me(w http.ResponseWriter, r *http.Request) {
 }
 
 func delete(w http.ResponseWriter, r *http.Request) {
-	user := r.Context().Value(User).(*users.User)
+	user := r.Context().Value(User).(users.User)
 
 	// check provided password
 	body := util.HttpBody(r)
