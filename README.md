@@ -2,7 +2,7 @@
 
 This is the repository for the API used by hatch.lol.
 
-Public instance at https://apiv2.hatch.lol, see https://hatch.lol for more info.
+Public instance at https://api.hatch.lol, see https://hatch.lol for more info.
 
 ## Requirements
 
