@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
 	"github.com/hatchdotlol/hatch-api/pkg/projects"
 	"github.com/hatchdotlol/hatch-api/pkg/uploads"
 	"github.com/hatchdotlol/hatch-api/pkg/users"
+	"github.com/hatchdotlol/hatch-api/pkg/util"
 )
 
 func UploadRouter() *chi.Mux {
@@ -141,6 +143,18 @@ func uploadProject(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to ingest project", http.StatusInternalServerError)
 		return
 	}
+
+	go func() {
+		followers := util.ParseIds(user.Followers)
+		message, _ := json.Marshal(map[string]any{
+			"type":        "projectUpload",
+			"user":        user.Name,
+			"projectName": p.Title,
+		})
+		connections.Broadcast(func(u users.User) bool {
+			return slices.Contains(followers, u.Id)
+		}, message)
+	}()
 
 	p.Id = id
 

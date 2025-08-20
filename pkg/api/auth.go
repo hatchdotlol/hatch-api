@@ -27,7 +27,7 @@ func AuthRouter() *chi.Mux {
 		r.Use(EnsureUser)
 		r.Get("/me", me)
 		r.Get("/logout", logout)
-		r.Get("/delete", delete)
+		r.Get("/delete", deleteAccount)
 	})
 
 	return r
@@ -200,7 +200,7 @@ func me(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, string(resp))
 }
 
-func delete(w http.ResponseWriter, r *http.Request) {
+func deleteAccount(w http.ResponseWriter, r *http.Request) {
 	user := r.Context().Value(User).(users.User)
 
 	// check provided password
