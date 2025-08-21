@@ -91,7 +91,7 @@ func UsersFromRows(rows *sql.Rows) ([]User, error) {
 
 	for rows.Next() {
 		var user User
-		if err := rows.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme); err != nil {
+		if err := rows.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme, &user.Checkmark); err != nil {
 			return nil, err
 		}
 		users = append(users, user)
@@ -179,7 +179,7 @@ func UsersFromIds(userString string, page int) ([]UserJSON, error) {
 			Country:        f.Country,
 			ProfilePicture: f.ProfilePicture,
 			BannerImage:    f.BannerImage,
-			Verified:       f.Verified,
+			Checkmark:      f.Checkmark,
 			Theme:          f.Theme,
 		})
 	}

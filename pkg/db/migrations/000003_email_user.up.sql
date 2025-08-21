@@ -1,2 +1,2 @@
-ALTER TABLE email_tokens DROP COLUMN user;
+DROP TABLE IF EXISTS email_tokens;
 ALTER TABLE email_tokens ADD COLUMN user TEXT NOT NULL;

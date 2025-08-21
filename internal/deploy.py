@@ -27,7 +27,7 @@ subprocess.check_call(
     env=go_env,
 )
 
-print("- Uploading to server")
+print(f"- Uploading ./{file} to server")
 
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
