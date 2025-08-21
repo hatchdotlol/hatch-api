@@ -84,7 +84,6 @@ func user(w http.ResponseWriter, r *http.Request) {
 		BannerImage:         user.BannerImage,
 		FollowerCount:       followerCount,
 		FollowingCount:      followingCount,
-		Verified:            user.Verified,
 		Theme:               user.Theme,
 		ProjectCount:        projectCount,
 		HatchTeam:           util.Config.Mods[user.Name],

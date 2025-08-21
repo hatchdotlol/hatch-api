@@ -29,10 +29,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := db.InitS3(); err != nil {
-		sentry.CaptureException(err)
-		log.Fatal(err)
-	}
+	go func() {
+		if err := db.InitS3(); err != nil {
+			sentry.CaptureException(err)
+			log.Fatal(err)
+		}
+	}()
 
 	r := api.Router()
 

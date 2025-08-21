@@ -39,7 +39,7 @@ type UserJSON struct {
 	BannerImage         *string `json:"bannerImage"`
 	FollowerCount       int     `json:"followerCount"`
 	FollowingCount      int     `json:"followingCount"`
-	Verified            bool    `json:"verified"`
+	Verified            bool    `json:"verified,omitempty"`
 	Theme               *string `json:"theme"`
 	ProjectCount        int64   `json:"projectCount"`
 	HatchTeam           bool    `json:"hatchTeam"`
