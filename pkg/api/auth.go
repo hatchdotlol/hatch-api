@@ -28,6 +28,7 @@ func AuthRouter() *chi.Mux {
 		r.Get("/me", me)
 		r.Get("/logout", logout)
 		r.Get("/delete", deleteAccount)
+		r.Post("/reverify", reverify)
 	})
 
 	return r
@@ -159,11 +160,37 @@ func login(w http.ResponseWriter, r *http.Request) {
 	token, err := users.GetOrCreateToken(u.Id)
 	if err != nil {
 		sentry.CaptureException(err)
-		http.Error(w, "Something went wrong", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	fmt.Fprintf(w, `{"token": "%s"}`, token)
+}
+
+func reverify(w http.ResponseWriter, r *http.Request) {
+	user := r.Context().Value(User).(users.User)
+
+	sent, err := emails.VerificationEmailSent(user.Name)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		sentry.CaptureException(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if sent {
+		http.Error(w, "Verification email already sent", http.StatusBadRequest)
+		return
+	}
+
+	go func() {
+		if err := emails.SendVerificationEmail(user.Name, user.Email); err != nil {
+			util.LogMessage(fmt.Sprintf("We could not send a verification email to %s.", user.Name))
+			sentry.CaptureException(err)
+		}
+	}()
+
+	fmt.Fprint(w, "Verification email resent")
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
@@ -171,7 +198,7 @@ func logout(w http.ResponseWriter, r *http.Request) {
 
 	if err := users.RemoveTokens(user.Id); err != nil {
 		sentry.CaptureException(err)
-		http.Error(w, "Failed to log out", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
