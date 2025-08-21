@@ -1,5 +1,3 @@
-PRAGMA journal_mode=WAL;
-
 CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY,
     user INTEGER NOT NULL,

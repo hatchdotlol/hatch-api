@@ -23,6 +23,10 @@ func InitDB() error {
 		return err
 	}
 
+	if _, err := db.Exec("PRAGMA journal_mode=WAL;"); err != nil {
+		return err
+	}
+
 	d, err := iofs.New(migrations, "migrations")
 	if err != nil {
 		return err

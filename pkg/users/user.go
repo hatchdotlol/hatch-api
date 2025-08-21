@@ -25,6 +25,7 @@ type User struct {
 	Email               string
 	Banned              bool
 	Theme               *string
+	Checkmark           bool
 }
 
 type UserJSON struct {
@@ -39,11 +40,12 @@ type UserJSON struct {
 	BannerImage         *string `json:"bannerImage"`
 	FollowerCount       int     `json:"followerCount"`
 	FollowingCount      int     `json:"followingCount"`
-	Verified            bool    `json:"verified,omitempty"`
+	Verified            bool    `json:"emailVerified,omitempty"`
 	Theme               *string `json:"theme"`
 	ProjectCount        int64   `json:"projectCount"`
 	HatchTeam           bool    `json:"hatchTeam"`
 	Banned              *bool   `json:"banned,omitempty"`
+	Checkmark           bool    `json:"verified"`
 }
 
 func UserByName(name string, nocase bool) (User, error) {
@@ -77,7 +79,7 @@ func UserById(id int64) (User, error) {
 func UserFromRow(row *sql.Row) (User, error) {
 	var user User
 
-	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme); err != nil {
+	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme, &user.Checkmark); err != nil {
 		return User{}, err
 	}
 

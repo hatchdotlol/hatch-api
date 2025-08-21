@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -16,12 +18,14 @@ var discordClient = http.Client{
 
 // Log message to discord and sentry
 func LogMessage(content string) {
-	if Config.LoggingWebhook != nil {
+	fmt.Printf("Config: %v\n", Config)
+	if Config.LoggingWebhook != nil && *Config.LoggingWebhook != "" {
 		body, _ := json.Marshal(map[string]string{
 			"content": content,
 		})
 		resp, err := discordClient.Post(*Config.LoggingWebhook, "application/json", bytes.NewBuffer(body))
 		if err != nil {
+			log.Fatal(err)
 			sentry.CaptureException(err)
 		}
 

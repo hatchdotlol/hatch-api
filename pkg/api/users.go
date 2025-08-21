@@ -87,6 +87,7 @@ func user(w http.ResponseWriter, r *http.Request) {
 		Theme:               user.Theme,
 		ProjectCount:        projectCount,
 		HatchTeam:           util.Config.Mods[user.Name],
+		Checkmark:           user.Checkmark,
 	})
 
 	w.Header().Add("Content-Type", "application/json")

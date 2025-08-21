@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/getsentry/sentry-go"
 	"github.com/go-chi/chi/v5"
@@ -19,6 +20,7 @@ func AdminRouter() *chi.Mux {
 		r.Use(EnsureMod)
 		r.Post("/users/{username}/delete", deleteUser)
 		r.Post("/users/{username}/{action:ban|unban}", banUser)
+		r.Post("/users/{username}/{action:verify|unverify}", verifyUser)
 		r.Post("/projects/{id}/{action:unshare|share}", unshareProject)
 	})
 
@@ -39,10 +41,10 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 		sentry.CaptureMessage(fmt.Sprint(user.Name, " has deleted their account"))
 	}()
 
-	fmt.Fprint(w, "Account deletion scheduled. Please wait")
+	w.WriteHeader(http.StatusOK)
 }
 
-const banMessage = "***[%s](https://dev.hatch.lol/user?u=%s) was %sned by [%s](https://dev.hatch.lol/user?u=%s).*** 🔨"
+const actionMessage = "***[%s](https://dev.hatch.lol/user?u=%s) was %s by [%s](https://dev.hatch.lol/user?u=%s).*** %s"
 
 func banUser(w http.ResponseWriter, r *http.Request) {
 	user, err := users.UserByName(chi.URLParam(r, "username"), true)
@@ -55,16 +57,39 @@ func banUser(w http.ResponseWriter, r *http.Request) {
 
 	if err := users.BanUser(user.Id, action == "ban"); err != nil {
 		sentry.CaptureException(err)
-		http.Error(w, fmt.Sprintf("Failed to %s user", action), http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	go func() {
 		you := r.Context().Value(User).(users.User)
-		util.LogMessage(fmt.Sprintf(banMessage, user.Name, user.Name, action, you.Name, you.Name))
+		util.LogMessage(fmt.Sprintf(actionMessage, user.Name, user.Name, fmt.Sprint(action, "ned"), you.Name, you.Name, "🔨"))
 	}()
 
-	fmt.Fprintf(w, "Account %sned", action)
+	w.WriteHeader(http.StatusOK)
+}
+
+func verifyUser(w http.ResponseWriter, r *http.Request) {
+	user, err := users.UserByName(chi.URLParam(r, "username"), true)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+
+	action := chi.URLParam(r, "action")
+
+	if err := users.VerifyUser(user.Id, action == "verify"); err != nil {
+		sentry.CaptureException(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	go func() {
+		you := r.Context().Value(User).(users.User)
+		util.LogMessage(fmt.Sprintf(actionMessage, user.Name, user.Name, fmt.Sprint(strings.TrimSuffix(action, "y"), "ied"), you.Name, you.Name, "✅"))
+	}()
+
+	w.WriteHeader(http.StatusOK)
 }
 
 const unshareMessage = "***\"[%s](https://dev.hatch.lol/project?id=%d)\" was %sd by [%s](https://dev.hatch.lol/user?u=%s).*** 📁"
@@ -96,5 +121,5 @@ func unshareProject(w http.ResponseWriter, r *http.Request) {
 		util.LogMessage(fmt.Sprintf(unshareMessage, *project.Title, project.Id, action, you.Name, you.Name))
 	}()
 
-	fmt.Fprintf(w, "Project %sd", action)
+	w.WriteHeader(http.StatusOK)
 }

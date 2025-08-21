@@ -194,6 +194,7 @@ func me(w http.ResponseWriter, r *http.Request) {
 		Theme:          user.Theme,
 		HatchTeam:      util.Config.Mods[user.Name],
 		Banned:         &user.Banned,
+		Checkmark:      user.Checkmark,
 	})
 
 	w.Header().Add("Content-Type", "application/json")
