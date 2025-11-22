@@ -40,3 +40,4 @@ test.py
 *.sb3
 index.html
 hatch-api
+.DS_Store
