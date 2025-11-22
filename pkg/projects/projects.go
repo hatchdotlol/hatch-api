@@ -230,7 +230,7 @@ func ProjectInfoById(id int64) (ProjectJSON, error) {
 func UserProjects(user users.User, page int) ([]ProjectJSON, error) {
 	rows, err := db.Db.Query(
 		"SELECT id, author, upload_ts, title, description, shared, rating, score FROM projects WHERE author = ? LIMIT ?, ?",
-		user,
+		user.Id,
 		page*util.Config.PerPage,
 		(page+1)*util.Config.PerPage,
 	)
