@@ -29,6 +29,20 @@ func InitConfig() {
 		reportWebhook = w
 	}
 
+	githubCfg := func() *github {
+		id := os.Getenv("GITHUB_CLIENT_ID")
+		secret := os.Getenv("GITHUB_CLIENT_SECRET")
+		redirect := os.Getenv("GITHUB_REDIRECT_URI")
+		if id == "" || secret == "" || redirect == "" {
+			return nil
+		}
+		return &github{
+			ClientID:     id,
+			ClientSecret: secret,
+			RedirectURI:  redirect,
+		}
+	}()
+
 	port, _ := strconv.Atoi(os.Getenv("EMAIL_SMTP_PORT"))
 
 	Config = config{
@@ -49,6 +63,7 @@ func InitConfig() {
 			EmailSMTPUsername: os.Getenv("EMAIL_SMTP_USERNAME"),
 			EmailSMTPPassword: os.Getenv("EMAIL_SMTP_PASSWORD"),
 		},
+		GitHub: githubCfg,
 	}
 }
 
@@ -62,6 +77,7 @@ type config struct {
 	ReportWebhook  *string
 	PerPage        int
 	Mail           *mail
+	GitHub         *github
 }
 
 type mail struct {
@@ -74,4 +90,10 @@ type mail struct {
 	EmailSMTPPort     int
 	EmailSMTPUsername string
 	EmailSMTPPassword string
+}
+
+type github struct {
+	ClientID     string
+	ClientSecret string
+	RedirectURI  string
 }

@@ -26,6 +26,7 @@ type User struct {
 	Banned              bool
 	Theme               *string
 	Checkmark           bool
+	GithubID            *string
 }
 
 type UserJSON struct {
@@ -71,6 +72,11 @@ func UserByToken(token string) (User, error) {
 	return UserFromRow(row)
 }
 
+func UserByGithubID(id string) (User, error) {
+	row := db.Db.QueryRow("SELECT * FROM users WHERE github_id = ?", id)
+	return UserFromRow(row)
+}
+
 func UserById(id int64) (User, error) {
 	row := db.Db.QueryRow("SELECT * FROM users WHERE id = ?", id)
 	return UserFromRow(row)
@@ -79,7 +85,7 @@ func UserById(id int64) (User, error) {
 func UserFromRow(row *sql.Row) (User, error) {
 	var user User
 
-	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme, &user.Checkmark); err != nil {
+	if err := row.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme, &user.Checkmark, &user.GithubID); err != nil {
 		return User{}, err
 	}
 
@@ -91,7 +97,7 @@ func UsersFromRows(rows *sql.Rows) ([]User, error) {
 
 	for rows.Next() {
 		var user User
-		if err := rows.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme, &user.Checkmark); err != nil {
+		if err := rows.Scan(&user.Id, &user.Name, &user.Pw, &user.DisplayName, &user.Country, &user.Bio, &user.HighlightedProjects, &user.ProfilePicture, &user.JoinDate, &user.BannerImage, &user.Followers, &user.Following, &user.Verified, &user.Email, &user.Banned, &user.Theme, &user.Checkmark, &user.GithubID); err != nil {
 			return nil, err
 		}
 		users = append(users, user)
@@ -122,8 +128,9 @@ func (p *User) Insert() error {
 			verified,
 			email,
 			banned,
-			theme
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			theme,
+			github_id
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		p.Name,
 		p.Pw,
 		p.DisplayName,
@@ -139,6 +146,7 @@ func (p *User) Insert() error {
 		p.Email,
 		p.Banned,
 		p.Theme,
+		p.GithubID,
 	)
 	if err != nil {
 		return err
