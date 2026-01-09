@@ -250,6 +250,28 @@ func githubCallback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if user, err := users.UserByName(username, true); err == nil && user != (users.User{}) {
+		if user.GithubID == nil {
+			if err := users.AttachGithub(user.Id, githubID); err != nil {
+				sentry.CaptureException(err)
+				http.Error(w, "Failed to link GitHub", http.StatusInternalServerError)
+				return
+			}
+
+			tkn, err := users.GetOrCreateToken(user.Id)
+			if err != nil {
+				sentry.CaptureException(err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			dest := r.URL.Query().Get("redirect")
+			if dest == "" {
+				dest = "https://hatch.lol"
+			}
+			http.Redirect(w, r, dest+"#token="+url.QueryEscape(tkn), http.StatusFound)
+			return
+		}
+
 		suffix, genErr := util.GenerateId(6)
 		if genErr != nil {
 			sentry.CaptureException(genErr)

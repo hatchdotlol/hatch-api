@@ -159,6 +159,11 @@ func (p *User) Insert() error {
 	return nil
 }
 
+func AttachGithub(userID int64, githubID string) error {
+	_, err := db.Db.Exec("UPDATE users SET github_id = ? WHERE id = ?", githubID, userID)
+	return err
+}
+
 // userString is a comma separated list of user ids
 func UsersFromIds(userString string, page int) ([]UserJSON, error) {
 	rows, err := db.Db.Query(
