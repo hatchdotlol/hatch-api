@@ -44,7 +44,7 @@ func deleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-const actionMessage = "***[%s](https://dev.hatch.lol/user?u=%s) was %s by [%s](https://dev.hatch.lol/user?u=%s).*** %s"
+const actionMessage = "***[%s](https://hatch.lol/users/%s) was %s by [%s](https://hatch.lol/users/%s).*** %s"
 
 func banUser(w http.ResponseWriter, r *http.Request) {
 	user, err := users.UserByName(chi.URLParam(r, "username"), true)
@@ -92,7 +92,7 @@ func verifyUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-const unshareMessage = "***\"[%s](https://dev.hatch.lol/project?id=%d)\" was %sd by [%s](https://dev.hatch.lol/user?u=%s).*** 📁"
+const unshareMessage = "***\"[%s](https://hatch.lol/projects/%d)\" was %sd by [%s](https://hatch.lol/users/%s).*** 📁"
 
 func unshareProject(w http.ResponseWriter, r *http.Request) {
 	id_, err := strconv.Atoi(chi.URLParam(r, "id"))
