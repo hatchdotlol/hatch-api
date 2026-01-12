@@ -143,7 +143,8 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 		return db.File{}, err
 	}
 
-	if bucket == "pfps" {
+	switch bucket {
+	case "pfps":
 		if _, err := tx.Exec(
 			"UPDATE users SET profile_picture = ? WHERE id = ?",
 			f.Id,
@@ -151,7 +152,7 @@ func IngestImage(bucket string, file multipart.File, header *multipart.FileHeade
 		); err != nil {
 			return db.File{}, err
 		}
-	} else if bucket == "thumbnails" {
+	case "thumbnails":
 		if _, err := tx.Exec(
 			"UPDATE projects SET thumbnail = ? WHERE id = ?",
 			f.Id,

@@ -160,22 +160,25 @@ func projectCommentReplies(w http.ResponseWriter, r *http.Request) {
 }
 
 func addProjectComment(w http.ResponseWriter, r *http.Request) {
-	you := r.Context().Value(User).(users.User)
+	you, ok := r.Context().Value(User).(users.User)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	id_, err := strconv.Atoi(chi.URLParam(r, "id"))
+	id, err := strconv.ParseInt(chi.URLParam(r, "id"), 10, 64)
 	if err != nil {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	id := int64(id_)
 
 	project, err := projects.ProjectById(id)
 	if err != nil {
 		http.Error(w, "Project not found", http.StatusNotFound)
+		return
 	}
 
 	var form models.AddComment
-
 	body := util.HttpBody(r)
 	if body == nil {
 		http.Error(w, "Invalid form", http.StatusBadRequest)
@@ -186,6 +189,16 @@ func addProjectComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var reply *comments.CommentJSON
+	if form.ReplyTo != nil {
+		_reply, err := comments.CommentById(comments.Project, project.Id, form.ReplyTo)
+		if err != nil {
+			http.Error(w, "Reply does not exist", http.StatusBadRequest)
+			return
+		}
+		reply = &_reply
+	}
+
 	comment := comments.Comment{
 		Content:  form.Content,
 		Author:   you.Id,
@@ -194,13 +207,28 @@ func addProjectComment(w http.ResponseWriter, r *http.Request) {
 		Resource: project.Id,
 	}
 
-	if err := comment.Insert(); err != nil {
+	commentId, err := comment.Insert()
+	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to add comment", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(w, "Comment added")
+	go func() {
+		message, _ := json.Marshal(map[string]any{
+			"type":    "commentReply",
+			"user":    you.Name,
+			"project": project.Id,
+			"reply":   commentId,
+		})
+		if reply != nil {
+			connections.Broadcast(func(u users.User) bool {
+				return u.Id == reply.Author.Id
+			}, message)
+		}
+	}()
+
+	fmt.Fprint(w, commentId)
 }
 
 func vote(w http.ResponseWriter, r *http.Request) {

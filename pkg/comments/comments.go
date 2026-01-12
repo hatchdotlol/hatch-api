@@ -163,13 +163,13 @@ func Replies(location Location, resource any, comment any, page int) ([]CommentJ
 	return replies, nil
 }
 
-func (c *Comment) Insert() error {
+func (c *Comment) Insert() (int64, error) {
 	tx, err := db.Db.Begin()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
-	if _, err := tx.Exec(
+	res, err := tx.Exec(
 		"INSERT INTO comments (content, author, post_ts, reply_to, location, resource_id, visible) VALUES (?, ?, ?, ?, ?, ?, TRUE)",
 		c.Content,
 		c.Author,
@@ -178,13 +178,21 @@ func (c *Comment) Insert() error {
 		c.Location,
 		c.Resource,
 		c.Visible,
-	); err != nil {
-		return err
+	)
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, err
+	}
+
+	id, err := res.LastInsertId()
+	if err != nil {
+		_ = tx.Rollback()
+		return 0, err
 	}
 
 	if err := tx.Commit(); err != nil {
-		return err
+		return 0, err
 	}
 
-	return nil
+	return id, nil
 }

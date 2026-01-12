@@ -264,6 +264,16 @@ func addUserComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var reply *comments.CommentJSON
+	if form.ReplyTo != nil {
+		_reply, err := comments.CommentById(comments.User, user.Id, form.ReplyTo)
+		if err != nil {
+			http.Error(w, "Reply does not exist", http.StatusBadRequest)
+			return
+		}
+		reply = &_reply
+	}
+
 	comment := comments.Comment{
 		Content:  form.Content,
 		Author:   you.Id,
@@ -272,11 +282,26 @@ func addUserComment(w http.ResponseWriter, r *http.Request) {
 		Resource: user.Id,
 	}
 
-	if err := comment.Insert(); err != nil {
+	commentId, err := comment.Insert()
+	if err != nil {
 		sentry.CaptureException(err)
 		http.Error(w, "Failed to add comment", http.StatusInternalServerError)
 		return
 	}
 
-	fmt.Fprint(w, "Comment added")
+	go func() {
+		message, _ := json.Marshal(map[string]any{
+			"type":    "commentReply",
+			"user":    you.Name,
+			"profile": user.Id,
+			"reply":   commentId,
+		})
+		if reply != nil {
+			connections.Broadcast(func(u users.User) bool {
+				return u.Id == reply.Author.Id
+			}, message)
+		}
+	}()
+
+	fmt.Fprint(w, commentId)
 }
